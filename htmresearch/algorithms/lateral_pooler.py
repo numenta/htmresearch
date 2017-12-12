@@ -99,7 +99,7 @@ class LateralPooler(object):
     # during encoding, in order to make the score accessible
     # for debugging and analyses.
     self._scores = None
-    
+
     # ---------------------
     #  Learning parameters
     # ---------------------
@@ -170,11 +170,34 @@ class LateralPooler(object):
 
     return dW
 
+  def compute_dW_online(self, X, Y):
+    """
+    Computes the weight update for the feedforward weights
+    according to the Hebbian-like update rule in the paper.
+    """
+    n, m, d = Y.shape[0], X.shape[0], X.shape[1]
+    r       = self.inc_dec_ratio
+
+    Pos = Y * X.T
+    Neg = Y * (1 - X).T
+    dW  = Pos  -  1/r * Neg
+
+    return dW
+
 
   def update_feedforward(self, X, Y):
     alpha = self.learning_rate
     W  = self.feedforward
     dW = self.compute_dW(X, Y)
+
+    W[:,:] = W  +  alpha * dW 
+    W[np.where(W > 1.0)] = 1.0
+    W[np.where(W < 0.0)] = 0.0
+
+  def update_feedforward_online(self, X, Y):
+    alpha = self.learning_rate
+    W  = self.feedforward
+    dW = self.compute_dW_online(X, Y)
 
     W[:,:] = W  +  alpha * dW 
     W[np.where(W > 1.0)] = 1.0
@@ -205,11 +228,22 @@ class LateralPooler(object):
     update rules in the paper.
     """
     beta = 1 - 1/self.smoothing_period
-    self.update_feedforward(X,Y)
     self.update_statistics(Y, beta)
+    self.update_feedforward(X,Y)
     self.update_boost()
     self.update_inhibitory()
 
+  def update_connections_online(self, X, Y):
+    """
+    Method that updates the model parameters, i.e. feedforward connections, 
+    lateral connections, and homeostatic boost factors, according to the
+    update rules in the paper.
+    """
+    beta = 1 - 1/self.smoothing_period
+    self.update_statistics_online(Y, beta)
+    self.update_feedforward_online(X,Y)
+    self.update_boost()
+    self.update_inhibitory()
 
   def fit(self, X, batch_size=32, num_epochs=10, initial_epoch=0, callbacks=[]):
     """
@@ -262,6 +296,20 @@ class LateralPooler(object):
       A = np.expand_dims(Y, axis=1) * np.expand_dims(Y, axis=0)        
       Q = np.mean(A, axis=2)
       # Q[np.where(Q == 0.)] = 0.000001
+
+      P_pairs[:,:] = beta*P_pairs + (1-beta)*Q
+      P_units[:]   = P_pairs.diagonal()
+
+
+  def update_statistics_online(self, Y, beta=0.9, bias_correction=False):
+      """
+      Updates the exponential moving averages over pairwise and individual 
+      cell activities. 
+      """
+      P_pairs = self.avg_activity_pairs 
+      P_units = self.avg_activity_units
+
+      Q = Y * Y.T   
 
       P_pairs[:,:] = beta*P_pairs + (1-beta)*Q
       P_units[:]   = P_pairs.diagonal()

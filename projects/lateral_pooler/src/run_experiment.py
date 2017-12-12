@@ -25,7 +25,11 @@ import json
 import sys
 from optparse import OptionParser
 from datasets import load_data
+from tabulate import tabulate
+
 from htmresearch.support.lateral_pooler.utils import random_id
+from htmresearch.support.lateral_pooler.metrics import mean_mutual_info_from_data
+from htmresearch.frameworks.sp_paper.sp_metrics import reconstructionError
 
 from nupic.algorithms.spatial_pooler import SpatialPooler as OldSpatialPooler
 from htmresearch.algorithms.lateral_pooler import LateralPooler
@@ -68,14 +72,14 @@ def get_permanence_vals(sp):
 
 
 def parse_argv():
-  parser = OptionParser(usage = "python run_experiment.py --sp lateral --data mnist --params mnist -e 2 -b 30 -d 100")
+  parser = OptionParser(usage = "python run_experiment.py --sp lateral --data mnist --params mnist -e 2 -b 1 -d 100")
   parser.add_option("--data",   type=str, default='', dest="data_set", help="")
   parser.add_option("-d", "--num_data",  type=int, default=30000, dest="num_data_points", help="")
   parser.add_option("-e",     "--num_epochs", type=int, default=6, dest="num_epochs", help="number of epochs")
-  parser.add_option("-b",     "--batch_size", type=int, default=30, dest="batch_size", help="Mini batch size")
+  parser.add_option("-b",     "--batch_size", type=int, default=1, dest="batch_size", help="Mini batch size")
   parser.add_option("--sp", type=str, default="ordinary", dest="pooler_type", help="spatial pooler implementations: ordinary, lateral")
   parser.add_option("--params", type=str, dest="sp_params", help="json file with spatial pooler parameters")
-  parser.add_option("--name", type=str, default="", dest="experiment_id", help="")
+  parser.add_option("--name", type=str, default=None, dest="experiment_id", help="")
   parser.add_option("--seed", type=str, default=41, dest="seed", help="random seed for SP and dataset")
   (options, remainder) = parser.parse_args()
   print(options)
@@ -92,23 +96,17 @@ def main(argv):
   experiment_id   = args.experiment_id
   seed            = args.seed
 
+  ####################################################
   # 
-  # Load the parameters
+  #       Create folder for the experiment
   # 
-  the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
-  sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
-
-  if args.sp_params is not None:
-    sp_params       = sp_params_dict[sp_type][args.sp_params]
+  ####################################################
+  if experiment_id is None:
+    experiment_id = random_id(5)
   else:
-    sp_params       = sp_params_dict[sp_type][data_set]
-  sp_params["seed"] = seed
+    experiment_id +=  "_" + random_id(5)
 
-  # 
-  # Create folder for the experiment
-  # 
-  experiment_id = "_{}_{}".format(experiment_id, random_id(5))
-
+  the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
   path = the_scripts_path + "/../results/{}_pooler_{}_{}/".format(sp_type, data_set,experiment_id)
   os.makedirs(os.path.dirname(path))
 
@@ -116,82 +114,147 @@ def main(argv):
     "Experiment directory:\n\"{}\"\n"
     .format(path))
 
+
+  ####################################################
+  # 
+  #               Load the parameters
+  # 
+  ####################################################
+
+  sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
+
+  if args.sp_params is not None:
+    # sp_params       = sp_params_dict[sp_type][args.sp_params]
+    sp_params       = sp_params_dict["ordinary"][args.sp_params]
+  else:
+    # sp_params       = sp_params_dict[sp_type][data_set]
+    sp_params       = sp_params_dict["ordinary"][data_set]
+  sp_params["seed"] = seed
+
+
+  ####################################################
+  # 
+  #                   Load the SP
+  # 
+  ####################################################
+  if sp_type == "ordinary":
+    pooler = OldSpatialPooler(**sp_params)
+
+  elif sp_type == "lateral":
+    pooler = LateralPoolerWrap(**sp_params)
+
+
+  print(
+    "sparsity: {}".format(pooler._localAreaDensity))
+
+  ####################################################
+  # 
+  #                Load the data
+  # 
+  ####################################################
+
   X, _, X_test, _ = load_data(data_set, num_inputs = num_data_points) 
 
   n, m = get_shape(sp_params)
   X    = X[:,:num_data_points]
   d    = X.shape[1]
   
+  ####################################################
+  # 
+  #                   Training
+  # 
+  ####################################################
+  checkpoints = set(range(0,num_epochs,10))
+  checkpoints.add(num_epochs - 1)
+
 
   results = {
     "inputs"      : [],
     "outputs"     : [],
-    "feedforward" : []}
+    "feedforward" : [],
+    "avg_activity_units" : []}
+
+  metrics = {
+    "code_weight" : [],
+    "rec_error"   : [],
+    "mutual_info" : []}
 
 
-  ####################################################
-  # 
-  #               Old Spatial Pooler
-  # 
-  ####################################################
-  if sp_type == "ordinary":
-    
-    pooler = OldSpatialPooler(**sp_params)
 
+
+  if batch_size != 1:
+    raise Exception(
+            "Let's stick with online learning for now..."\
+            "set the batch size -b to 1.")
+
+  else:
     print(
-      "Training ordinary pooler:\n")
+      "Online training (batch size = 1):")
 
     # "Fit" the model to the training data
     for epoch in range(num_epochs):
-      Y = np.zeros((n,d))
 
+      Y    = np.zeros((n,d))
       perm = np.random.permutation(d)
 
       for t in range(d):
 
-        sys.stdout.flush()
-        sys.stdout.write(
-          "\r{}/{}  {}/{}"
-            .format(num_epochs, epoch + 1, d, t + 1))
+          if(t%200 == 0):
+            print(
+              "\re:{}/{}  b:{}/{}"
+                .format(num_epochs, epoch + 1, d, t + 1))
 
-        x = X[:,perm[t]]
-        y = Y[:, t]
-        pooler.compute(x, True, y)
+          x = X[:,perm[t]]
+          y = Y[:, t]
+          pooler.compute(x, True, y)
 
-      results["inputs"].append(X)
-      results["outputs"].append(Y)
-      results["feedforward"].append(get_permanence_vals(pooler)) 
-      
+      if epoch in checkpoints:
+        results["inputs"].append(X)
+        results["outputs"].append(Y)
+
+      # results["feedforward"].append(get_permanence_vals(pooler)) 
+      # results["avg_activity_units"].append(pooler._activeDutyCycles) 
+
+      # sys.stdout.flush()
+      # metrics["mutual_info"].append(mean_mutual_info_from_data(Y))
+      metrics["code_weight"].append(np.mean(np.sum(Y, axis=0)))
+      metrics["rec_error"].append(reconstructionError(pooler, X.T, Y.T, threshold=0.))
+
   
-  ####################################################
-  # 
-  #             New Spatial Pooler with 
-  #     learned lateral inhibitory connections
-  # 
-  #####################################################
-  elif sp_type == "lateral":
+  # ####################################################
+  # # 
+  # #             New Spatial Pooler with 
+  # #     learned lateral inhibitory connections
+  # # 
+  # #####################################################
+  # elif sp_type == "lateral":
 
-    pooler = LateralPooler(**sp_params)
+  #   pooler = LateralPooler(**sp_params)
 
-    sys.stdout.write(
-      "Training dynamic lateral pooler:\n")
+  #   sys.stdout.write(
+  #     "Training dynamic lateral pooler:\n")
 
-    collect_feedforward = ModelInspector(lambda pooler: pooler.feedforward.copy(), on_batch = False )
-    # collect_lateral     = ModelInspector(lambda pooler: pooler.inhibitory.copy(),  on_batch = False )
-    training_log        = OutputCollector()
-    print_training_status = Logger()
+  #   collect_feedforward = ModelInspector(lambda pooler: pooler.feedforward.copy(), on_batch = False )
+  #   # collect_lateral     = ModelInspector(lambda pooler: pooler.inhibitory.copy(),  on_batch = False )
+  #   training_log        = OutputCollector()
+  #   print_training_status = Logger()
 
-    # "Fit" the model to the training datasets
-    pooler.fit(X, batch_size=batch_size, num_epochs=num_epochs, initial_epoch=0, callbacks=[collect_feedforward, training_log, print_training_status])
+  #   # "Fit" the model to the training datasets
+  #   pooler.fit(X, batch_size=batch_size, num_epochs=num_epochs, initial_epoch=0, callbacks=[collect_feedforward, training_log, print_training_status])
 
-    results["inputs"]      = training_log.get_inputs()
-    results["outputs"]     = training_log.get_outputs()
-    results["feedforward"] = collect_feedforward.get_results()
-    # results["lateral"]     = collect_lateral.get_results() 
+  #   results["inputs"]      = training_log.get_inputs()
+  #   results["outputs"]     = training_log.get_outputs()
+  #   results["feedforward"] = collect_feedforward.get_results()
+  #   # results["lateral"]     = collect_lateral.get_results() 
 
+
+  print("")
+  # print(metrics["rec_error"])
+
+  print(tabulate(metrics, headers="keys"))
 
   dump_dict(path, sp_params)
-  dump_results(path, results)
+  # dump_results(path, results)
 
   print(
     "\nDone.\n")

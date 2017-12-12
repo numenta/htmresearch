@@ -55,7 +55,7 @@
 			  "boostStrength": 100.0,
 			  "seed": 1936
 		},
-		"mnist":
+		"mnist_":
 		{
 			  "inputDimensions": [784, 1],
 			  "columnDimensions": [128, 1],
@@ -67,6 +67,24 @@
 			  "stimulusThreshold": 1,
 			  "synPermInactiveDec": 0.05,
 			  "synPermActiveInc"  : 0.05,
+			  "synPermConnected": 0.5,
+			  "minPctOverlapDutyCycle": 0.001,
+			  "dutyCyclePeriod": 1000,
+			  "boostStrength": 100.0,
+			  "seed": 1936
+		},
+		"mnist":
+		{
+			  "inputDimensions": [784, 1],
+			  "columnDimensions": [1024, 1],
+			  "potentialRadius": 1024,
+			  "potentialPct": 1.0,
+			  "globalInhibition": true,
+			  "localAreaDensity": 0.02,
+			  "numActiveColumnsPerInhArea": -1,
+			  "stimulusThreshold": 1,
+			  "synPermInactiveDec": 0.02,
+			  "synPermActiveInc": 0.1,
 			  "synPermConnected": 0.5,
 			  "minPctOverlapDutyCycle": 0.001,
 			  "dutyCyclePeriod": 1000,

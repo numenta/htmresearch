@@ -47,6 +47,9 @@ class SpatialPooler(LateralPooler):
 
     assert(inputDimensions[1] == 1 and columnDimensions[1] == 1)
 
+    if numActiveColumnsPerInhArea < 0.:
+      numActiveColumnsPerInhArea = localAreaDensity*columnDimensions[0]
+
     super_args = {
         "input_size"            : inputDimensions[0], 
         "output_size"           : columnDimensions[0], 
@@ -75,7 +78,7 @@ class SpatialPooler(LateralPooler):
     Y = self.encode(X)
 
     if learn:
-      self.update_connections(X, Y)
+      self.update_connections_online(X, Y)
 
     active_units = np.where(Y[:,0]==1.)[0]
     
@@ -165,4 +168,19 @@ class SpatialPooler(LateralPooler):
     """
     return self._scores[:,0]
 
+  @property
+  def _activeDutyCycles(self):
+    return self.avg_activity_units
+
+  @property
+  def _numColumns(self):
+    return self.output_size
+
+  @property
+  def _localAreaDensity(self):
+    """
+    :returns: (float) the local area density. Returns a value less than 0 if 
+              parameter is unused.
+    """
+    return self.sparsity
 
