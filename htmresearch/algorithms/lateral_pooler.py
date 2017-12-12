@@ -95,6 +95,11 @@ class LateralPooler(object):
     self.avg_activity_units = 0.0000001*np.ones(n)
     self.avg_activity_pairs = 0.0000001*np.ones((n, n))
 
+    # Placeholder. Variable used to store the ovelap scores
+    # during encoding, in order to make the score accessible
+    # for debugging and analyses.
+    self._scores = None
+    
     # ---------------------
     #  Learning parameters
     # ---------------------
@@ -134,7 +139,8 @@ class LateralPooler(object):
     Y = np.zeros((n,d))
     s = self.sparsity
 
-    score             = boost * np.dot(W_prime, X)
+    score        = boost * np.dot(W_prime, X)
+    self._scores = score 
     sorted_score_args = np.argsort(score, axis=0)[::-1, :]
     inh_signal = np.zeros((n, d))
 

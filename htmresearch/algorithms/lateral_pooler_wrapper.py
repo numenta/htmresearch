@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 from lateral_pooler import LateralPooler
-
+import numpy as np
 
 class SpatialPooler(LateralPooler):
   """
@@ -27,28 +27,28 @@ class SpatialPooler(LateralPooler):
   similar to the original spatial pooler.
   """
   def __init__(self,
-          inputDimensions  =(32**2, 1),
-          columnDimensions =(64**2, 1),
-          potentialRadius  =16,
-          potentialPct     =0.5,
-          globalInhibition=False,
-          localAreaDensity=-1.0,
-          numActiveColumnsPerInhArea=10.0,
-          stimulusThreshold=0,
-          synPermInactiveDec=0.008,
-          synPermActiveInc=0.05,
-          synPermConnected=0.10,
-          minPctOverlapDutyCycle=0.001,
-          dutyCyclePeriod=1000,
-          boostStrength=0.0,
-          seed=-1,
-          spVerbosity=0,
-          wrapAround=True):
+          inputDimensions            = (32**2, 1),
+          columnDimensions           = (64**2, 1),
+          potentialRadius            = 16,
+          potentialPct               = 0.5,
+          globalInhibition           = False,
+          localAreaDensity           = -1.0,
+          numActiveColumnsPerInhArea = 10.0,
+          stimulusThreshold          = 0,
+          synPermInactiveDec         = 0.008,
+          synPermActiveInc           = 0.05,
+          synPermConnected           = 0.10,
+          minPctOverlapDutyCycle     = 0.001,
+          dutyCyclePeriod            = 1000,
+          boostStrength              = 100.0,
+          seed                       = -1,
+          spVerbosity                = 0,
+          wrapAround                 = True):
 
     assert(inputDimensions[1] == 1 and columnDimensions[1] == 1)
 
     super_args = {
-        "input_ize"             : inputDimensions[0], 
+        "input_size"            : inputDimensions[0], 
         "output_size"           : columnDimensions[0], 
         "code_weight"           : numActiveColumnsPerInhArea, 
         "seed"                  : seed,
@@ -64,18 +64,18 @@ class SpatialPooler(LateralPooler):
 
 
   def compute(self, inputVector, learn, activeArray):
-  """
-  This method resembles the primary public method of the SpatialPooler class. 
-  It takes a input vector and outputs the indices of the active columns. If 'learn' 
-  is set to True, this method also performs weight updates and updates to the activity 
-  statistics according to the respective methods implemented below.
-  """
+    """
+    This method resembles the primary public method of the SpatialPooler class. 
+    It takes a input vector and outputs the indices of the active columns. If 'learn' 
+    is set to True, this method also performs weight updates and updates to the activity 
+    statistics according to the respective methods implemented below.
+    """
     m = self.input_size
     X = inputVector.reshape((m,1))
     Y = self.encode(X)
 
     if learn:
-    self.update_connections(X, Y)
+      self.update_connections(X, Y)
 
     active_units = np.where(Y[:,0]==1.)[0]
     
@@ -83,10 +83,86 @@ class SpatialPooler(LateralPooler):
 
     return active_units
 
+
   def getPermanence(self, columnIndex, permanence):
+    """
+    Returns the permanence values for a given column. ``permanence`` size
+    must match the number of inputs.
+    
+    :param columnIndex: (int) column index to get permanence for.
+    :param permanence: (list) will be overwritten with permanences. 
+    """
     assert(columnIndex < self.output_size)
     permanence[:] = self.feedforward[columnIndex]
 
 
+  def getColumnDimensions(self):
+    """
+    :returns: (iter) the dimensions of the columns in the region
+    """
+    return (self.output_size, 1)
+
+  def getInputDimensions(self):
+    """
+    :returns: (iter) the dimensions of the input vector
+    """
+    return (self.input_size, 1)
+
+
+  def getNumColumns(self):
+    """
+    :returns: (int) the total number of columns
+    """
+    return self.output_size
+
+  def getNumInputs(self):
+    """
+    :returns: (int) the total number of inputs.
+    """
+    return self.input_size
+
+
+  def getConnectedSynapses(self, columnIndex, connectedSynapses):
+    """
+    :param connectedSynapses: (list) will be overwritten
+    :returns: (iter) the connected synapses for a given column.
+              ``connectedSynapses`` size must match the number of inputs"""
+    assert(columnIndex < self.output_size)
+    connectedSynapses[:] = np.greater(self.feedforward[columnIndex], self.permanence_threshold, dtype=float)
+
+
+  def getConnectedCounts(self, connectedCounts):
+    """
+    :param connectedCounts: (list) will be overwritten
+    :returns: (int) the number of connected synapses for all columns.
+              ``connectedCounts`` size must match the number of columns.
+    """
+    connectedCounts[:] = np.sum( (self.feedforward < self.permanence_threshold).astype(int), axis=1)
+
+
+  def getActiveDutyCycles(self, activeDutyCycles):
+    """
+    Gets the activity duty cycles for all columns. Input list will be 
+    overwritten.
+    
+    :param activeDutyCycles: (list) size must match number of columns. 
+    """
+    activeDutyCycles[:] = self.avg_activity_units[:]
+
+
+  def getBoostFactors(self, boostFactors):
+    """
+    Gets the boost factors for all columns. Input list will be overwritten.
+
+    :param boostFactors: (list) size must match number of columns. 
+    """
+    boostFactors[:] = self.boostfactor[:,0]
+
+
+  def getOverlaps(self):
+    """
+    :returns: (iter) the overlap score for each column.
+    """
+    return self._scores[:,0]
 
 

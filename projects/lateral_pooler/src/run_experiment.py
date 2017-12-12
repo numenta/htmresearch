@@ -26,8 +26,11 @@ import sys
 from optparse import OptionParser
 from datasets import load_data
 from htmresearch.support.lateral_pooler.utils import random_id
+
 from nupic.algorithms.spatial_pooler import SpatialPooler as OldSpatialPooler
 from htmresearch.algorithms.lateral_pooler import LateralPooler
+from htmresearch.algorithms.lateral_pooler_wrapper import SpatialPooler as LateralPoolerWrap
+
 from htmresearch.support.lateral_pooler.callbacks import (ModelCheckpoint, ModelOutputEvaluator, 
                                                           Reconstructor, ModelInspector, 
                                                           OutputCollector, Logger)
@@ -72,7 +75,7 @@ def parse_argv():
   parser.add_option("-b",     "--batch_size", type=int, default=30, dest="batch_size", help="Mini batch size")
   parser.add_option("--sp", type=str, default="ordinary", dest="pooler_type", help="spatial pooler implementations: ordinary, lateral")
   parser.add_option("--params", type=str, dest="sp_params", help="json file with spatial pooler parameters")
-  parser.add_option("--name", type=str, default=None, dest="experiment_id", help="")
+  parser.add_option("--name", type=str, default="", dest="experiment_id", help="")
   parser.add_option("--seed", type=str, default=41, dest="seed", help="random seed for SP and dataset")
   (options, remainder) = parser.parse_args()
   print(options)
@@ -89,18 +92,22 @@ def main(argv):
   experiment_id   = args.experiment_id
   seed            = args.seed
 
-
+  # 
+  # Load the parameters
+  # 
   the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
-
   sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
+
   if args.sp_params is not None:
     sp_params       = sp_params_dict[sp_type][args.sp_params]
   else:
     sp_params       = sp_params_dict[sp_type][data_set]
   sp_params["seed"] = seed
 
-  if experiment_id is None:
-    experiment_id = random_id(5)
+  # 
+  # Create folder for the experiment
+  # 
+  experiment_id = "_{}_{}".format(experiment_id, random_id(5))
 
   path = the_scripts_path + "/../results/{}_pooler_{}_{}/".format(sp_type, data_set,experiment_id)
   os.makedirs(os.path.dirname(path))

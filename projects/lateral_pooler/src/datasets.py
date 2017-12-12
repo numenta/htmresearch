@@ -45,7 +45,7 @@ def load_data(label, **args):
     X = X/255
     X = (X > threshold).astype(float)
 
-    X,Y, X_test, Y_test = X[:,:-10000], Y[:,:-10000], X[:,-10000:], Y[:,-10000:]
+    X, Y, X_test, Y_test = X[:,:-10000], Y[:,:-10000], X[:,-10000:], Y[:,-10000:]
 
 
 
