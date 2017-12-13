@@ -21,7 +21,7 @@
 from lateral_pooler import LateralPooler
 import numpy as np
 
-class SpatialPooler(LateralPooler):
+class LateralPoolerWrapper(LateralPooler):
   """
   This is a wrapper for the lateral pooler, in order to provide an interface 
   similar to the original spatial pooler.
@@ -62,7 +62,7 @@ class SpatialPooler(LateralPooler):
         "boost_strength_hidden" : boostStrength,
         "permanence_threshold"  : synPermConnected
     }
-    super(SpatialPooler, self).__init__(**super_args)
+    super(LateralPoolerWrapper, self).__init__(**super_args)
               
 
 
@@ -183,4 +183,8 @@ class SpatialPooler(LateralPooler):
               parameter is unused.
     """
     return self.sparsity
+
+  @property
+  def _dutyCyclePeriod(self):
+    return self.smoothing_period
 

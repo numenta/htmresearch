@@ -139,10 +139,10 @@ class LateralPooler(object):
     Y = np.zeros((n,d))
     s = self.sparsity
 
-    score        = boost * np.dot(W_prime, X)
-    self._scores = score 
-    sorted_score_args = np.argsort(score, axis=0)[::-1, :]
-    inh_signal = np.zeros((n, d))
+    inh_signal   = np.zeros((n, d))
+    scores       = boost * np.dot(W_prime, X)
+    self._scores = scores 
+    sorted_score_args = np.argsort(scores, axis=0)[::-1, :]
 
     for t in range(d):
       for i in sorted_score_args[:, t]:
@@ -285,7 +285,7 @@ class LateralPooler(object):
           callback.on_epoch_end(epoch, cache)
 
 
-  def update_statistics(self, Y, beta=0.9, bias_correction=False):
+  def update_statistics(self, Y, beta=0.9):
       """
       Updates the exponential moving averages over pairwise and individual 
       cell activities. 
@@ -301,7 +301,7 @@ class LateralPooler(object):
       P_units[:]   = P_pairs.diagonal()
 
 
-  def update_statistics_online(self, Y, beta=0.9, bias_correction=False):
+  def update_statistics_online(self, Y, beta=0.9):
       """
       Updates the exponential moving averages over pairwise and individual 
       cell activities. 
