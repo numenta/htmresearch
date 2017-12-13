@@ -21,7 +21,7 @@ class SpatialPoolerWrapper(SpatialPooler):
         """
         super(SpatialPoolerWrapper, self).compute(inputVector, learn, activeArray)
 
-        beta = 1 - 1/self._dutyCyclePeriod
+        beta = 1.0 - 1.0/self._dutyCyclePeriod
         n    = self._numColumns
         Y    = activeArray.reshape((n,1))
 
@@ -48,3 +48,13 @@ class SpatialPoolerWrapper(SpatialPooler):
     @property
     def code_weight(self):
         return int(self._localAreaDensity*self._numColumns)
+
+    @property
+    def feedforward(self):
+        m = self._numInputs
+        n = self._numColumns
+        W = np.zeros((n, m))
+        for i in range(self._numColumns):
+            self.getPermanence(i, W[i, :])
+
+        return W

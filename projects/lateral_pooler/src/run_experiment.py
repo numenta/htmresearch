@@ -52,9 +52,10 @@ def dump_json(path_to_file, my_dict):
 
 def dump_results(path, results):
     for key in results:
+        os.makedirs(os.path.dirname("{}/{}/".format(path, key)))
         for i, data in enumerate(results[key]):
-            filename ="{}/{}_{}.p".format(paht, key, i + 1)
-            with open(path + filename, 'wb') as file:
+            filename ="{}/{}/{}_{}.p".format(path, key, key, i + 1)
+            with open(filename, 'wb') as file:
                 pickle.dump(data, file)
 
 
@@ -83,15 +84,24 @@ def parse_argv():
     parser.add_option("--sp", type=str, default="ordinary", dest="pooler_type", help="spatial pooler implementations: ordinary, lateral")
     parser.add_option("--params", type=str, dest="sp_params", help="json file with spatial pooler parameters")
     parser.add_option("--name", type=str, default=None, dest="experiment_id", help="")
-    parser.add_option("--seed", type=str, default=41, dest="seed", help="random seed for SP and dataset")
+    parser.add_option("--seed", type=str, default=None, dest="seed", help="random seed for SP and dataset")
     (options, remainder) = parser.parse_args()
     return options, remainder
 
+####################################################
+####################################################
+####################################################
+### 
+###                   Main()
+### 
+####################################################
+####################################################
+####################################################
 
 def main(argv):
     args, _ = parse_argv()
     data_set        = args.data_set
-    num_data_points = args.num_data_points
+    d               = args.num_data_points
     sp_type         = args.pooler_type
     num_epochs      = args.num_epochs
     batch_size      = args.batch_size
@@ -109,12 +119,13 @@ def main(argv):
         experiment_id +=  "_" + random_id(5)
 
     the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
-    path = the_scripts_path + "/../results/{}_pooler_{}_{}".format(sp_type, data_set,experiment_id)
+    relative_path    = "../results/{}_pooler_{}_{}".format(sp_type, data_set,experiment_id)
+    path = the_scripts_path + "/" + relative_path
     os.makedirs(os.path.dirname(path+"/"))
 
     print(
         "\nExperiment directory:\n\n\t\"{}\"\n"
-        .format(path))
+        .format(relative_path))
 
 
     ####################################################
@@ -132,14 +143,18 @@ def main(argv):
         # sp_params       = sp_params_dict[sp_type][data_set]
         sp_params         = sp_params_dict["ordinary"][data_set]
 
+    if seed is not None:
+        sp_params["seed"] = seed
+
     pprint(sp_params)
+
     ####################################################
     # 
     #                   Load the SP
     # 
     ####################################################
     if sp_type == "ordinary":
-        pooler = SpatialPooler(**sp_params)
+        pooler = SpatialPoolerWrapper(**sp_params)
 
     elif sp_type == "lateral":
         pooler = LateralPoolerWrapper(**sp_params)
@@ -149,17 +164,18 @@ def main(argv):
         "\tdesired sparsity: {}\n"\
         "\tdesired code weight: {}\n"
         .format(sp_type, pooler._localAreaDensity, pooler.code_weight))
+
     ####################################################
     # 
     #                Load the data
     # 
     ####################################################
 
-    X, _, X_test, _ = load_data(data_set, num_inputs = num_data_points) 
+    X, _, X_test, _ = load_data(data_set) 
 
     n, m = pooler._numColumns, X.shape[0]
-    X    = X[:,:num_data_points]
-    d    = X.shape[1]
+    X    = X[:,:d]
+
 
     ####################################################
     # 
@@ -177,7 +193,8 @@ def main(argv):
         "inputs"      : [],
         "outputs"     : [],
         "feedforward" : [],
-        "avg_activity_units" : []}
+        "avg_activity_units" : [],
+        "avg_activity_pairs" : []}
 
     metrics = {
         "code_weight" : [],
@@ -185,14 +202,19 @@ def main(argv):
         "mutual_info" : []}
 
 
-    checkpoints = set(range(0, num_epochs, 10))
-    checkpoints.add(num_epochs-1)
+    if num_epochs >= 50:
+        checkpoints = set(range(0, num_epochs, 10))
+        checkpoints.add(num_epochs-1)
+    else:
+        checkpoints = set(range(num_epochs))
 
     print(
         "Training (online, i.e. batch size = 1)...\n"
         .format(sp_type))
 
+    # 
     # "Fit" the model to the training data
+    # 
     for epoch in range(num_epochs):
 
         print(
@@ -209,46 +231,25 @@ def main(argv):
             pooler.compute(x, True, y)
 
 
-        if t in checkpoints:
+        if epoch in checkpoints:
             results["inputs"].append(X)
             results["outputs"].append(Y)
-            # results["avg_activity_units"].append(pooler.avg_activity_units) 
-            # results["avg_activity_pairs"].append(pooler.avg_activity_pairs) 
+            results["avg_activity_units"].append(pooler.avg_activity_units) 
+            results["avg_activity_pairs"].append(pooler.avg_activity_pairs) 
+            results["feedforward"].append(pooler.feedforward) 
 
-        # results["feedforward"].append(get_permanence_vals(pooler)) 
-
-        # metrics["mutual_info"].append(mean_mutual_info_from_data(Y))
-
-        # metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
+        metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
         metrics["code_weight"].append(np.mean(np.sum(Y, axis=0)))
-        # metrics["rec_error"].append(reconstructionError(pooler, X.T, Y.T, threshold=0.))
+        metrics["rec_error"].append(reconstructionError(pooler, X.T, Y.T, threshold=0.))
 
 
-    # ####################################################
-    # # 
-    # #             New Spatial Pooler with 
-    # #     learned lateral inhibitory connections
-    # # 
-    # #####################################################
-    # elif sp_type == "lateral":
-
-    #   pooler = LateralPooler(**sp_params)
-
-    #   sys.stdout.write(
-    #     "Training dynamic lateral pooler:\n")
-
-    #   collect_feedforward = ModelInspector(lambda pooler: pooler.feedforward.copy(), on_batch = False )
-    #   # collect_lateral     = ModelInspector(lambda pooler: pooler.inhibitory.copy(),  on_batch = False )
-    #   training_log        = OutputCollector()
-    #   print_training_status = Logger()
-
-    #   # "Fit" the model to the training datasets
-    #   pooler.fit(X, batch_size=batch_size, num_epochs=num_epochs, initial_epoch=0, callbacks=[collect_feedforward, training_log, print_training_status])
-
-    #   results["inputs"]      = training_log.get_inputs()
-    #   results["outputs"]     = training_log.get_outputs()
-    #   results["feedforward"] = collect_feedforward.get_results()
-    #   # results["lateral"]     = collect_lateral.get_results() 
+    config = {
+        "path": relative_path,
+        "sp_type": sp_type,
+        "data_set": data_set,
+        "sparsity": pooler.sparsity,
+        "code_weight": pooler.code_weight
+    }
 
     print("")
     print(tabulate(metrics, headers="keys"))
@@ -256,7 +257,8 @@ def main(argv):
     print(
         "\nSaving results to file...")
 
-    dump_json(path + "/metrics", metrics)
+    dump_json(path + "/metrics.json", metrics)
+    dump_json(path + "/conifig.json", config)
     dump_results(path, results)
 
     print(
