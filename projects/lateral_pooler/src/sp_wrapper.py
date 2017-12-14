@@ -58,3 +58,7 @@ class SpatialPoolerWrapper(SpatialPooler):
             self.getPermanence(i, W[i, :])
 
         return W
+
+    @property
+    def shape(self):
+        return self._numColumns, self._numInputs

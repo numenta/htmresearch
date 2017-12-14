@@ -45,7 +45,7 @@ class LateralPoolerWrapper(LateralPooler):
           spVerbosity                = 0,
           wrapAround                 = True):
 
-    assert(inputDimensions[1] == 1 and columnDimensions[1] == 1)
+
 
     if numActiveColumnsPerInhArea < 0.:
       numActiveColumnsPerInhArea = localAreaDensity*columnDimensions[0]

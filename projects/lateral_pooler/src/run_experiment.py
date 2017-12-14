@@ -76,12 +76,15 @@ def get_permanence_vals(sp):
 
 
 def parse_argv():
-    parser = OptionParser(usage = "python run_experiment.py --sp lateral --data mnist --params mnist -e 2 -b 1 -d 100")
+    parser = OptionParser(usage = "<yourscript> [options]\n\n"\
+                                  "Example:\n"\
+                                  "python {} --sp lateral --data mnist --params mnist --name example -e 2 -b 1 -d 100"
+                                  .format(sys.argv[0]))
     parser.add_option("--data",   type=str, default='', dest="data_set", help="")
     parser.add_option("-d", "--num_data",  type=int, default=30000, dest="num_data_points", help="")
     parser.add_option("-e",     "--num_epochs", type=int, default=6, dest="num_epochs", help="number of epochs")
     parser.add_option("-b",     "--batch_size", type=int, default=1, dest="batch_size", help="Mini batch size")
-    parser.add_option("--sp", type=str, default="ordinary", dest="pooler_type", help="spatial pooler implementations: ordinary, lateral")
+    parser.add_option("--sp", type=str, default="nupic", dest="pooler_type", help="spatial pooler implementations: nupic, lateral")
     parser.add_option("--params", type=str, dest="sp_params", help="json file with spatial pooler parameters")
     parser.add_option("--name", type=str, default=None, dest="experiment_id", help="")
     parser.add_option("--seed", type=str, default=None, dest="seed", help="random seed for SP and dataset")
@@ -100,6 +103,7 @@ def parse_argv():
 
 def main(argv):
     args, _ = parse_argv()
+
     data_set        = args.data_set
     d               = args.num_data_points
     sp_type         = args.pooler_type
@@ -119,8 +123,8 @@ def main(argv):
         experiment_id +=  "_" + random_id(5)
 
     the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
-    relative_path    = "../results/{}_pooler_{}_{}".format(sp_type, data_set,experiment_id)
-    path = the_scripts_path + "/" + relative_path
+    relative_path    = "../results/{}_pooler_{}_{}".format(sp_type, data_set, experiment_id)
+    path             = the_scripts_path + "/" + relative_path
     os.makedirs(os.path.dirname(path+"/"))
 
     print(
@@ -137,11 +141,9 @@ def main(argv):
     sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
 
     if args.sp_params is not None:
-        # sp_params       = sp_params_dict[sp_type][args.sp_params]
-        sp_params         = sp_params_dict["ordinary"][args.sp_params]
+        sp_params = sp_params_dict["nupic"][args.sp_params]
     else:
-        # sp_params       = sp_params_dict[sp_type][data_set]
-        sp_params         = sp_params_dict["ordinary"][data_set]
+        sp_params = sp_params_dict["nupic"][data_set]
 
     if seed is not None:
         sp_params["seed"] = seed
@@ -153,7 +155,7 @@ def main(argv):
     #                   Load the SP
     # 
     ####################################################
-    if sp_type == "ordinary":
+    if sp_type == "nupic":
         pooler = SpatialPoolerWrapper(**sp_params)
 
     elif sp_type == "lateral":
@@ -173,8 +175,8 @@ def main(argv):
 
     X, _, X_test, _ = load_data(data_set) 
 
-    n, m = pooler._numColumns, X.shape[0]
-    X    = X[:,:d]
+    X      = X[:,:d]
+    X_test = X_test[:,:25]
 
 
     ####################################################
@@ -215,6 +217,7 @@ def main(argv):
     # 
     # "Fit" the model to the training data
     # 
+    n, m   = pooler.shape
     for epoch in range(num_epochs):
 
         print(
@@ -269,5 +272,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
-   main(sys.argv[1:])
+    main(sys.argv[1:])
 

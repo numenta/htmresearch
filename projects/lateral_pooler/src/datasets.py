@@ -18,190 +18,68 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
-
 import numpy as np
 from scalar_encoder import ScalarEncoder 
 from scipy.io import loadmat
 from sklearn.datasets import fetch_mldata
 import itertools
 
-def load_data(label, **args):
+def encode_streams(data_streams, bits_per_axis, weight_per_axis):
 
-  X = None
-  Y = None
-  X_test = None
-  Y_test = None
+    Y = data_streams
+    num_streams = Y.shape[0]
+    num_points  = Y.shape[1]
+    enc = []
+    for i in range(num_streams):
+        enc.append(ScalarEncoder(0.,1.,bits_per_axis[i], weight_per_axis[i]))
 
-  if label == "mnist":
+    X = np.zeros((np.sum(bits_per_axis), num_points))
+
+    
+    for t in range(num_points):
+        X[:,t] = np.concatenate([enc(Y[i,t]) for i in range(num_streams)])
+
+    return X
+
+
+def xy_biased(bits_per_axis=[50,150], weight_per_axis=[5,15], num_samples=100000):
+
+    Y = np.random.sample((2, num_samples))
+    X = encode_streams(Y, bits_per_axis, weight_per_axis)
+
+    Y_test = np.array([[0.1 + x*0.2, 0.1 + y*0.2] for y,x in itertools.product(range(5), repeat=2)]).T
+    X_test = encode_streams(Y_test, bits_per_axis, weight_per_axis)
+
+    return (X, Y, X_test, Y_test)
+
+
+def mnist(threshold=0.2):
+
     mnist = fetch_mldata('MNIST original')
-    X = mnist.data.T
-    Y = mnist.target.reshape((1,-1))
+    X     = mnist.data.T
+    Y     = mnist.target.reshape((1,-1))
 
     perm = np.random.permutation(X.shape[1])
-    X = X[:,perm]
-    Y = Y[:,perm]
+    X    = X[:,perm]
+    Y    = Y[:,perm]
 
-    threshold = 0.2
     X = X/255
     X = (X > threshold).astype(float)
 
-    X, Y, X_test, Y_test = X[:,:-10000], Y[:,:-10000], X[:,-10000:], Y[:,-10000:]
+    return (X[:,:60000], Y[:,:60000], X[:,-10000:], Y[:,-10000:])
 
 
+def load_data(label):
+
+  if label == "mnist":
+    return mnist()
 
   elif label == "xy_biased":
-    encoder_params = {
-        "dimensions"      : 2, 
-        "max_values"      : [[0.,1.]]*2,
-        "bits_per_axis"   : [50, 150],
-        "weight_per_axis" : [5, 15],
-        "wrap_around"     : False
-    }
+    return xy_biased()
+  
+  else:
+    raise "No data set with that label...."
 
-    SDR = ScalarEncoder(**encoder_params)
-
-    Y = np.random.sample(( 2, args["num_inputs"]))
-    X = np.array([ SDR(y) for y in Y.T]).T
-
-    Y_test = np.array([[0.1 + x*0.2, 0.1 + y*0.2] for y,x in itertools.product(range(5), repeat=2)]).T
-    X_test = np.array([ SDR(y) for y in Y_test.T]).T
-
-
-  elif label == "natural":
-
-    mat = loadmat("../data/IMAGES.mat")
-    img = mat["IMAGES"]
-    
-    size = 20
-    d_test = 20
-    d    = args["num_inputs"] + d_test
-
-    X = np.zeros((size, size, d))
-    x = np.random.randint(0, 512-size, d)
-    y = np.random.randint(0, 512-size, d)
-    i = np.random.randint(0, 10, d)
-    for t in range(d):
-        xs = range(x[t], x[t] + size)
-        ys = range(y[t], y[t] + size)
-        patch = img[x[t]:(x[t] + size), y[t]: (y[t] + size), i[t]]
-        patch = (patch < 0.0).astype(float)
-        X[:,:,t] = patch
-
-    X = X.reshape((size**2, d))
-
-
-    X_test = X[:,d-d_test:]
-    X      = X[:,:d]
-
-  elif label == "natural_inv":
-
-    mat = loadmat("../data/IMAGES.mat")
-    img = mat["IMAGES"]
-    
-    size = 20
-    d_test = 20
-    d    = args["num_inputs"] + d_test
-
-    X = np.zeros((size, size, d))
-    x = np.random.randint(0, 512-size, d)
-    y = np.random.randint(0, 512-size, d)
-    i = np.random.randint(0, 10, d)
-    for t in range(d):
-        xs = range(x[t], x[t] + size)
-        ys = range(y[t], y[t] + size)
-        patch = img[x[t]:(x[t] + size), y[t]: (y[t] + size), i[t]]
-        patch = (patch < 0.0).astype(float)
-        X[:,:,t] = patch
-
-    X = X.reshape((size**2, d))
-
-
-    X_test = 1. - X[:,d-d_test:]
-    X      = 1. - X[:,:d]
-
-
-  elif label == "xy_biased_dependent":
-    encoder_params = {
-        "dimensions"      : 2, 
-        "max_values"      : [[0.,1.]]*2,
-        "bits_per_axis"   : [50, 150],
-        "weight_per_axis" : [5, 15],
-        "wrap_around"     : False
-    }
-
-    SDR = ScalarEncoder(**encoder_params)
-
-    T      = np.random.sample(( 1, args["num_inputs"]))
-    F_of_T = np.cos(5*np.pi*T)
-    Y = np.zeros((2, args["num_inputs"]))
-    Y[0,:] = T
-    Y[1,:] = F_of_T
-    X = np.array([ SDR(y) for y in Y.T]).T
-
-    # Y_test = np.array([[0.1 + x*0.2, 0.1 + y*0.2] for y,x in itertools.product(range(5), repeat=2)]).T
-    # X_test = np.array([ SDR(y) for y in Y_test.T]).T
-
-
-  elif label == "simply_x":
-    encoder_params = {
-        "dimensions"      : 1, 
-        "max_values"      : [[0.,1.]],
-        "bits_per_axis"   : [250],
-        "weight_per_axis" : [15],
-        "wrap_around"     : False
-    }
-
-    SDR = ScalarEncoder(**encoder_params)
-
-    Y = np.random.sample((1, args["num_inputs"]))
-    X = np.array([ SDR(y) for y in Y.T]).T
-
-    Y_test = np.linspace(0, 1., num=10)
-    X_test = np.array([ SDR(y.reshape(1,1)) for y in Y_test.T]).T
-
-
-  elif label == "squares_biased":
-    if "num_inputs" in args:
-        d = args["num_inputs"] + 1000
-    else:
-        d = 20000 + 1000
-
-    X = np.zeros((28,28, d))
-    Y = np.zeros((2,2,d)).astype(int)
-    Y[:,0,:] = np.random.randint(0,26, size=(2, d))
-    Y[:,1,:] = np.random.randint(0,22, size=(2, d))
-    for t in range(d):
-        a = Y[:,0,t]
-        b = Y[:,1,t]
-        X[a[0]:(a[0]+2), a[1]:(a[1]+2), t] = 1.
-        X[b[0]:(b[0]+6), b[1]:(b[1]+6), t] = 1.
-
-    X = X.reshape(28**2, d)
-    X_test = X[:,-1000:]
-
-
-  elif label == "2d_space":
-
-    d = args["num_inputs"] + 10000
-    width, height = args["shape"]
-    s = args["size"]
-
-    X = np.zeros((x_size, y_size, d))
-    Y = np.zeros((2,2,d)).astype(int
-        )
-    Y[:,0,:] = np.random.randint(0, width,  size=(2, d))
-    Y[:,1,:] = np.random.randint(0, height, size=(2, d))
-
-    for t in range(d):
-        a = Y[:,0,t]
-        b = Y[:,1,t]
-        X[a[0]:(a[0]+s), a[1]:(a[1]+s), t] = 1.
-        X[b[0]:(b[0]+s), b[1]:(b[1]+s), t] = 1.
-
-    X = X.reshape(width*height, d)
-    X_test = X[:,-1000:]
-
-  return X,Y, X_test, Y_test
 
 
 
