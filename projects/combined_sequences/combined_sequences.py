@@ -31,6 +31,9 @@ import os
 import pprint
 import random
 import time
+import traceback
+import functools
+import sys
 
 import numpy
 
@@ -87,7 +90,8 @@ def printDiagnosticsAfterTraining(exp, verbosity=0):
       connectedSynapses += cp
 
   print "Num connected cells:", numConnectedCells
-  print "Avg per connected cell:", float(connectedSynapses) / numConnectedCells
+  if numConnectedCells > 0:
+    print "Avg per connected cell:", float(connectedSynapses)/numConnectedCells
 
   print
 
@@ -337,9 +341,34 @@ def trainSuperimposedSequenceObjects(exp, numRepetitions,
   exp.learnObjects(trainingSensations)
 
 
+def get_traceback(f):
+  """
+  Multiprocessing doesn't forward exception traceback information. This does.
+  From: http://pragmaticpython.com/2017/02/19/
+  """
+  @functools.wraps(f)
+  def wrapper(*args, **kwargs):
+    try:
+      return f(*args, **kwargs)
+    except Exception, ex:
+      ret = '#' * 60
+      ret += "\nException caught:"
+      ret += "\n" + '-' * 60
+      ret += "\n" + traceback.format_exc()
+      ret += "\n" + '-' * 60
+      ret += "\n" + "#" * 60
+      print sys.stderr, ret
+      sys.stderr.flush()
+      raise ex
+
+  return wrapper
+
+
+@get_traceback
 def runExperiment(args):
   """
-  Runs the experiment.  What did you think this does?
+  Runs the experiment.  The code is organized around what we need for specific
+  figures in the paper.
 
   args is a dict representing the various parameters. We do it this way to
   support multiprocessing. The function returns the args dict updated with a
@@ -360,8 +389,9 @@ def runExperiment(args):
   synPermProximalDecL2 = args.get("synPermProximalDecL2", 0.001)
   minThresholdProximalL2 = args.get("minThresholdProximalL2", 10)
   sampleSizeProximalL2 = args.get("sampleSizeProximalL2", 15)
-  basalPredictedSegmentDecrementL4 = args.get(
-    "basalPredictedSegmentDecrementL4", 0.0006)
+  basalPredictedSegmentDecrement = args.get(
+    "basalPredictedSegmentDecrement", 0.0006)
+  stripStats = args.get("stripStats", True)
 
 
   random.seed(trialNum)
@@ -418,17 +448,22 @@ def runExperiment(args):
     seed=trialNum,
     L2Overrides={"synPermProximalDec": synPermProximalDecL2,
            "minThresholdProximal": minThresholdProximalL2,
-           "sampleSizeProximal": sampleSizeProximalL2},
+           "sampleSizeProximal": sampleSizeProximalL2,
+    },
+    TMOverrides={
+      "basalPredictedSegmentDecrement": basalPredictedSegmentDecrement
+    },
     L4Overrides={"initialPermanence": 0.21,
            "activationThreshold": 18,
            "minThreshold": 18,
-           "basalPredictedSegmentDecrement": basalPredictedSegmentDecrementL4},
+           "basalPredictedSegmentDecrement": basalPredictedSegmentDecrement
+    },
   )
 
   printDiagnostics(exp, sequences, objects, args, verbosity=0)
 
   # Train the network on all the sequences and then all the objects.
-  if figure == "S":
+  if figure in ["S", "6"]:
     trainSuperimposedSequenceObjects(exp, numRepetitions, sequences, objects)
   else:
     trainObjects(objects, exp, numRepetitions)
@@ -482,6 +517,10 @@ def runExperiment(args):
   ##########################################################################
   #
   # Compute a number of overall inference statistics
+
+  print "# Sequences {} # features {} trial # {}\n".format(
+    numSequences, numFeatures, trialNum)
+
   convergencePoint, sequenceAccuracyL2 = exp.averageConvergencePoint(
     "L2 Representation", 30, 40, 1, numObjects)
   print "L2 accuracy for sequences:", sequenceAccuracyL2
@@ -490,11 +529,12 @@ def runExperiment(args):
     "L2 Representation", 30, 40, 1, 0, numObjects)
   print "L2 accuracy for objects:", objectAccuracyL2
 
-  objectAccuracyTM, _ = exp.averageSequenceAccuracy(15, 25, 0, numObjects)
-  print "TM accuracy for objects:", objectAccuracyTM
+  objectCorrectSparsityTM, _ = exp.averageSequenceAccuracy(15, 25, 0, numObjects)
+  print "TM accuracy for objects:", objectCorrectSparsityTM
 
-  _, sequenceAccuracyTM = exp.averageSequenceAccuracy(15, 25, numObjects)
-  print "TM accuracy for sequences:", sequenceAccuracyTM
+  sequenceCorrectSparsityTM, sequenceCorrectClassificationsTM = \
+    exp.averageSequenceAccuracy(15, 25, numObjects)
+  print "TM accuracy for sequences:", sequenceCorrectClassificationsTM
 
   infStats = exp.getInferenceStats()
   predictedActive = numpy.zeros(len(infStats))
@@ -512,25 +552,23 @@ def runExperiment(args):
     predictedL4[i] = float(sum(stat["L4 Predicted C0"])) / len(
       stat["L4 Predicted C0"])
 
-  print "# Sequences {} # features {} trial # {}\n".format(
-    numSequences, numFeatures, trialNum)
-  print "Sensorimotor accuracy:", objectAccuracyL2
-  print "Sequence accuracy:", sequenceAccuracyTM
-
-
   # Return a bunch of metrics we will use in plots
-  args.update({"name": exp.name})
   args.update({"sequences": sequences.getObjects()})
   args.update({"objects": objects.getObjects()})
   args.update({"convergencePoint":convergencePoint})
   args.update({"objectAccuracyL2": objectAccuracyL2})
   args.update({"sequenceAccuracyL2": sequenceAccuracyL2})
-  args.update({"sequenceAccuracyTM": sequenceAccuracyTM})
-  args.update({"objectAccuracyTM": objectAccuracyTM})
+  args.update({"sequenceCorrectSparsityTM": sequenceCorrectSparsityTM})
+  args.update({"sequenceCorrectClassificationsTM": sequenceCorrectClassificationsTM})
+  args.update({"objectCorrectSparsityTM": objectCorrectSparsityTM})
   args.update({"averagePredictions": predicted.mean()})
   args.update({"averagePredictedActive": predictedActive.mean()})
   args.update({"averagePredictionsL4": predictedL4.mean()})
   args.update({"averagePredictedActiveL4": predictedActiveL4.mean()})
+
+  if stripStats:
+    exp.stripStats()
+  args.update({"name": exp.name})
   args.update({"statistics": exp.statistics})
   args.update({"networkConfig": exp.config})
 
@@ -550,7 +588,7 @@ def runExperimentPool(numSequences,
                       minThresholdProximalL2=[15],
                       sampleSizeProximalL2=[20],
                       inputSize=[1024],
-                      basalPredictedSegmentDecrementL4=[0.0001],
+                      basalPredictedSegmentDecrement=[0.0001],
                       resultsName="convergence_results.pkl"):
   """
   Run a bunch of experiments using a pool of numWorkers multiple processes. For
@@ -574,7 +612,7 @@ def runExperimentPool(numSequences,
   # Create function arguments for every possibility
   args = []
 
-  for bd in basalPredictedSegmentDecrementL4:
+  for bd in basalPredictedSegmentDecrement:
     for i in inputSize:
       for thresh in minThresholdProximalL2:
         for dec in synPermProximalDecL2:
@@ -597,7 +635,7 @@ def runExperimentPool(numSequences,
                          "numRepetitions": numRepetitions,
                          "figure": figure,
                          "inputSize": i,
-                         "basalPredictedSegmentDecrementL4": bd,
+                         "basalPredictedSegmentDecrement": bd,
                          }
                       )
   print "{} experiments to run, {} workers".format(len(args), numWorkers)
@@ -627,15 +665,27 @@ def runExperiment4A(dirName):
   # dirName is the absolute path where the pkl file will be placed.
   resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
 
+  # results = runExperiment(
+  #   {
+  #     "numSequences": 50,
+  #     "seqLength": 10,
+  #     "numFeatures": 100,
+  #     "trialNum": 0,
+  #     "numObjects": 0,
+  #     "numLocations": 100,
+  #     "numRepetitions": 10,
+  #   }
+  # )
+
   results = runExperiment(
     {
-      "numSequences": 5,
+      "numSequences": 50,
       "seqLength": 10,
-      "numFeatures": 10,
+      "numFeatures": 100,
       "trialNum": 0,
-      "numObjects": 0,
+      "numObjects": 50,
       "numLocations": 100,
-      "numRepetitions": 10,
+      "numRepetitions": 30,
     }
   )
 
@@ -661,8 +711,6 @@ def runExperiment4B(dirName):
   locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
                    1000, 1100, 1200, 1300, 1400, 1500, 1600]
 
-  # Comment this out if you  are re-running analysis on already saved results.
-  # Very useful for debugging the plots
   runExperimentPool(
     numSequences=seqRange,
     numFeatures=featureRange,
@@ -724,6 +772,7 @@ def runExperiment5B(dirName):
     numLocations=locationRange,
     nTrials=numTrials,
     numWorkers=cpu_count() - 1,
+    numRepetitions=10,
     resultsName=resultsName)
 
 
@@ -740,11 +789,14 @@ def runExperiment6(dirName):
       "numSequences": 50,
       "seqLength": 10,
       "numObjects": 50,
-      "numFeatures": 50,
+      "numFeatures": 500,
       "trialNum": 8,
-      "numLocations": 50,
-      "settlingTime": 3,
+      "numLocations": 100,
+      "settlingTime": 1,
       "figure": "6",
+      "numRepetitions": 30,
+      "basalPredictedSegmentDecrement": 0.001,
+      "stripStats": False,
     }
   )
 
@@ -793,12 +845,14 @@ def runExperimentS(dirName):
       "numSequences": 50,
       "numObjects": 50,
       "seqLength": 10,
-      "numFeatures": 500,
+      "numFeatures": 100,
       "trialNum": 8,
       "numLocations": 100,
-      "settlingTime": 1,
       "numRepetitions": 30,
+      "sampleSizeProximalL2": 15,
+      "minThresholdProximalL2": 10,
       "figure": "S",
+      "stripStats": False,
     }
   )
 
@@ -807,22 +861,20 @@ def runExperimentS(dirName):
     cPickle.dump(results, f)
 
   # Debugging
-  # with open(resultsFilename, "rb") as f:
-  #   r = cPickle.load(f)
-  #
-  #   r.pop("objects")
-  #   r.pop("sequences")
-  #   stat = r.pop("statistics")
-  #   if ( (r["numFeatures"] == 500) and (r["sequenceAccuracyL2"] <= 0.2) and
-  #        (r["objectAccuracyL2"] >= 0.9) ):
-  #     pprint.pprint(r)
-  #   sObject = 0
-  #   sSequence = 0
-  #   for i in range(0, 50):
-  #     sObject += sum(stat[i]['L4 PredictedActive C0'])
-  #   for i in range(50, 100):
-  #     sSequence += sum(stat[i]['L4 PredictedActive C0'])
-  #   print sObject, sSequence
+  with open(resultsFilename, "rb") as f:
+    r = cPickle.load(f)
+
+    r.pop("objects")
+    r.pop("sequences")
+    stat = r.pop("statistics")
+    pprint.pprint(r)
+    sObject = 0
+    sSequence = 0
+    for i in range(0, 50):
+      sObject += sum(stat[i]['L4 PredictedActive C0'])
+    for i in range(50, 100):
+      sSequence += sum(stat[i]['L4 PredictedActive C0'])
+    print sObject, sSequence
 
 
 
@@ -833,11 +885,11 @@ def runExperimentSP(dirName):
   """
   # Results are put into a pkl file which can be used to generate the plots.
   # dirName is the absolute path where the pkl file will be placed.
-  resultsFilename = os.path.join(dirName, "superimposed_training_pool_bpsd2.pkl")
+  resultsFilename = os.path.join(dirName, "superimposed_128mcs.pkl")
 
   # We run a bunch of trials with these combinations
-  numTrials = 3
-  featureRange = [500]
+  numTrials = 10
+  featureRange = [1000]
   objectRange = [50]
 
   # Comment this out if you  are re-running analysis on already saved results.
@@ -854,8 +906,9 @@ def runExperimentSP(dirName):
     sampleSizeProximalL2=[15],
     minThresholdProximalL2=[10],
     synPermProximalDecL2=[0.001],
-    basalPredictedSegmentDecrementL4=[0.0002, 0.0004, 0.0006, 0.001],
-    inputSize=[1024],
+    # basalPredictedSegmentDecrement=[0.0, 0.001, 0.002, 0.003, 0.004, 0.005],
+    basalPredictedSegmentDecrement=[0.0, 0.001, 0.002, 0.003, 0.004, 0.005, 0.01, 0.02, 0.04, 0.08, 0.12],
+    inputSize=[128],
   )
 
   print "Done with experiments"
