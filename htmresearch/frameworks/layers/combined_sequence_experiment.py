@@ -217,8 +217,8 @@ class L4TMExperiment(L4L2Experiment):
     For each object, decide whether the TM uniquely classified it by checking
     that the number of predictedActive cells are in an acceptable range.
     """
-    numObjectsCorrect = 0.0
-    numSequencesCorrect = 0.0
+    numCorrectSparsity = 0.0
+    numCorrectClassifications = 0.0
     numStats = 0.0
 
     # For each object or sequence we classify every point or element
@@ -242,7 +242,7 @@ class L4TMExperiment(L4L2Experiment):
         numStats += 1.0
         # print "numCells: ", numCells
         if numCells in range(minOverlap, maxOverlap + 1):
-          numObjectsCorrect += 1.0
+          numCorrectSparsity += 1.0
 
           # Check KNN Classifier
           sdr = list(sdr)
@@ -256,12 +256,19 @@ class L4TMExperiment(L4L2Experiment):
           # print
 
           if winner == stats['object']:
-            numSequencesCorrect += 1.0
+            numCorrectClassifications += 1.0
 
     if numStats==0:
       return 0.0, 0.0
 
-    return (numObjectsCorrect / numStats), (numSequencesCorrect / numStats)
+    return ((numCorrectSparsity / numStats),
+            (numCorrectClassifications / numStats) )
+
+
+  def stripStats(self):
+    """Remove detailed stats - needed for large experiment pools."""
+    for stat in self.statistics:
+      stat.pop("TM Representation C0")
 
 
   def _unsetLearningMode(self):
@@ -340,8 +347,11 @@ class L4TMExperiment(L4L2Experiment):
         TMRepresentation[i]
       )
 
-      # Insert exact TM representation into the classifier if potentially unique
-      if len(TMPredictedActive[i]) < 1.5*self.numInputBits:
+      # Insert exact TM representation into the classifier if the number of
+      # predictive active cells is potentially unique (otherwise we say it
+      # failed to correctly predict this step).
+      if ( (len(TMPredictedActive[i]) < 1.5*self.numInputBits) and
+             (len(TMPredictedActive[i]) > 0.5*self.numInputBits) ):
         sdr = list(TMPredictedActive[i])
         sdr.sort()
         self.classifier.learn(sdr, objectName, isSparse=self.numTMCells)

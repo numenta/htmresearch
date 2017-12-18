@@ -632,6 +632,9 @@ class L4L2Experiment(object):
       if ceil(float(convergencePoint) / settlingTime) <= inferenceLength:
         numCorrect += 1
 
+    if len(self.statistics[firstStat:lastStat]) == 0:
+      return 10000.0, 0.0
+
     return (convergenceSum / len(self.statistics[firstStat:lastStat]),
             numCorrect / len(self.statistics[firstStat:lastStat]) )
 
