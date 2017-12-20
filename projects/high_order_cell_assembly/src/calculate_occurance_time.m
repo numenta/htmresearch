@@ -23,7 +23,7 @@
 function [binEdges, timeJitterDistribution, timeInMovieDist, occurance_time] = calculate_occurance_time(frequency, numFramesPerStim, spikeMat, binaryWords, numCoactive)
 
 %% check occurence of high-order patterns
-idx = find(frequency >=2);
+idx = find(frequency >=2); % the frequency of spikings
 occur_times = cell(length(idx), 1);
 
 timeInMovieSTD = zeros(length(idx), 1);
@@ -38,28 +38,37 @@ timeAll = [];
 
 timeInMovieDist = zeros(numFramesPerStim, 1);
 occurance_time = nan(length(frequency), 1);
-for i =1:length(idx)
+for i =1:length(idx) %kl: search through the neurons that fired at least twice
+    % kl: find out the time points when there are at least numCoactive neurons firing together
     times = find(sum(spikeMat(binaryWords(idx(i),:),:),1)>=numCoactive);
     timeAll = [timeAll; reshape(times, [], 1)];
 %     if min(diff(times))< 10
 %         keyboard
 %     end
     interval = [interval; reshape(diff(times), [], 1)];
+    %kl: find out which the exact time frame the cell assembly respond to
     timeInMovie = mod(times, numFramesPerStim);
+    %kl: the response at 0 is assumed to be responding to the last movie frame
     timeInMovie(timeInMovie==0) = numFramesPerStim;
+    % distribution of the time points when coactive firing
     timeInMovieDist(timeInMovie) = timeInMovieDist(timeInMovie)+1; 
+    % what trials includes the coactive firings
     trial = (times-timeInMovie)/numFramesPerStim + 1;
+    % average the time points of coactive firings for all the frequency
     occurance_time(idx(i)) = mean(timeInMovie);
+    % histogram of the coactive firings around average time points within binEdges
     counts = histc(timeInMovie-mean(timeInMovie), binEdges);
+    % normalize counts
     if sum(counts)>1
         counts = counts/sum(counts);
     end
+    % the histogram of distribution of firing time points of coactive assembly around average time points
     timeJitterDistribution = timeJitterDistribution + counts;
     timeInMovieSTD(i) = std(timeInMovie);
     
     trialDist = [trialDist trial];
 end
-
+% the histogram of distribution of firing time points of coactive assembly around average time points
 timeJitterDistribution = timeJitterDistribution/length(idx);
 
 % %%

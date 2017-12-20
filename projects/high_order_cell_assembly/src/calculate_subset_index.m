@@ -20,38 +20,40 @@
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
 
+%this function returns an array of subsetindex (last trial as: 17 to 20) described in ppt page 24
 function subsetIndex = calculate_subset_index(spikeMat, numFramesPerStim)
-%%
+%% numFrames is the total number of frames through 20 trials
 [numNeuron, numFrames] = size(spikeMat);
-numRpts = numFrames/numFramesPerStim;
+numRpts = numFrames/numFramesPerStim; % the total trials number 20
 
 spikeEarly = zeros(numNeuron, numFramesPerStim);
 % spikeLate = zeros(numNeuron, numFramesPerStim);
 
+% spikeEarly only count the spikes in the first trial
 for rep = 1
     spikeEarly = spikeEarly + spikeMat(:, (rep-1)*numFramesPerStim+(1:numFramesPerStim));
 end
 
 timeWindow = 1;
-
+% if tiime window=1, the conv2 results in no change to spikeEarly
 spikeEarly = conv2(spikeEarly, ones(1, timeWindow), 'same');
 spikeEarly(spikeEarly>0) = 1;
 
 sharedNeuronsAll = [];
 numNeuronsLateAll = [];
-for rep = 17:20
+for rep = 17:20 % compute trials from 17 to 20
     spikeLate = spikeMat(:, (rep-1)*numFramesPerStim+(1:numFramesPerStim));
     spikeLate = conv2(spikeLate, ones(1, timeWindow), 'same');
     spikeLate(spikeLate>0) = 1;
-    %%
-    sharedNeurons = sum(spikeEarly.*spikeLate);
+    % find all the cells both fire both at the 1st trial and the last trial
+    sharedNeurons = sum(spikeEarly.*spikeLate); 
     numNeuronsLate = sum(spikeLate, 1);
     sharedNeuronsAll(end+1) = sum(sharedNeurons);
     numNeuronsLateAll(end+1) = sum(numNeuronsLate);
     
 end
 
-    
+% calculate the subsetindex for trials from 17 to 20, the last 4 trials    
 subsetIndex = sum(sharedNeuronsAll)/sum(numNeuronsLateAll);
 
     
