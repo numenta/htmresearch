@@ -21,7 +21,11 @@
 import unittest
 import numpy as np
 from htmresearch.algorithms.lateral_pooler import LateralPooler
+from htmresearch.algorithms.lateral_pooler_wrapper import LateralPoolerWrapper
 import itertools
+from nupic.algorithms.spatial_pooler import SpatialPooler
+from htmresearch.support.lateral_pooler.utils import get_permanence_vals as get_W
+
 
 
 class LateralPoolerTest(unittest.TestCase):
@@ -56,6 +60,90 @@ class LateralPoolerTest(unittest.TestCase):
 
 
     assert(np.all(Expected == Result))
+
+  def test_whether_encoding_is_the_same_as_wmax_with_zero_learning_rate(self):
+    """
+    Naive reality check for the encoding function 
+    of the lateral pooler implementation.
+    """
+    n = 60
+    m = 30
+    d = 100
+    w = 7
+
+    X = np.random.randint(0,2,size=(m,d))
+    Y_nup = np.zeros((n,d))
+    Y_lat = np.zeros((n,d))
+
+    params_nup = {
+        "inputDimensions": [m,1],
+        "columnDimensions": [n,1],
+        "potentialRadius": n,
+        "potentialPct": 1.0,
+        "globalInhibition": True,
+        "localAreaDensity": -1.0,
+        "numActiveColumnsPerInhArea": w,
+        "stimulusThreshold": 0,
+        "synPermInactiveDec": 0.05,
+        "synPermActiveInc"  : 0.1,
+        "synPermConnected"  : 0.5,
+        "minPctOverlapDutyCycle": 0.001,
+        "dutyCyclePeriod": 1000,
+        "boostStrength"  : 100.0,
+        "seed": 1936
+    }
+    params_lat = params_nup.copy()
+    params_lat["learningRateHidden"] = 0.0
+    sp_nup = SpatialPooler(**params_nup)
+    sp_lat = LateralPoolerWrapper(**params_lat)
+    for i in range(n):
+      sp_nup.getPermanence(i,sp_lat.feedforward[i,:])
+
+
+    inc = 0.1
+    dec = 0.05
+
+    assert(sp_nup._synPermActiveInc   == sp_lat.learning_rate)
+    assert(sp_nup._synPermInactiveDec == sp_lat.learning_rate/sp_lat.inc_dec_ratio)
+
+
+    t = 0
+    sp_nup.compute(X[:,t], False, Y_nup[:,t])
+    sp_lat.compute(X[:,t], False, Y_lat[:,t])
+    assert(np.all(Y_nup[:,t] == Y_lat[:,t]))
+
+
+    for t in range(10):
+      sp_nup.compute(X[:,t], True, Y_nup[:,t])
+      sp_lat.compute(X[:,t], True, Y_lat[:,t])
+
+      W_nup = get_W(sp_nup)
+      W_lat = get_W(sp_lat)
+      # cond = np.all(get_W(sp_nup) == get_W(sp_lat))
+      cond = np.all(Y_nup[:,t] == Y_lat[:,t])
+
+      if cond == False:
+        print "\n what t", t
+        print Y_nup[:,t]
+        print Y_lat[:,t]
+        # print(np.sign(W_nup - get_W(sp_nup)) * W_nup - get_W(sp_nup) )
+        print(np.amax(W_nup - W_lat))
+        print(np.amin(W_nup - W_lat))
+        # print(np.sign(W_lat - get_W(sp_lat)) * W_lat - get_W(sp_lat) )
+
+      assert(cond == True)
+
+        # print get_W(sp_nup) - get_W(sp_lat)
+      # assert(np.all(Y_nup[:,t] == Y_lat[:,t]))
+      
+
+
+
+
+
+
+
+
 
 
   def test_feedforward_weight_update(self):

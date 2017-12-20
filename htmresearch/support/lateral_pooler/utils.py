@@ -117,8 +117,9 @@ def random_mini_batches(X, Y, minibatch_size, seed=None):
 
 
 def scalar_reconstruction(x):
-  v = x*np.arange(len(x))
-  s = np.sum(v)/len(x)
+  # x = (x>0.05).astype(float)
+  v = [ x[i]*i  for i in range(len(x))]
+  s = np.mean(v)
   s = s/len(x)
   return s
 

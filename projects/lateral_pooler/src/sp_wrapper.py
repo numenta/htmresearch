@@ -27,6 +27,14 @@ class SpatialPoolerWrapper(SpatialPooler):
 
         self.update_statistics_online(Y, beta)
 
+    def encode(self, X):
+        d = X.shape[1]
+        n = self._numColumns
+        Y = np.zeros((n,d))
+        for t in range(d):
+            self.compute(X[:,t], False, Y[:,t])
+            
+        return Y
 
     def update_statistics_online(self, Y, beta=0.9):
         """
@@ -43,11 +51,15 @@ class SpatialPoolerWrapper(SpatialPooler):
 
     @property
     def sparsity(self):
-        return self._localAreaDensity
+        inhibitionArea = ((2*self._inhibitionRadius + 1)
+                                    ** self._columnDimensions.size)
+        inhibitionArea = min(self._numColumns, inhibitionArea)
+        density        = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+        return density
 
     @property
     def code_weight(self):
-        return int(self._localAreaDensity*self._numColumns)
+        return self._numActiveColumnsPerInhArea
 
     @property
     def feedforward(self):

@@ -24,7 +24,7 @@ import pickle
 import json
 import sys
 from optparse import OptionParser
-
+from datasets import load_data
 from tabulate import tabulate
 import itertools
 
@@ -32,7 +32,6 @@ import matplotlib.pyplot as plt
 from pprint import PrettyPrinter
 pprint = PrettyPrinter(indent=4).pprint
 
-from htmresearch.support.lateral_pooler.datasets import load_data
 from htmresearch.support.lateral_pooler.utils import random_id
 from htmresearch.support.lateral_pooler.metrics import mean_mutual_info_from_data, mean_mutual_info_from_model, reconstruction_error
 # from htmresearch.frameworks.sp_paper.sp_metrics import reconstructionError
@@ -51,10 +50,6 @@ from htmresearch.support.lateral_pooler.callbacks import (ModelCheckpoint, Model
 def dump_json(path_to_file, my_dict):
     with open(path_to_file, 'wb') as f:
         json.dump(my_dict, f, indent=4)
-
-def dump_data(path_to_file, data):
-    with open(path_to_file, 'wb') as f:
-        pickle.dump(data, f)
 
 
 def dump_results(path, results):
@@ -80,7 +75,6 @@ def get_permanence_vals(sp):
     for i in range(sp._numColumns):
         sp.getPermanence(i, W[i, :])
     return W
-
 
 def parse_argv():
     parser = OptionParser(usage = "<yourscript> [options]\n\n"\
@@ -147,15 +141,15 @@ def main(argv):
 
     sp_params_dict  = json.load(open(the_scripts_path + "/params.json"))
 
-    if args.sp_params is not None:
-        sp_params = sp_params_dict["nupic"][args.sp_params]
-    else:
-        sp_params = sp_params_dict["nupic"][data_set]
+
+    sp_params_1 = sp_params_dict["nupic"]["{}_1st_layer".format(data_set)]
+    sp_params_2 = sp_params_dict["nupic"]["{}_2nd_layer".format(data_set)]
 
     if seed is not None:
-        sp_params["seed"] = seed
+        sp_params_1["seed"] = seed
+        sp_params_2["seed"] = seed
 
-    pprint(sp_params)
+
 
     ####################################################
     # 
@@ -163,10 +157,14 @@ def main(argv):
     # 
     ####################################################
     if sp_type == "nupic":
-        pooler = SpatialPoolerWrapper(**sp_params)
+        pooler = []
+        pooler.append(SpatialPoolerWrapper(**sp_params_1))
+        pooler.append(SpatialPoolerWrapper(**sp_params_2))
 
     elif sp_type == "lateral":
-        pooler = LateralPoolerWrapper(**sp_params)
+        pooler = []
+        pooler.append(LateralPoolerWrapper(**sp_params_1))
+        pooler.append(LateralPoolerWrapper(**sp_params_2))
     else:
         raise "I don't know an SP of that type:{}".format(sp_type)
 
@@ -174,7 +172,7 @@ def main(argv):
         "\nUsing {} pooler.\n\n"\
         "\tdesired sparsity: {}\n"\
         "\tdesired code weight: {}\n"
-        .format(sp_type, pooler.sparsity, pooler.code_weight))
+        .format(sp_type, pooler[0].sparsity, pooler[0].code_weight))
 
     ####################################################
     # 
@@ -199,12 +197,15 @@ def main(argv):
                 "Let's stick with online learning for now..."\
                 "set the batch size -b to 1.")
 
-    checkpoints = set(range(0, d, 100))
 
     results = {
+        "inputs"      : [X],
+        "outputs"     : [],
+        "inputs_test" : [X_test],
         "outputs_test": [],
-        "inputs_test": [],
+        "outputs_test_2": [],
         "feedforward" : [],
+        "feedforward_2" : [],
         "avg_activity_units" : [],
         "avg_activity_pairs" : []}
 
@@ -213,16 +214,9 @@ def main(argv):
         "rec_error"   : [],
         "mutual_info" : []}
 
-    config = {
-        "nun_checkpoints" : len(checkpoints),
-        "path": relative_path,
-        "sp_type": sp_type,
-        "data_set": data_set,
-        "sparsity": pooler.sparsity,
-        "code_weight": pooler.code_weight
-    }
 
-
+    # checkpoints = itertools.product(range(0, num_epochs), range(0, d, 100))
+    checkpoints = set(range(0, d, 100))
 
     # if num_epochs >= 50:
         # checkpoints = set()
@@ -237,14 +231,14 @@ def main(argv):
     # 
     # "Fit" the model to the training data
     # 
-    n, m   = pooler.shape
+    n, m   = pooler[0].shape
     for epoch in range(num_epochs):
 
         print(
             "\te:{}/{}"
             .format(epoch + 1, num_epochs,))
 
-        Y    = np.zeros((n,d))
+        Y    = np.zeros((2, n,d))
         perm = np.random.permutation(d)
 
         for t in range(d):
@@ -255,27 +249,44 @@ def main(argv):
                     .format(t, d))
 
             x = X[:,perm[t]]
-            y = Y[:, t]
-            pooler.compute(x, True, y)
+            y = Y[:, :, t]
+            pooler[0].compute(x, True, y[0])
+            pooler[1].compute(y[0], True, y[1])
 
             if t in checkpoints:
-
-                Y_test = pooler.encode(X_test)
-
-                results["avg_activity_units"].append(pooler.avg_activity_units.copy()) 
-                results["avg_activity_pairs"].append(pooler.avg_activity_pairs.copy()) 
-                results["inputs_test"].append(X_test)
+                # results["avg_activity_units"].append(pooler.avg_activity_units.copy()) 
+                # results["avg_activity_pairs"].append(pooler.avg_activity_pairs.copy()) 
+                
+                Y_test = pooler[0].encode(X_test)
+                Z_test = pooler[1].encode(Y_test)
                 results["outputs_test"].append(Y_test)
-                results["feedforward"].append(pooler.feedforward.copy()) 
+                results["outputs_test_2"].append(Z_test)
+                results["feedforward"].append(pooler[0].feedforward) 
+                results["feedforward_2"].append(pooler[1].feedforward) 
 
-                metrics["code_weight"].append(np.mean(np.sum(Y_test, axis=0)))
-                metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
-                metrics["rec_error"].append(reconstruction_error(pooler, X_test))
+                # metrics["code_weight"].append(np.mean(np.sum(Y_test, axis=0)))
+                # metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
+                # metrics["rec_error"].append(reconstruction_error(pooler, X_test))
+
+        # if epoch in checkpoints:
+        #     results["inputs"].append(X)
+        #     results["outputs"].append(Y)
+        #     results["avg_activity_units"].append(pooler.avg_activity_units) 
+        #     results["avg_activity_pairs"].append(pooler.avg_activity_pairs) 
+        #     results["feedforward"].append(pooler.feedforward) 
+
+        # metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
+        # metrics["code_weight"].append(np.mean(np.sum(Y, axis=0)))
+        # metrics["rec_error"].append(reconstruction_error(pooler, X_test))
 
 
-
-
-
+    config = {
+        "path": relative_path,
+        "sp_type": sp_type,
+        "data_set": data_set
+        # "sparsity": pooler.sparsity,
+        # "code_weight": pooler.code_weight
+    }
 
     print("")
     print(tabulate(metrics, headers="keys"))
@@ -286,7 +297,6 @@ def main(argv):
     dump_json(path + "/metrics.json", metrics)
     dump_json(path + "/config.json", config)
     dump_results(path, results)
-    dump_data(path + "/pooler.p", pooler)
 
     print(
         "Done.")

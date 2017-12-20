@@ -53,7 +53,7 @@ def xy_biased(bits_per_axis=[50,150], weight_per_axis=[5,15], num_samples=100000
     return (X, Y, X_test, Y_test)
 
 
-def mnist(threshold=0.2):
+def mnist(threshold=0.3):
 
     mnist = fetch_mldata('MNIST original')
     X     = mnist.data.T
@@ -63,7 +63,7 @@ def mnist(threshold=0.2):
     X    = X[:,perm]
     Y    = Y[:,perm]
 
-    X = X/255
+    X = X/255.0
     X = (X > threshold).astype(float)
 
     return (X[:,:60000], Y[:,:60000], X[:,-10000:], Y[:,-10000:])
@@ -71,13 +71,13 @@ def mnist(threshold=0.2):
 def load_data(label):
 
     if label == "mnist":
-    return mnist()
+        return mnist()
 
     elif label == "xy_biased":
-    return xy_biased()
+        return xy_biased()
 
     else:
-    raise "No data set with that label...."
+        raise "No data set with that label...."
 
 
 

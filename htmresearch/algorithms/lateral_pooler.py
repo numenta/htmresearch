@@ -51,7 +51,8 @@ class LateralPooler(object):
                boost_strength       = 100.,
                boost_strength_hidden = 100.,
                inc_dec_ratio         = 1.,
-               permanence_threshold = .5
+               permanence_threshold  = -1.0,
+               learning_rate_hidden  = 1.
     ):
     """
     Args
@@ -85,14 +86,14 @@ class LateralPooler(object):
     # ---------------------
     (n, m) = self.shape
     self.feedforward = self._random.rand(n, m)
-    self.inhibitory  = self._random.rand(n, n)
+    self.inhibitory  = np.ones((n, n))/float(n)
     np.fill_diagonal(self.inhibitory, 0.)
-    self.boostfactor = np.zeros((n, 1))
+    self.boostfactor = np.ones((n, 1))
 
     # ---------------------
     #  Statistics
     # ---------------------
-    self.avg_activity_units = 0.0000001*np.ones(n)
+    self.avg_activity_units = np.zeros(n)
     self.avg_activity_pairs = 0.0000001*np.ones((n, n))
 
     # Placeholder. Variable used to store the ovelap scores
@@ -109,7 +110,7 @@ class LateralPooler(object):
     self.smoothing_period = float(smoothing_period)
     self.learning_rate    = float(learning_rate)
     self.inc_dec_ratio    = float(inc_dec_ratio)
-
+    self.learning_rate_hidden = learning_rate_hidden
 
   def get_connections(self):
     return self.feedforward, self.boostfactor, self.inhibitory
@@ -129,12 +130,15 @@ class LateralPooler(object):
     """ 
     W, boost, H = self.get_connections()
     n, m  = W.shape 
+
     
     # Optional thresholding of permanence values:
     # (note that the original SP does this)
-    # W_prime = (W > self.permanence_threshold).astype(float)
-    
     W_prime = W
+    theta = self.permanence_threshold
+    if theta > 0:
+      W_prime = (W >= theta).astype(float)
+    
     d = X.shape[1]
     Y = np.zeros((n,d))
     s = self.sparsity
@@ -142,16 +146,23 @@ class LateralPooler(object):
     inh_signal   = np.zeros((n, d))
     scores       = boost * np.dot(W_prime, X)
     self._scores = scores 
-    sorted_score_args = np.argsort(scores, axis=0)[::-1, :]
+    sorted_score_args = np.argsort(scores, axis=0, kind='mergesort')[::-1, :]
 
+    
     for t in range(d):
+      current_weight = 0
       for i in sorted_score_args[:, t]:
 
         too_strong = ( inh_signal[i,t] >= s )
 
         if not too_strong:
+          current_weight += 1
           Y[i, t] = 1.
           inh_signal[:, t] += H[i,:]
+
+        if self.learning_rate_hidden == 0.0 and current_weight == self.code_weight:
+          print current_weight
+          break
 
     return Y
 
@@ -166,7 +177,7 @@ class LateralPooler(object):
 
     Pos = np.mean(np.expand_dims(Y , axis=1) * np.expand_dims(    X, axis=0), axis=2)
     Neg = np.mean(np.expand_dims(Y , axis=1) * np.expand_dims(1 - X, axis=0), axis=2)
-    dW  = Pos  -  1/r * Neg
+    dW  = Pos  -  (1.0/r) * Neg
 
     return dW
 
@@ -178,11 +189,11 @@ class LateralPooler(object):
     n, m, d = Y.shape[0], X.shape[0], X.shape[1]
     r       = self.inc_dec_ratio
 
-    Pos = Y * X.T
-    Neg = Y * (1 - X).T
-    dW  = Pos  -  1/r * Neg
+    Pos = np.dot(Y,X.T)
+    Neg = np.dot(Y ,(1.0 - X).T)
+    dW  = Pos  -  (1.0/r) * Neg
 
-    return dW
+    return Pos, Neg
 
 
   def update_feedforward(self, X, Y):
@@ -195,11 +206,12 @@ class LateralPooler(object):
     W[np.where(W < 0.0)] = 0.0
 
   def update_feedforward_online(self, X, Y):
-    alpha = self.learning_rate
+    inc = self.learning_rate
+    dec = inc/self.inc_dec_ratio
     W  = self.feedforward
-    dW = self.compute_dW_online(X, Y)
+    dW_pos, dW_neg = self.compute_dW_online(X, Y)
 
-    W[:,:] = W  +  alpha * dW 
+    W[:,:] = W  +  inc * dW_pos - dec*dW_neg
     W[np.where(W > 1.0)] = 1.0
     W[np.where(W < 0.0)] = 0.0
 
@@ -208,17 +220,27 @@ class LateralPooler(object):
     C = self.boost_strength_hidden
     H = self.inhibitory
     P = self.avg_activity_pairs
+    epsilon = self.learning_rate_hidden
     H[:,:] = P[:,:]
     # H[:,:] = np.exp( C * P )
     np.fill_diagonal( H, 0.0)
-    H[:,:] = H/np.sum( H, axis=1, keepdims=True)
+    H[:,:] = (1.0 - epsilon)*H + epsilon*H/np.sum( H, axis=1, keepdims=True)
 
+  def update_inhibitory_from_P(self, P):
+    C = self.boost_strength_hidden
+    H = self.inhibitory
+    epsilon = self.learning_rate_hidden
+    H[:,:] = P[:,:]
+    # H[:,:] = np.exp( C * P )
+    np.fill_diagonal( H, 0.0)
+    H[:,:] = (1.0 - epsilon)*H + epsilon * H/np.sum( H, axis=1, keepdims=True)
 
   def update_boost(self):
     C = self.boost_strength
     p = self.avg_activity_units
     n = self.output_size
-    self.boostfactor = np.exp( - C * p).reshape((n,1))
+    s = self.sparsity
+    self.boostfactor = np.exp(s - C * p).reshape((n,1))
 
 
   def update_connections(self, X, Y):

@@ -74,3 +74,22 @@ def mean_mutual_info_from_model(pooler):
   return mean_info
 
 
+
+def reconstruction_error(pooler, X, Y=None):
+  d = X.shape[1]
+
+  if Y is None:
+    Y = pooler.encode(X)
+    
+  W = pooler.feedforward 
+  R = np.dot(W.T, Y)
+
+  cw = pooler.code_weight
+  R  = R/cw
+
+  R  = (R > 0.5).astype(float)    
+  Err = np.sum(np.absolute(X - R))
+
+  return Err/d
+
+

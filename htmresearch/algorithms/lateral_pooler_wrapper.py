@@ -43,7 +43,8 @@ class LateralPoolerWrapper(LateralPooler):
           boostStrength              = 100.0,
           seed                       = -1,
           spVerbosity                = 0,
-          wrapAround                 = True):
+          wrapAround                 = True,
+          learningRateHidden         = 1.0):
 
 
 
@@ -60,11 +61,11 @@ class LateralPoolerWrapper(LateralPooler):
         "smoothing_period"      : dutyCyclePeriod, 
         "boost_strength"        : boostStrength,
         "boost_strength_hidden" : boostStrength,
-        "permanence_threshold"  : synPermConnected
+        "permanence_threshold"  : synPermConnected,
+        "learning_rate_hidden"   : learningRateHidden
     }
     super(LateralPoolerWrapper, self).__init__(**super_args)
               
-
 
   def compute(self, inputVector, learn, activeArray):
     """
