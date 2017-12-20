@@ -335,6 +335,7 @@ class ColumnPoolerRegion(PyRegion):
                initialProximalPermanence=0.6,
                sampleSizeProximal=20,
                minThresholdProximal=1,
+
                connectedPermanenceProximal=0.50,
                predictedInhibitionThreshold=20,
 
