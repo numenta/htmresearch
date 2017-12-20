@@ -63,7 +63,7 @@ for i = 20:20 % for 20 trials
     cellMap = zeros(512*numFrames,614);
     for j=1:numFrames % for all the time frames within one stimulus
         % the cell firing at this specific time frame
-        if (~isempty(find(trialSpikeMat(:,j)==1)))
+        if (~isempty(find(trialSpikeMat(:,j)==1))) 
             firingCellIndices = goodCells(find(trialSpikeMat(:,j)==1));
             % create the firing map from ROI at specific time frame
             firingCellMap = sum(ROI(:,:,firingCellIndices),3);

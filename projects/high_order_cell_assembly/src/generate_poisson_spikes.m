@@ -32,7 +32,7 @@ for i=1:numNeuron
     poissSpikes(i,:) = poissrnd(meanFiringRate(i), [1, NT]);
 end
 
-
+ 
 % firingRate = zeros(numNeuron, numFramesPerStim);
 % poissSpikes = zeros(numNeuron, NT);
 % for i=1:numNeuron        

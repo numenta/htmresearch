@@ -44,7 +44,7 @@ for rep = 1:imgPara.stimrep
         cellI  = cellI +1;
         spikesRaster = [spikesRaster spikesI*imgPara.dt -1];
     end
-    
+     
     % return spikeMat as the spiking time for all neurons
     spikeMat = [spikeMat spikesCurrentTrial];    
     if(plotRaster>0)

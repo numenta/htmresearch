@@ -6,7 +6,7 @@ images = imageDatastore('SpencerMovie_m4v',...
     'LabelSource','foldernames');
 
 % [trainingImages,testImages] = splitEachLabel(images,1,'randomized');
-
+ 
 imagefiles = dir('./SpencerMovie_m4v/*.png');      
 nfiles = length(imagefiles);  % Number of files found
 

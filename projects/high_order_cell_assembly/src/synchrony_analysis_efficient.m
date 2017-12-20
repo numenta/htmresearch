@@ -102,7 +102,7 @@ for numRpts=2:max(frequency)
     binaryWordsNew = [binaryWordsNew; uniqueSpikes];
     frequencyNew = [frequencyNew; ones(size(uniqueSpikes,1),1)*numRpts];
 end
-
+ 
 % returned frequency is the firing frequency for each cell assembly
 % returned binaryWords is the corresponding cell indices of cell assembly
 frequency = frequencyNew;

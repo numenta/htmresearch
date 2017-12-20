@@ -78,7 +78,7 @@ timeJitterDistribution = timeJitterDistribution/length(idx);
 % xlabel('Time jitter (frames)'); 
 % ylabel('Prob. of observing repeated cell assembly');
 % axis square;
-% 
+%  
 
 % figure(2); clf;
 % edges = -0.5:1:20.5;

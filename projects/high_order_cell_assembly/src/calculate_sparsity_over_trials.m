@@ -19,7 +19,7 @@
 %
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
-
+ 
 function sparsity = calculate_sparsity_over_trials(spikeMat, imgPara)
 
 sparsity = zeros(imgPara.stimrep, 1);
