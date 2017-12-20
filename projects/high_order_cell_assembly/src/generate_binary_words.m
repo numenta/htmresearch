@@ -20,6 +20,8 @@
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
 
+% this function is to translate string of cell assembly indices to be
+% numbers
 function binaryWords = generate_binary_words(wordLength, maxActiveBits)
 binaryWords = zeros(2^wordLength, wordLength);
 for i = 1:2^10
