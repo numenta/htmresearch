@@ -20,6 +20,9 @@
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
 
+% This file is to analyze the spencer data and generate figures by calling
+% source codes
+
 clear all;
 close all;
 addpath('./src/');
@@ -36,8 +39,10 @@ addpath('./src/');
 % %         load dataToSubutai_102616/Combo3_V1.mat
 % end
 
+% Combo3_V1andAL.mat includes all the 5 recordings of calcium imaging data
+% within V1 and AL recorded simultaneously. 
 load('./data/Combo3_V1andAL.mat')
-% analyze the 3rd data, and V1 recored spiketrain
+% analyze the 3rd data, and spiketrain recorded from V1
 spiketrain = Combo3_V1andAL(3, 1).spiketrain; 
 imgPara = Combo3_V1andAL(3, 1).imgPara;
 area = Combo3_V1andAL(3, 1).area; 
