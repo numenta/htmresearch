@@ -34,19 +34,26 @@ pprint = PrettyPrinter(indent=4).pprint
 
 from htmresearch.support.lateral_pooler.datasets import load_data
 from htmresearch.support.lateral_pooler.utils import random_id
-from htmresearch.support.lateral_pooler.metrics import mean_mutual_info_from_data, mean_mutual_info_from_model, reconstruction_error
+from htmresearch.support.lateral_pooler.metrics import mean_mutual_info_from_model, reconstruction_error
 # from htmresearch.frameworks.sp_paper.sp_metrics import reconstructionError
 
 from nupic.algorithms.spatial_pooler import SpatialPooler as SpatialPooler
 from sp_wrapper import SpatialPoolerWrapper 
+
 from htmresearch.algorithms.lateral_pooler import LateralPooler
-from htmresearch.algorithms.lateral_pooler_wrapper import LateralPoolerWrapper as LateralPoolerWrapper
+
 
 from htmresearch.support.lateral_pooler.callbacks import (ModelCheckpoint, ModelOutputEvaluator, 
                                                           Reconstructor, ModelInspector, 
                                                           OutputCollector, Logger)
 
 
+def load_pooler(path):
+    filename = "{}/pooler.p".format(path)
+    with open (filename) as f:
+        pooler = pickle.load(f)
+    
+    return pooler
 
 def dump_json(path_to_file, my_dict):
     with open(path_to_file, 'wb') as f:
@@ -61,7 +68,7 @@ def dump_results(path, results):
     for key in results:
         os.makedirs(os.path.dirname("{}/{}/".format(path, key)))
         for i, data in enumerate(results[key]):
-            filename ="{}/{}/{}_{}.p".format(path, key, key, i + 1)
+            filename ='{}/{}/{}_{:04}.p'.format(path, key, key, i + 1)
             with open(filename, 'wb') as file:
                 pickle.dump(data, file)
 
@@ -95,6 +102,7 @@ def parse_argv():
     parser.add_option("--params", type=str, dest="sp_params", help="json file with spatial pooler parameters")
     parser.add_option("--name", type=str, default=None, dest="experiment_id", help="")
     parser.add_option("--seed", type=str, default=None, dest="seed", help="random seed for SP and dataset")
+    parser.add_option("--cont", type=str, default=None, dest="cont", help="...")
     (options, remainder) = parser.parse_args()
     return options, remainder
 
@@ -118,6 +126,7 @@ def main(argv):
     batch_size      = args.batch_size
     experiment_id   = args.experiment_id
     seed            = args.seed
+    cont            = args.cont
 
     ####################################################
     # 
@@ -163,10 +172,16 @@ def main(argv):
     # 
     ####################################################
     if sp_type == "nupic":
-        pooler = SpatialPoolerWrapper(**sp_params)
+        if cont == None:
+            pooler = SpatialPoolerWrapper(**sp_params)
+        else:
+            pooler = load_pooler(cont)
 
     elif sp_type == "lateral":
-        pooler = LateralPoolerWrapper(**sp_params)
+        if cont == None:
+            pooler = LateralPooler(**sp_params)
+        else:
+            pooler = load_pooler(cont)
     else:
         raise "I don't know an SP of that type:{}".format(sp_type)
 
@@ -262,8 +277,9 @@ def main(argv):
 
                 Y_test = pooler.encode(X_test)
 
-                results["avg_activity_units"].append(pooler.avg_activity_units.copy()) 
-                results["avg_activity_pairs"].append(pooler.avg_activity_pairs.copy()) 
+                results["avg_activity_units"].append(pooler._activeDutyCycles.copy()) 
+                results["avg_activity_pairs"].append(pooler.avgActivityPairs.copy()) 
+                
                 results["inputs_test"].append(X_test)
                 results["outputs_test"].append(Y_test)
                 results["feedforward"].append(pooler.feedforward.copy()) 

@@ -11,8 +11,13 @@ class SpatialPoolerWrapper(SpatialPooler):
         super(SpatialPoolerWrapper, self).__init__(**args)
 
         n = self._numColumns
-        self.avg_activity_units = np.zeros(n)
-        self.avg_activity_pairs = np.zeros((n,n))
+
+        inhibitionArea = ((2*self._inhibitionRadius + 1)** self._columnDimensions.size)
+        inhibitionArea = min(n, inhibitionArea)
+        density        = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+        self.sparsity = density
+        self.avgActivityPairs     = np.ones((n,n))*(density**2)
+        np.fill_diagonal(self.avgActivityPairs, density)
 
 
     def compute(self, inputVector, learn, activeArray):
@@ -21,11 +26,8 @@ class SpatialPoolerWrapper(SpatialPooler):
         """
         super(SpatialPoolerWrapper, self).compute(inputVector, learn, activeArray)
 
-        beta = 1.0 - 1.0/self._dutyCyclePeriod
-        n    = self._numColumns
-        Y    = activeArray.reshape((n,1))
+        self._updateAvgActivityPairs(activeArray)
 
-        self.update_statistics_online(Y, beta)
 
     def encode(self, X):
         d = X.shape[1]
@@ -36,26 +38,23 @@ class SpatialPoolerWrapper(SpatialPooler):
             
         return Y
 
-    def update_statistics_online(self, Y, beta=0.9):
-        """
-        Updates the exponential moving averages over pairwise and individual 
-        cell activities. 
-        """
-        P_pairs = self.avg_activity_pairs 
-        P_units = self.avg_activity_units
+    def _updateAvgActivityPairs(self, activeArray):
+        n, m   = self.shape
+        Y      = activeArray.reshape((n,1))
+        beta = 1.0 - 1.0/self._dutyCyclePeriod
 
-        Q = Y * Y.T   
+        # period = self._dutyCyclePeriod
+        # if (period > self._iterationNum):
+          # period = self._iterationNum
+        Q = np.dot(Y, Y.T) 
 
-        P_pairs[:,:] = beta*P_pairs + (1-beta)*Q
-        P_units[:]   = P_pairs.diagonal()
+        self.avgActivityPairs = beta*self.avgActivityPairs + (1-beta)*Q
 
-    @property
-    def sparsity(self):
-        inhibitionArea = ((2*self._inhibitionRadius + 1)
-                                    ** self._columnDimensions.size)
-        inhibitionArea = min(self._numColumns, inhibitionArea)
-        density        = float(self._numActiveColumnsPerInhArea) / inhibitionArea
-        return density
+        # self.avgActivityPairs = self._updateDutyCyclesHelper(
+        #                           self.avgActivityPairs,
+        #                           Q,
+        #                           period)
+
 
     @property
     def code_weight(self):
@@ -74,3 +73,9 @@ class SpatialPoolerWrapper(SpatialPooler):
     @property
     def shape(self):
         return self._numColumns, self._numInputs
+
+    @property
+    def avg_activity_pairs(self):
+        return self.avgActivityPairs
+
+        

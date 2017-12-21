@@ -43,7 +43,7 @@ def pairwise_entropy(Y):
 def mean_mutual_info(P):
 
   mu    = 0.0
-  count = 0.0
+  count = 0
   for (i, j), pij in np.ndenumerate(P):
       if i != j:
           count += 1
@@ -51,7 +51,9 @@ def mean_mutual_info(P):
           pj = P[j,j]
           q = [pij, pj - pij, pi - pij, 1 + pij - pi - pj]
 
-          mu += entropy([pi, 1-pi], base=2) + entropy([pj, 1-pj], base=2) - entropy(q, base=2)
+          I = entropy([pi, 1-pi], base=2) + entropy([pj, 1-pj], base=2) - entropy(q, base=2)
+          mu += I
+
 
   return mu/float(count)
 
@@ -68,10 +70,25 @@ def mean_mutual_info_from_data(Y):
 
 
 def mean_mutual_info_from_model(pooler):
-  Q = pooler.avg_activity_pairs
-  mean_info = mean_mutual_info(Q)
+  P = pooler.avg_activity_pairs
+  assert(P[0,0]>0.)
 
-  return mean_info
+  mu    = 0.0
+  count = 0
+  for (i, j), pij in np.ndenumerate(P):
+      if i != j:
+          count += 1
+          pi = P[i,i]
+          pj = P[j,j]
+
+          q = [pij, pj - pij, pi - pij, 1 + pij - pi - pj]
+
+          I = entropy([pi, 1-pi], base=2) + entropy([pj, 1-pj], base=2) - entropy(q, base=2)
+          mu += I
+
+
+  return mu/float(count)
+
 
 
 
