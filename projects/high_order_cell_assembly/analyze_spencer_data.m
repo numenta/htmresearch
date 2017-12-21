@@ -20,6 +20,9 @@
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
 
+% This file is to analyze the spencer data and generate figures by calling
+% source codes
+
 clear all;
 close all;
 addpath('./src/');
@@ -36,10 +39,13 @@ addpath('./src/');
 % %         load dataToSubutai_102616/Combo3_V1.mat
 % end
 
-load('/Users/ycui/Documents/SpencerData/data/Combo3_V1andAL.mat')
-spiketrain = Combo3_V1andAL(3, 1).spiketrain;
+% Combo3_V1andAL.mat includes all the 5 recordings of calcium imaging data
+% within V1 and AL recorded simultaneously. 
+load('./data/Combo3_V1andAL.mat')
+% analyze the 3rd data, and spiketrain recorded from V1
+spiketrain = Combo3_V1andAL(3, 1).spiketrain; 
 imgPara = Combo3_V1andAL(3, 1).imgPara;
-area = Combo3_V1andAL(3, 1).area;
+area = Combo3_V1andAL(3, 1).area; 
 expID = Combo3_V1andAL(3, 1).date;
 numNeuron = length(spiketrain);
 numFramesPerStim = round(imgPara.stim_time / imgPara.dt);
@@ -52,21 +58,24 @@ for i = 1:numNeuron
             spikesI = spiketrain(i).st{rep, stimType};
             numSpike = numSpike + length(spikesI);
         end
-        spikesPerNeuron(i, stimType) = numSpike;
+        spikesPerNeuron(i, stimType) = numSpike; % all the spikes in 20 trials
     end
 end
 
 fprintf('Number of cells: %d \n', numNeuron); 
 %% Population Response to Natural Stimuli
-goodCells = find(spikesPerNeuron(:,stimType)>3);
-stimType = 2;
-spikeMat = get_resposne_mat(spiketrain, imgPara, stimType,goodCells, 0);
+goodCells = find(spikesPerNeuron(:,stimType)>3); 
+% good cells have to fire more than 3 spikes during 20 trials
+stimType = 2; 
+spikeMat = get_resposne_mat(spiketrain, imgPara, stimType, goodCells, 0);
 
 % frac = 2;
 % spikeMat = downsampleSpikeMat(spikeMat, frac);
 % numFramesPerStim = numFramesPerStim/frac;
 % imgPara.dt = imgPara.dt*frac;
+
 %% show sparsity over trials
+% sparsity figure, ppt page24 the left figure
 sparsity = calculate_sparsity_over_trials(spikeMat, imgPara);
 h=figure(3); clf;
 subplot(2,2,1);
@@ -78,14 +87,16 @@ print(h,'-dpdf', ['figures/sparseness_over_time_stim_' num2str(stimType) ...
     '_area_' area expID '.pdf']);
 
 
-%% subset analysis
+%% subset analysis, ppt page24 subset index, an array of numbers trial17 to 20
 subsetIndex = calculate_subset_index(spikeMat, numFramesPerStim);
 
 % generate Poisson spike trains
 subsetIndexShuffleList = [];
 subsetIndexPoissonList=[];
 for rep=1:20
+    % generate Poisson spike trains 
     poissSpikes = generate_poisson_spikes(spikeMat, imgPara);
+    % generate shuffled spike trains
     shuffledSpikes = shuffle_spikes(spikeMat, imgPara);
     
     subsetIndexShuffle = calculate_subset_index(shuffledSpikes, numFramesPerStim);
@@ -93,7 +104,7 @@ for rep=1:20
     subsetIndexPoissonList(end+1) = subsetIndexPoisson;
     subsetIndexShuffleList(end+1) = subsetIndexShuffle;
 end
-%
+% figure in ppt page24 right
 h=figure(1);
 subplot(1,3,1);
 bar([subsetIndex, mean(subsetIndexShuffleList), mean(subsetIndexPoissonList)]);
@@ -103,16 +114,17 @@ title([area]);
 print(h,'-dpdf', ['figures/subset_index_stim_' num2str(stimType) ...
     '_area_' area expID '.pdf']);
 
-%%
-numCoactive = 1;
+%% from here, begin to analyze the cell assembly result
+numCoactive = 1; 
 [frequency, binaryWords] = synchrony_analysis_efficient(spikeMat, numCoactive);
 [binEdges, timeJitterDistribution1] = calculate_occurance_time(frequency, numFramesPerStim, spikeMat, binaryWords, numCoactive);
 
-numCoactive = 3;
+numCoactive = 3; % 3 cell assembly
 [frequency, binaryWords] = synchrony_analysis_efficient(spikeMat, numCoactive);
 [binEdges, timeJitterDistribution3, timeInMovieDist3] = calculate_occurance_time(...
     frequency, numFramesPerStim, spikeMat, binaryWords, numCoactive);
 
+% generate coactive assembly analysis by shuffled spikes
 fakeSpikes = shuffle_spikes(spikeMat, imgPara);
 [frequencyFake, binaryWordsFake] = synchrony_analysis_efficient(fakeSpikes, numCoactive);
 [~, ~, timeInMovieDistFake] = calculate_occurance_time(frequency, numFramesPerStim, fakeSpikes, binaryWords, numCoactive);
@@ -120,9 +132,11 @@ fakeSpikes = shuffle_spikes(spikeMat, imgPara);
 %%
 figure(4);clf; 
 subplot(2,2,1);
+% averaged pop rate along all neurons and 20 trials
 popR = sum(spikeMat, 1);
 popR = mean(reshape(popR, numFramesPerStim, 20), 2)/imgPara.dt;
 
+% averaged pop rate along fake spikes and 20 trials
 popR2 = sum(fakeSpikes, 1);
 popR2 = mean(reshape(popR2, numFramesPerStim, 20), 2)/imgPara.dt;
 
@@ -497,17 +511,22 @@ numNegPairs = zeros(imgPara.stimrep, 1);
 meanCorr = zeros(imgPara.stimrep, 1);
 medianCorr = zeros(imgPara.stimrep, 1);
 for rep = 1:imgPara.stimrep
+    % extract spikes timing for every trial into spikeTrialI
     spikeTrialI = spikeMat(:, (rep-1)*numFramesPerStim+(1:numFramesPerStim));        
     corrMat = nan(numNeuron, numNeuron);
     for i = 1:numNeuron
         for j = i+1:numNeuron
-            c = corrcoef(spikeTrialI(i,:), spikeTrialI(j,:));
+            % correlation analysis between neurons in each trial
+            c = corrcoef(spikeTrialI(i,:), spikeTrialI(j,:)); % corrcoef has numpy library
             corrMat(i,j) = c(1,2);
             corrMat(j,i) = c(1,2);
         end
     end
+    % averaged negative correlation in each trial
     numNegPairs(rep) = sum((corrMat(:)<0)) / (numNeuron*(numNeuron-1));
+    % averaged correlation in each trial
     meanCorr(rep) = mean(corrMat(~isnan(corrMat)));
+    % median number of correlation in each trial
     medianCorr(rep) = median(corrMat(~isnan(corrMat)));
     fprintf('trial %d sparsity %2.5f corr %2.5f numNegPair %2.5f \n', ...
         rep, sparsity(rep), meanCorr(rep), numNegPairs(rep));    

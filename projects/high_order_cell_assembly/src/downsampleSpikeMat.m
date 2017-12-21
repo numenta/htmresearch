@@ -19,7 +19,8 @@
 %
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
-
+ 
+% this function is to down sample spike timings from spikeMat by a fraction
 function spikeMatdown = downsampleSpikeMat(spikeMat, frac)
 %%
 if frac == 1

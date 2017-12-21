@@ -41,7 +41,7 @@ if length(negs) == 1
 end
 
 Nreps = length(negs);
-
+ 
 locs = ones(Nreps,2);
 startspk = 1;
 for i = 1:Nreps
