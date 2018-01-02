@@ -29,6 +29,8 @@ import pprint
 import random
 import time
 from collections import defaultdict
+from texttable import Texttable
+from copy import deepcopy
 
 import numpy
 
@@ -151,12 +153,42 @@ def joinPickleFiles(dirName, basenames, outfileName):
     cPickle.dump(allResults, f)
 
 
+def createArgs(**kwargs):
+  """
+  Each kwarg is a list. Return a list of dicts representing all possible
+  combinations of the kwargs.
+  """
+  if len(kwargs) == 0: return [{}]
+  kargs = deepcopy(kwargs)
+  k1 = kargs.keys()[0]
+  values = kargs.pop(k1)
+  args = []
+
+  # Get all other combinations
+  otherArgs = createArgs(**kargs)
+
+  # Create combinations for values associated with k1
+  for v in values:
+    newArgs = deepcopy(otherArgs)
+    arg = {k1: v}
+    for newArg in newArgs:
+      newArg.update(arg)
+      args.append(newArg)
+
+  return args
+
+
 def summarizeExperiment(dirName):
   """
   """
   # Results are put into a pkl file which can be used to generate the plots.
   # dirName is the absolute path where the pkl file will be placed.
-  resultsFilename = os.path.join(dirName, "superimposed_pool_increments_varying_features.pkl")
+  table = Texttable()
+  table.header(["Locations", "Features", "Objects", "Sequences",
+                "objectAccuracyL2", "sequenceAccuracyL2",
+                "objectCorrectSparsityTM", "sequenceCorrectClassificationsTM"])
+
+  resultsFilename = os.path.join(dirName, "sensorimotor_batch_results_more_features.pkl")
 
   accuraciesL2 = defaultdict(list)
   accuraciesTM = defaultdict(list)
@@ -164,39 +196,64 @@ def summarizeExperiment(dirName):
   with open(resultsFilename, "rb") as f:
     results = cPickle.load(f)
 
+    # Print first one
+    r = results[0]
+    r.pop("objects", None)
+    r.pop("sequences", None)
+    r.pop("statistics", None)
+    pprint.pprint(r)
+
     for i,r in enumerate(results):
-      print "\nResult:", i,
-      r.pop("objects", None)
-      r.pop("sequences", None)
-      r.pop("statistics", None)
-      # r.pop("networkConfig")
-      print r["sequenceCorrectClassificationsTM"],r["sequenceCorrectSparsityTM"],r["objectAccuracyL2"],r["sequenceAccuracyL2"]
-      bpsd = r['basalPredictedSegmentDecrement']
-      accuraciesL2[bpsd].append(r["objectAccuracyL2"])
-      sparsitiesTM[bpsd].append(r["sequenceCorrectSparsityTM"])
-      accuraciesTM[bpsd].append(r["sequenceCorrectClassificationsTM"])
+      table.add_row([r['numLocations'], r['numFeatures'],
+                     r['numObjects'], r['numSequences'],
+                     r["objectAccuracyL2"], r['sequenceAccuracyL2'],
+                     r["objectCorrectSparsityTM"],
+                     r["sequenceCorrectClassificationsTM"]])
+      # print r["sequenceCorrectClassificationsTM"],r["sequenceCorrectSparsityTM"],r["objectAccuracyL2"],r["sequenceAccuracyL2"]
+      # bpsd = r['basalPredictedSegmentDecrement']
+      # accuraciesL2[bpsd].append(r["objectAccuracyL2"])
+      # sparsitiesTM[bpsd].append(r["sequenceCorrectSparsityTM"])
+      # accuraciesTM[bpsd].append(r["sequenceCorrectClassificationsTM"])
       # pprint.pprint(r)
 
-  for metric in (accuraciesL2, accuraciesTM, sparsitiesTM):
-    for k,v in metric.items():
-      print k,v
-      a = numpy.array(v)
-      print "mean/stdev:", a.mean(), a.std()
-      print
-    print
+
+  print table.draw() + "\n"
+
+  # for metric in (accuraciesL2, accuraciesTM, sparsitiesTM):
+  #   for k,v in metric.items():
+  #     print k,v
+  #     a = numpy.array(v)
+  #     print "mean/stdev:", a.mean(), a.std()
+  #     print
+  #   print
 
 if __name__ == "__main__":
 
   dirname = os.path.dirname(os.path.realpath(__file__))
 
+  numTrials = 10
+  featureRange = [50, 100]
+  seqRange = [50, 51]
+  locationRange = [10, 100]
+
+  args = createArgs(
+    numSequences=seqRange,
+    numFeatures=featureRange,
+    numLocations=locationRange,
+    numObjects=[0],
+    seqLength=[10],
+    nTrials=[numTrials]
+  )
+  pprint.pprint(args)
+
   # analyzeExperiment(dirname)
   # summarizeExperiment(dirname)
   # stripPickleFile(dirname)
-  joinPickleFiles(dirname,
-                  [
-                    "superimposed_1000f_1024mcs.pkl",
-                    "superimposed_smaller_mcs.pkl",
-                    "superimposed_128mcs.pkl",
-                  ],
-                  "superimposed_range_of_mcs.pkl"
-                  )
+  # joinPickleFiles(dirname,
+  #                 [
+  #                   "superimposed_1000f_1024mcs.pkl",
+  #                   "superimposed_smaller_mcs.pkl",
+  #                   "superimposed_128mcs.pkl",
+  #                 ],
+  #                 "superimposed_range_of_mcs.pkl"
+  #                 )
