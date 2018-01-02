@@ -331,11 +331,14 @@ def plotAccuracyAndMCsDuringDecrementChange(results, title="", yaxis=""):
   # plt.close()
 
 
-def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
-                             seqRange, title="", yaxis=""):
+def plotAccuracyDuringSequenceInference(dirName, title="", yaxis=""):
   """
   Plot accuracy vs number of locations
   """
+  # Read in results file
+  with open(os.path.join(dirName,
+            "sequence_batch_high_dec_normal_features.pkl"), "rb") as f:
+    results = cPickle.load(f)
 
   locationRange = []
   featureRange = []
@@ -344,6 +347,7 @@ def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
     if r["numFeatures"] not in featureRange: featureRange.append(r["numFeatures"])
     locationRange.sort()
   featureRange.sort()
+  if 10 in featureRange: featureRange.remove(10)
   print "locationRange=",locationRange
   print "featureRange=",featureRange
 
@@ -355,8 +359,9 @@ def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
   L2Accuracies = defaultdict(list)
   TMAccuracies = defaultdict(list)
   for r in results:
-    L2Accuracies[(r["numLocations"], r["numFeatures"])].append(r["sequenceAccuracyL2"])
-    TMAccuracies[r["numLocations"]].append(r["sequenceCorrectSparsityTM"])
+    if r["numFeatures"] in featureRange:
+      L2Accuracies[(r["numLocations"], r["numFeatures"])].append(r["sequenceAccuracyL2"])
+      TMAccuracies[r["numLocations"]].append(r["sequenceCorrectSparsityTM"])
 
   # meanAccuracy[o,f] = accuracy of TM with o objects and f unique features.
   meanL2Accuracy = numpy.zeros((max(locationRange)+1, max(featureRange) + 1))
@@ -395,13 +400,94 @@ def plotAccuracyDuringSequenceInference(results, locationRange, featureRange,
   plt.errorbar(locationRange, meanTMAccuracy[locationRange],
                yerr=stdevTM[locationRange],
                color=colorList[len(featureRange)])
-  # plt.plot(locationRange, [100] * len(locationRange),
-  #          color=colorList[len(featureRange)])
   legendList.append('Temporal sequence layer')
 
   # format
   plt.legend(legendList, bbox_to_anchor=(0., 0.65, 1., .102), loc="right", prop={'size':10})
   plt.xlabel("Size of location pool")
+  # plt.xticks(range(0,max(locationRange)+1,10))
+  # plt.yticks(range(0,int(accuracy.max())+2,10))
+  plt.ylim(-10.0, 110.0)
+  plt.ylabel(yaxis)
+  plt.title(title)
+
+    # save
+  plt.savefig(plotPath)
+  plt.close()
+
+
+def plotAccuracyVsSequencesDuringSequenceInference(dirName, title="", yaxis=""):
+
+  # Read in results file
+  with open(os.path.join(dirName, "sequences_range.pkl"), "rb") as f:
+    results = cPickle.load(f)
+
+  sequenceRange = []
+  featureRange = []
+  for r in results:
+    if r["numSequences"] not in sequenceRange: sequenceRange.append(r["numSequences"])
+    if r["numFeatures"] not in featureRange: featureRange.append(r["numFeatures"])
+    sequenceRange.sort()
+  featureRange.sort()
+  if 10 in featureRange: featureRange.remove(10)
+  print "numSequences=",sequenceRange
+  print "featureRange=",featureRange
+
+  ########################################################################
+  #
+  # Accumulate the L2 accuracies for each condition in a list and compute mean
+  # and stdeviations
+  # For TM we average across all feature ranges
+  L2Accuracies = defaultdict(list)
+  TMAccuracies = defaultdict(list)
+  for r in results:
+    if r["numFeatures"] in featureRange:
+      L2Accuracies[(r["numSequences"], r["numFeatures"])].append(r["sequenceAccuracyL2"])
+      TMAccuracies[r["numSequences"]].append(r["sequenceCorrectSparsityTM"])
+
+  # meanAccuracy[o,f] = accuracy of TM with o objects and f unique features.
+  meanL2Accuracy = numpy.zeros((max(sequenceRange)+1, max(featureRange) + 1))
+  stdevL2 = numpy.zeros((max(sequenceRange)+1, max(featureRange) + 1))
+  meanTMAccuracy = numpy.zeros(max(sequenceRange)+1)
+  stdevTM = numpy.zeros(max(sequenceRange)+1)
+  for o in sequenceRange:
+    for f in featureRange:
+      a = numpy.array(L2Accuracies[(o, f)])
+      meanL2Accuracy[o, f] = 100.0*a.mean()
+      stdevL2[o, f] = 100.0*a.std()
+
+    # Accuracies for TM
+    a = numpy.array(TMAccuracies[o])
+    meanTMAccuracy[o] = 100.0*a.mean()
+    stdevTM[o] = 100.0*a.std()
+
+  ########################################################################
+  #
+  # Create the plot.
+  plt.figure()
+  plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                          "plots", "accuracy_vs_sequences.pdf")
+
+  # Plot each curve
+  legendList = []
+  colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
+
+  for i in range(len(featureRange)):
+    f = featureRange[i]
+    legendList.append('Sensorimotor layer, feature pool size: {}'.format(f))
+    plt.errorbar(sequenceRange, meanL2Accuracy[sequenceRange, f],
+             yerr=stdevL2[sequenceRange, f],
+             color=colorList[i])
+
+  plt.errorbar(sequenceRange, meanTMAccuracy[sequenceRange],
+               yerr=stdevTM[sequenceRange],
+               color=colorList[len(featureRange)])
+  legendList.append('Temporal sequence layer')
+
+  # format
+  plt.legend(legendList, bbox_to_anchor=(0., 0.65, 1., .102),
+             loc="right", prop={'size':10})
+  plt.xlabel("Number of sequences")
   # plt.xticks(range(0,max(locationRange)+1,10))
   # plt.yticks(range(0,int(accuracy.max())+2,10))
   plt.ylim(-10.0, 110.0)
@@ -446,23 +532,27 @@ def gen4(dirName):
   # Generate the second plot for the section "Simulations with Pure
   # Temporal Sequences"
   try:
-    resultsFig4B = os.path.join(dirName, "sequence_batch_even_more_features.pkl")
-    featureRange = [5, 10, 100]
-    seqRange = [50]
-    locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-                     1000, 1100, 1200, 1300, 1400, 1500, 1600]
-    # Analyze results
-    with open(resultsFig4B, "rb") as f:
-      results = cPickle.load(f)
-
     plotAccuracyDuringSequenceInference(
-      results, locationRange, featureRange, seqRange,
+      dirName,
       title="Relative performance of layers while inferring temporal sequences",
       yaxis="Accuracy (%)")
 
     print "Plots for Fig 4B generated in 'plots'"
   except Exception, e:
     print "\nCould not generate plots for Fig 4B: "
+    traceback.print_exc()
+    print
+
+  # Generate the accuracy vs number of sequences
+  try:
+    plotAccuracyVsSequencesDuringSequenceInference(
+      dirName,
+      title="Relative performance of layers while inferring temporal sequences",
+      yaxis="Accuracy (%)")
+
+    print "Plots for Fig 4C generated in 'plots'"
+  except Exception, e:
+    print "\nCould not generate plots for Fig 4C: "
     traceback.print_exc()
     print
 
