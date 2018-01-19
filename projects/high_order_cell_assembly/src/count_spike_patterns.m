@@ -19,7 +19,9 @@
 %
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
-
+ 
+% this function is not used in generating the pictures, called in commented
+% analyze_spencer_data.m file
 function counts = count_spike_patterns(binaryWords, spikeTrain)
 %%
 numWords = size(binaryWords, 1);

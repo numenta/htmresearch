@@ -89,7 +89,7 @@ else
         values = varargin{2};
         [tmp xOrder] = sort(varargin{1});
     end
-end
+end 
 
 % If an extra dimension is supplied for the errors then they are
 % assymetric split out into upper and lower:

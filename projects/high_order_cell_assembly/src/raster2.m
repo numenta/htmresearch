@@ -21,7 +21,7 @@
 % ----------------------------------------------------------------------
 
 function h=raster2(times1, numFramesPerStim, dt, color)
-
+ 
 timeInMovie = mod(times1, numFramesPerStim);
 trial = floor(times1/numFramesPerStim)+1;
 
