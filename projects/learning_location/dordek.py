@@ -19,7 +19,9 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-"""TODO"""
+"""Use principle components of correlation matrix to find grid cell
+weights to place cell inputs.
+"""
 
 import random
 
