@@ -33,7 +33,7 @@ from pprint import PrettyPrinter
 pprint = PrettyPrinter(indent=4).pprint
 
 from htmresearch.support.lateral_pooler.datasets import load_data
-from htmresearch.support.lateral_pooler.utils import random_id
+from htmresearch.support.lateral_pooler.utils import random_id, add_noise
 from htmresearch.support.lateral_pooler.metrics import mean_mutual_info_from_model, reconstruction_error
 # from htmresearch.frameworks.sp_paper.sp_metrics import reconstructionError
 
@@ -50,10 +50,20 @@ from htmresearch.support.lateral_pooler.callbacks import (ModelCheckpoint, Model
 
 def load_pooler(path):
     filename = "{}/pooler.p".format(path)
-    with open (filename) as f:
+    with open(filename) as f:
         pooler = pickle.load(f)
     
     return pooler
+
+def dump_pooler(path, t, pooler):
+    filename = "{}/pooler/pooler_{:04}.p".format(path, t)
+    with open(filename, 'wb') as f:
+        pickle.dump(pooler, f)
+
+def dump_entity(path, label, t, X):
+    filename = "{}/{}/{}_{:04}.p".format(path, label,label, t)
+    with open(filename, 'wb') as f:
+        pickle.dump(X, f)
 
 def dump_json(path_to_file, my_dict):
     with open(path_to_file, 'wb') as f:
@@ -141,7 +151,17 @@ def main(argv):
     the_scripts_path = os.path.dirname(os.path.realpath(__file__)) # script directory
     relative_path    = "../results/{}_pooler_{}_{}".format(sp_type, data_set, experiment_id)
     path             = the_scripts_path + "/" + relative_path
-    os.makedirs(os.path.dirname(path+"/"))
+    
+    os.makedirs(os.path.dirname("{}/".format(path)))
+    os.makedirs(os.path.dirname("{}/pooler/".format(path)))
+    os.makedirs(os.path.dirname("{}/inputs/".format(path)))
+    os.makedirs(os.path.dirname("{}/outputs/".format(path)))
+    os.makedirs(os.path.dirname("{}/targets/".format(path)))
+    os.makedirs(os.path.dirname("{}/test_inputs/".format(path)))
+    os.makedirs(os.path.dirname("{}/test_targets/".format(path)))
+
+
+
 
     print(
         "\nExperiment directory:\n\n\t\"{}\"\n"
@@ -197,10 +217,13 @@ def main(argv):
     # 
     ####################################################
 
-    X, _, X_test, _ = load_data(data_set) 
-
+    X, T, X_test, T_test = load_data(data_set) 
     X      = X[:,:d]
-    X_test = X_test[:,:25]
+
+    dump_entity(path, "inputs", 0, X)
+    dump_entity(path, "targets", 0, T)
+    dump_entity(path, "test_inputs", 0, X_test)
+    dump_entity(path, "test_targets", 0, T_test)
 
 
     ####################################################
@@ -229,7 +252,7 @@ def main(argv):
         "mutual_info" : []}
 
     config = {
-        "nun_checkpoints" : len(checkpoints),
+        "num_checkpoints" : len(checkpoints),
         "path": relative_path,
         "sp_type": sp_type,
         "data_set": data_set,
@@ -259,9 +282,11 @@ def main(argv):
             "\te:{}/{}"
             .format(epoch + 1, num_epochs,))
 
+        Targets = np.zeros((T.shape[0],d))
         Y    = np.zeros((n,d))
         perm = np.random.permutation(d)
 
+        check_count = 0
         for t in range(d):
 
             if t%500 == 0:
@@ -271,22 +296,28 @@ def main(argv):
 
             x = X[:,perm[t]]
             y = Y[:, t]
+            Targets[:, t] = T[:,perm[t]]
             pooler.compute(x, True, y)
 
             if t in checkpoints:
+                check_count += 1
+                # Y_test = pooler.encode(X_test)
 
-                Y_test = pooler.encode(X_test)
-
-                results["avg_activity_units"].append(pooler._activeDutyCycles.copy()) 
-                results["avg_activity_pairs"].append(pooler.avgActivityPairs.copy()) 
+                # results["avg_activity_units"].append(pooler._activeDutyCycles.copy()) 
+                # results["avg_activity_pairs"].append(pooler.avgActivityPairs.copy()) 
                 
-                results["inputs_test"].append(X_test)
-                results["outputs_test"].append(Y_test)
-                results["feedforward"].append(pooler.feedforward.copy()) 
+                # results["inputs_test"].append(X_test)
+                # dump_entity(path, "pooler", check_count, pooler)
+                # dump_entity(path, "inputs", check_count, X)
+                # dump_entity(path, "outputs", check_count, Y)
+                # dump_entity(path, "targets", check_count, Targets)
+                
+                # results["outputs_test"].append(Y_test)
+                # results["feedforward"].append(pooler.feedforward.copy()) 
 
-                metrics["code_weight"].append(np.mean(np.sum(Y_test, axis=0)))
-                metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
-                metrics["rec_error"].append(reconstruction_error(pooler, X_test))
+                # metrics["code_weight"].append(np.mean(np.sum(Y_test, axis=0)))
+                # metrics["mutual_info"].append(mean_mutual_info_from_model(pooler))
+                # metrics["rec_error"].append(reconstruction_error(pooler, X_test))
 
 
 
@@ -299,10 +330,10 @@ def main(argv):
     print(
         "\nSaving results to file...")
 
-    dump_json(path + "/metrics.json", metrics)
+    # dump_json(path + "/metrics.json", metrics)
     dump_json(path + "/config.json", config)
-    dump_results(path, results)
-    dump_data(path + "/pooler.p", pooler)
+    # dump_results(path, results)
+    dump_pooler(path, check_count, pooler)
 
     print(
         "Done.")

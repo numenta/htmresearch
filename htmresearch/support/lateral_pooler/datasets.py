@@ -68,13 +68,97 @@ def mnist(threshold=0.3):
 
     return (X[:,:60000], Y[:,:60000], X[:,-10000:], Y[:,-10000:])
 
+def mnist_two_channel(threshold=0.2):
+
+    mnist = fetch_mldata('MNIST original')
+    X     = mnist.data.T
+    Y     = mnist.target.reshape((1,-1))
+
+    perm = np.random.permutation(X.shape[1])
+    X    = X[:,perm]
+    Y    = Y[:,perm]
+
+    X = X/255.0
+    X = (X > threshold).astype(float)
+
+    X2 = np.zeros((784,2,70000))
+    X2[:,1,:] = X
+    X2[:,0,:] = 1.0 - X
+    X2 = X2.reshape((784*2,70000))
+
+    return (X2[:,:60000], Y[:,:60000], X2[:,-10000:], Y[:,-10000:])
+
+
+def uniform_2d(bits_per_axis=100, weight_per_axis=16, num_samples=60000):
+    R = np.random.randint(bits_per_axis - weight_per_axis, size=(2,num_samples))
+    Y = R/float(bits_per_axis - weight_per_axis)
+    X = np.zeros((bits_per_axis, bits_per_axis, num_samples))
+    C = np.zeros((2, num_samples))
+    X_test = np.zeros((bits_per_axis, bits_per_axis, 400))
+    C_test = np.zeros((2, 400))
+    R_test = np.random.randint(30, 60 - weight_per_axis, size=(2,400))
+    for t in range(num_samples):
+        C[0,t] = R[0,t] + weight_per_axis//2
+        C[1,t] = R[1,t] + weight_per_axis//2
+        for i in range(R[0,t], R[0,t] + weight_per_axis):
+            X[i, range(R[1,t], R[1,t] + weight_per_axis), t] = 1.0
+
+    for t in range(400):
+        C_test[0,t] = R_test[0,t] + weight_per_axis//2
+        C_test[1,t] = R_test[1,t] + weight_per_axis//2
+        for i in range(R_test[0,t], R_test[0,t] + weight_per_axis):
+            X_test[i, range(R_test[1,t], R_test[1,t] + weight_per_axis), t] = 1.0
+
+
+    X = X.reshape((bits_per_axis**2,-1))
+    X_test = X_test.reshape((bits_per_axis**2,-1))
+
+    return X[:,:80000], C[:,:80000], X_test[:,:], C_test[:,:]
+    
+
+def random_walk_2d(bits_per_axis=100, weight_per_axis=5, num_samples=500000):
+
+    radius = 30
+    steps = 100
+    w = weight_per_axis
+    bpa = bits_per_axis
+    X = np.zeros((bpa, bpa, num_samples))
+
+    for t in range(num_samples//steps):
+        cx = np.random.randint(0,bits_per_axis - radius)
+        cy = np.random.randint(0,bits_per_axis - radius)
+        for s in range(steps):
+            sx = np.random.randint(0, radius - w)
+            sy = np.random.randint(0, radius - w)
+            x = cx + sx
+            y = cy + sy
+            for i in range(x, x + w):
+                X[i, range(y, y + w), t*steps + s] = 1.0
+
+    X = X.reshape((bits_per_axis**2,-1))
+    return X[:,:]
+    
+
+    
 def load_data(label):
 
     if label == "mnist":
         return mnist()
 
+    elif label == "mnist_two_channel":
+        return mnist_two_channel()
+
     elif label == "xy_biased":
         return xy_biased()
+
+    elif label == "xy_biased_big":
+        return xy_biased(bits_per_axis=[200,600], weight_per_axis=[20,60], num_samples=100000)
+
+    elif label == "uniform_2d":
+        return uniform_2d()
+
+    elif label == "random_walk_2d":
+        return random_walk_2d()
 
     else:
         raise "No data set with that label...."

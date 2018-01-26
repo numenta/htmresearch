@@ -20,20 +20,24 @@
 # ----------------------------------------------------------------------
 from nupic.algorithms.spatial_pooler import SpatialPooler 
 import numpy as np
+import numpy
 from nupic.bindings.math import GetNTAReal
 realDType = GetNTAReal()
+PERMANENCE_EPSILON = 0.000001
+
+
 
 class LateralPooler(SpatialPooler):
   """
   An experimental spatial pooler implementation
   with learned lateral inhibitory connections.
   """
-  def __init__(self, lateralLearningRate = 1.0, enforceDesiredWeight = True, **spArgs):
+  def __init__(self, lateralLearningRate = 1.0, lateralDutyCyclePeriod=None, enforceDesiredWeight=True, **spArgs):
 
 
     super(LateralPooler, self).__init__(**spArgs)
-    
-    self.shape      = self._numColumns, self._numInputs
+
+    self.shape      = (self._numColumns, self._numInputs)
     self.codeWeight = self._numActiveColumnsPerInhArea
     self.sparsity   = float(self.codeWeight)/float(self._numColumns)
 
@@ -42,17 +46,23 @@ class LateralPooler(SpatialPooler):
     self.enforceDesiredWeight = enforceDesiredWeight
 
     # The new lateral inhibitory connections
+    # and learning rates
     n = self._numColumns
     self.lateralConnections = np.ones((n,n))/float(n-1)
     np.fill_diagonal(self.lateralConnections, 0.0)
     self.lateralLearningRate = lateralLearningRate
+    if lateralDutyCyclePeriod == None:
+      self.lateralDutyCyclePeriod = self._dutyCyclePeriod
+    else:
+      self.lateralDutyCyclePeriod = lateralDutyCyclePeriod
 
     # Varibale to store average pairwise activities
     s = self.sparsity
     self.avgActivityPairs = np.ones((n,n))*(s**2)
     np.fill_diagonal(self.avgActivityPairs, s)
 
-
+    # experimental boosting
+    self._beta = 0.0
     
   def _inhibitColumnsWithLateral(self, overlaps, lateralConnections):
     """
@@ -119,7 +129,7 @@ class LateralPooler(SpatialPooler):
 
 
 
-  def compute(self, inputVector, learn, activeArray):
+  def compute(self, inputVector, learn, activeArray, applyLateralInhibition=True):
     """
     This is the primary public method of the LateralPooler class. This
     function takes a input vector and outputs the indices of the active columns.
@@ -147,12 +157,15 @@ class LateralPooler(SpatialPooler):
       self._boostedOverlaps = self._overlaps
 
     # Apply inhibition to determine the winning columns
-    activeColumns = self._inhibitColumnsWithLateral(self._boostedOverlaps, self.lateralConnections)
+    if applyLateralInhibition == True:
+      activeColumns = self._inhibitColumnsWithLateral(self._boostedOverlaps, self.lateralConnections)
+    else:
+      activeColumns = self._inhibitColumns(self._boostedOverlaps)
     activeArray.fill(0)
     activeArray[activeColumns] = 1.0
 
     if learn:
-      self._adaptSynapses(inputVector, activeColumns)
+      self._adaptSynapses(inputVector, activeColumns, self._boostedOverlaps)
       self._updateDutyCycles(self._overlaps, activeColumns)
       self._bumpUpWeakColumns()
       self._updateBoostFactors()
@@ -169,7 +182,7 @@ class LateralPooler(SpatialPooler):
     return activeArray
 
 
-  def encode(self, X):
+  def encode(self, X, applyLateralInhibition=True):
     """
     This method encodes a batch of input vectors.
     Note the inputs are assumed to be given as the 
@@ -179,7 +192,7 @@ class LateralPooler(SpatialPooler):
     n = self._numColumns
     Y = np.zeros((n,d))
     for t in range(d):
-        self.compute(X[:,t], False, Y[:,t])
+        self.compute(X[:,t], False, Y[:,t], applyLateralInhibition)
         
     return Y
 
@@ -227,5 +240,64 @@ class LateralPooler(SpatialPooler):
     with some older code.
     """
     return self.avgActivityPairs
+
+
+  def _updateBoostFactorsGlobal(self):
+    """
+    Update boost factors when global inhibition is used
+    """
+    # When global inhibition is enabled, the target activation level is
+    # the sparsity of the spatial pooler
+    if (self._localAreaDensity > 0):
+      targetDensity = self._localAreaDensity
+    else:
+      inhibitionArea = ((2 * self._inhibitionRadius + 1)
+                        ** self._columnDimensions.size)
+      inhibitionArea = min(self._numColumns, inhibitionArea)
+      targetDensity = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+      targetDensity = min(targetDensity, 0.5)
+
+
+    # Usual definition
+    self._beta = (targetDensity - self._activeDutyCycles)
+
+    # Experimental setting
+    # self._beta += 0.001*(targetDensity - self._activeDutyCycles)
+    
+    self._boostFactors = np.exp(self._beta * self._boostStrength)
+
+
+  def _adaptSynapses(self, inputVector, activeColumns, overlaps):
+    """
+    The primary method in charge of learning. Adapts the permanence values of
+    the synapses based on the input vector, and the chosen columns after
+    inhibition round. Permanence values are increased for synapses connected to
+    input bits that are turned on, and decreased for synapses connected to
+    inputs bits that are turned off.
+
+    Parameters:
+    ----------------------------
+    :param inputVector:
+                    A numpy array of 0's and 1's that comprises the input to
+                    the spatial pooler. There exists an entry in the array
+                    for every input bit.
+    :param activeColumns:
+                    An array containing the indices of the columns that
+                    survived inhibition.
+    """
+    inputIndices = np.where(inputVector > 0)[0]
+
+    permChanges = np.zeros(self._numInputs, dtype=realDType)
+    permChanges.fill(-1 * self._synPermInactiveDec)
+    permChanges[inputIndices] = self._synPermActiveInc
+    for columnIndex in activeColumns:
+      perm = self._permanences[columnIndex]
+      maskPotential = np.where(self._potentialPools[columnIndex] > 0)[0]
+      perm[maskPotential] += permChanges[maskPotential]
+      self._updatePermanencesForColumn(perm, columnIndex, raisePerm=True)
+
+
+
+
 
 
