@@ -262,12 +262,6 @@ def main(argv):
 
 
 
-    # if num_epochs >= 50:
-        # checkpoints = set()
-        # checkpoints.add(num_epochs-1)
-    # else:
-        # checkpoints = set(range(num_epochs))
-
     print(
         "Training (online, i.e. batch size = 1)...\n"
         .format(sp_type))
