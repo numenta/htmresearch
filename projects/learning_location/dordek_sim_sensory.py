@@ -81,9 +81,10 @@ def main():
       columnDimensions=(nCols,),
       potentialRadius=25,
       numActiveColumnsPerInhArea=5,
-      synPermActiveInc=0.1,
-      synPermInactiveDec=0.02,
-      boostStrength=10.0,
+      synPermActiveInc=0.01,
+      synPermInactiveDec=0.005,
+      boostStrength=1000.0,
+      dutyCyclePeriod=10,
   )
   output = np.zeros((nCols,), dtype=np.uint32)
   for _ in xrange(steps):
