@@ -55,7 +55,9 @@ for i =1:length(idx) %kl: search through the neurons that fired at least twice
     % what trials includes the coactive firings
     trial = (times-timeInMovie)/numFramesPerStim + 1;
     % average the time points of coactive firings for all the frequency
-    occurance_time(idx(i)) = mean(timeInMovie);
+    if length(timeInMovie)>0
+        occurance_time(idx(i)) = mean(timeInMovie);
+    end
     % histogram of the coactive firings around average time points within binEdges
     counts = histc(timeInMovie-mean(timeInMovie), binEdges);
     % normalize counts
@@ -63,8 +65,12 @@ for i =1:length(idx) %kl: search through the neurons that fired at least twice
         counts = counts/sum(counts);
     end
     % the histogram of distribution of firing time points of coactive assembly around average time points
-    timeJitterDistribution = timeJitterDistribution + counts;
-    timeInMovieSTD(i) = std(timeInMovie);
+    if length(counts)>0
+        timeJitterDistribution = timeJitterDistribution + counts;
+    end
+    if length(timeInMovie)>0
+        timeInMovieSTD(i) = std(timeInMovie);
+    end
     
     trialDist = [trialDist trial];
 end
