@@ -4,7 +4,7 @@
 % Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 % with Numenta, Inc., for a separate license for this software code, the
 % following terms and conditions apply:
-%
+% 
 % This program is free software: you can redistribute it and/or modify
 % it under the terms of the GNU Affero Public License version 3 as
 % published by the Free Software Foundation.
@@ -22,7 +22,6 @@
 
 % This scritp summarizes the decreasing sparsity across trials for 
 % all available experiments for each area
-
 %%
 clear all;
 close all;
@@ -43,6 +42,8 @@ for stimType = 2
         numNeuron = length(spiketrain);
         numFramesPerStim = round(imgPara.stim_time / imgPara.dt);
         gratingResponse = [];
+        % spikesPerNeuron records the accumulated spike counts for each
+        % neuron during the 20 trials for each stimulus types
         spikesPerNeuron = zeros(numNeuron, 3);
         for i = 1:numNeuron
             for j = 1:imgPara.stim_type
@@ -57,7 +58,7 @@ for stimType = 2
         
         fprintf('Number of cells: %d \n', numNeuron);
         %% Population Response to Natural Stimuli
-        goodCells = (1:numNeuron)';
+        goodCells = (1:numNeuron)'; % a vector
         %     goodCells = find(spikesPerNeuron(:,stimType)>3);
         spikeMat = get_resposne_mat(spiketrain, imgPara, stimType,goodCells, 0);
         
@@ -74,7 +75,7 @@ for stimType = 2
         print(h,'-dpdf', ['figures/sparseness_over_time_stim_' num2str(stimType) ...
             '_area_' area '_date_' date '.pdf']);
     end
-    %%
+    %% plot the sparsity over trials 
     h=figure(4);clf;
     subplot(2,2,1);
     plot(numActiveNeuron/numTotalNeuron/numFramesPerStim, '-o')

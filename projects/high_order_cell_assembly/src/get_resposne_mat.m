@@ -22,25 +22,30 @@
 
 function spikeMat = get_resposne_mat(spiketrain, imgPara, stimType, goodCells, plotRaster)
 %%
-numNeuron = length(goodCells);
-numFramesPerStim = round(imgPara.stim_time / imgPara.dt);
+numNeuron = length(goodCells); % the number of neurons
+% imgPara.stim_time = 32s, imgPara.dt = 0.075103, 
+% numFramesPerStim is the number of the frames within 32s movie stimulus
+numFramesPerStim = round(imgPara.stim_time / imgPara.dt); 
 
 spikeMat = [];
-%%
+%% generate the spike timing for all the neurons through all trials
 for rep = 1:imgPara.stimrep    
     spikesCurrentTrial = zeros(numNeuron, numFramesPerStim);
     spikesRaster = [];
     cellI = 1;
     for i = goodCells'
+        % spikesI: spiking timing of a specific neuron at a specific trial
         spikesI = spiketrain(i).st{rep, stimType};
         spikesI = round(spikesI(spikesI<=numFramesPerStim));
         spikesI = spikesI(spikesI>0);
-                
+        
+        % along the 426 frames, spike timings was labeled
         spikesCurrentTrial(cellI,spikesI) = 1;
         cellI  = cellI +1;
         spikesRaster = [spikesRaster spikesI*imgPara.dt -1];
     end
-    
+     
+    % return spikeMat as the spiking time for all neurons
     spikeMat = [spikeMat spikesCurrentTrial];    
     if(plotRaster>0)
     % plot population response

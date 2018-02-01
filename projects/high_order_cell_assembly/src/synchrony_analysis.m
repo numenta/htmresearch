@@ -19,7 +19,7 @@
 %
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
-
+ 
 function [freqData, freqFakeData] = synchrony_analysis(spikeTrains, fakeSpikeTrains, numSamples, numCoActive)
 %%
 numSamples = 50000;

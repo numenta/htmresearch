@@ -20,18 +20,19 @@
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
 
+% this function is to generate poisson spikes by using poissrnd 
 function poissSpikes = generate_poisson_spikes(spikeMat, imgPara)
 % disp(' generating Poisson spike trains ... ');
 meanFiringRate = mean(spikeMat, 2);
-[numNeuron, NT]= size(spikeMat);
+[numNeuron, NT]= size(spikeMat); % NT is number of frames through 20 trials
 
 
-poissSpikes = zeros(numNeuron, NT);
+poissSpikes = zeros(numNeuron, NT); 
 for i=1:numNeuron
     poissSpikes(i,:) = poissrnd(meanFiringRate(i), [1, NT]);
 end
 
-
+ 
 % firingRate = zeros(numNeuron, numFramesPerStim);
 % poissSpikes = zeros(numNeuron, NT);
 % for i=1:numNeuron        

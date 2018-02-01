@@ -231,7 +231,7 @@ for exp = 1%:length(DataFolderList)
     figure(6);clf;
     rowi=1;
     coli=1;
-    tSync = table();
+    tSync = [];
     
     yAll = [];
     yerrAll = [];
@@ -239,22 +239,33 @@ for exp = 1%:length(DataFolderList)
     for numCoactive = 3:6
         [frequency, binaryWords] = synchrony_analysis_efficient(spikeMat, numCoactive);
         
-        tShuffle = table;
-        tPoiss = table;
+        tShuffle = [];
+        tPoiss = dataframe([], 'colnames', {'NumWords','MeanRpts', 'maxRpts'});
         for rep=1:3
             fakeSpikes = shuffle_spikes(spikeMat, imgPara);
             [frequencyShuffle, ~] = synchrony_analysis_efficient(fakeSpikes, numCoactive);
-            tShuffle = [tShuffle; ...
-                table(length(frequencyShuffle), sum(frequencyShuffle>1), max(frequencyShuffle), ...
-                'VariableNames', {'NumWords','MeanRpts', 'maxRpts'})];
-            
+            if (isempty(tShuffle))
+                tShuffle = dataframe([length(frequencyShuffle), sum(frequencyShuffle>1), max(frequencyShuffle)], ...
+                           'colnames', {'NumWords','MeanRpts', 'maxRpts'});
+            else
+                tShuffle = [tShuffle; ...
+                    dataframe([length(frequencyShuffle), sum(frequencyShuffle>1), max(frequencyShuffle)], ...
+                    'colnames', {'NumWords','MeanRpts', 'maxRpts'})];
+            end
+
             poissSpikes = generate_poisson_spikes(spikeMat, imgPara);
             frequencyPoiss = synchrony_analysis_efficient(poissSpikes, numCoactive);
-            tPoiss = [tPoiss; ...
-                table(length(frequencyPoiss), sum(frequencyPoiss>1), max(frequencyPoiss), ...
-                'VariableNames', {'NumWords','MeanRpts', 'maxRpts'})];
+            if (isempty(tPoiss))
+                tPoiss = dataframe([length(frequencyPoiss), sum(frequencyPoiss>1), max(frequencyPoiss)], ...
+                                    'colnames', {'NumWords','MeanRpts', 'maxRpts'});
+            else
+                tPoiss = [tPoiss; ...
+                    dataframe([length(frequencyPoiss), sum(frequencyPoiss>1), max(frequencyPoiss)], ...
+                               'colnames', {'NumWords','MeanRpts', 'maxRpts'})];
+            end
+
         end
-        tSync = [tSync; table(length(frequency), mean(tShuffle.NumWords), mean(tPoiss.NumWords))];
+        tSync = [tSync; [length(frequency), mean(tShuffle.NumWords), mean(tPoiss.NumWords)]];
         disp(mean(frequency))
         disp(mean(frequencyShuffle))
         disp(mean(frequencyPoiss))

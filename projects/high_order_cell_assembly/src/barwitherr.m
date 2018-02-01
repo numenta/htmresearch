@@ -89,7 +89,7 @@ else
         values = varargin{2};
         [tmp xOrder] = sort(varargin{1});
     end
-end
+end 
 
 % If an extra dimension is supplied for the errors then they are
 % assymetric split out into upper and lower:
@@ -120,7 +120,8 @@ if nRows > 1
     hErrorbar = zeros(1,nCols);
     for col = 1:nCols
         % Extract the x location data needed for the errorbar plots:
-        if verLessThan('matlab', '8.4')
+        % Octave or matlab < 8.4
+        if (~exist("verLessThan") || verLessThan('matlab', '8.4'))
             % Original graphics:
             x = get(get(handles.bar(col),'children'),'xdata');
         else
@@ -134,7 +135,8 @@ if nRows > 1
         set(hErrorbar(col), 'marker', 'none')
     end
 else
-    if verLessThan('matlab', '8.4')
+    % Octave or matlab < 8.4
+    if (~exist("verLessThan") || verLessThan('matlab', '8.4'))
         % Original graphics:
         x = get(get(handles.bar,'children'),'xdata');
     else

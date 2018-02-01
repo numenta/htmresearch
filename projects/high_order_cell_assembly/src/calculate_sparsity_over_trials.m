@@ -19,15 +19,16 @@
 %
 % http://numenta.org/licenses/
 % ----------------------------------------------------------------------
-
+ 
 function sparsity = calculate_sparsity_over_trials(spikeMat, imgPara)
 
 sparsity = zeros(imgPara.stimrep, 1);
 numFramesPerStim = round(imgPara.stim_time / imgPara.dt);
 
-
+% the returned sparsity is everaged for all the neurons' firings within
+% each specific trial
 for rep = 1:imgPara.stimrep        
     spikesCurrentTrial = spikeMat(:, (rep-1)*numFramesPerStim+(1:numFramesPerStim));    
-    sparsity(rep) = mean(mean(spikesCurrentTrial));
+    sparsity(rep) = mean(mean(spikesCurrentTrial)); % average by columns and by rows
 end
     

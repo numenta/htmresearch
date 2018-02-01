@@ -20,10 +20,11 @@
 # ----------------------------------------------------------------------
 
 """
-Mimic the location_module_experiment, but this time use multiple cortical
-columns and egocentric locations.
+Mimic L2L4Inference capacity test but reuse the multi-column experiment
+framework.
 """
 
+import argparse
 import math
 import os
 import random
@@ -33,49 +34,10 @@ import numpy as np
 from grid_multi_column_experiment import MultiColumn2DExperiment
 from tracing import MultiColumn2DExperimentVisualizer as trace
 
-
-DISCRETE_OBJECTS = {
-  "Object 1": {(0,0): "A",
-               (0,1): "B",
-               (0,2): "A",
-               (1,0): "A",
-               (1,2): "A"},
-  "Object 2": {(0,1): "A",
-               (1,0): "B",
-               (1,1): "B",
-               (1,2): "B",
-               (2,1): "A"},
-  "Object 3": {(0,1): "A",
-               (1,0): "A",
-               (1,1): "B",
-               (1,2): "A",
-               (2,0): "B",
-               (2,1): "A",
-               (2,2): "B"},
-  "Object 4": {(0,0): "A",
-               (0,1): "A",
-               (0,2): "A",
-               (1,0): "A",
-               (1,2): "B",
-               (2,0): "B",
-               (2,1): "B",
-               (2,2): "B"},
-}
-
-DISCRETE_OBJECT_PLACEMENTS = {
-  "Object 1": (2, 3),
-  "Object 2": (6, 2),
-  "Object 3": (3, 7),
-  "Object 4": (7, 6)
-}
-
 CM_PER_UNIT = 100.0 / 12.0
 
 
-def doExperiment():
-  if not os.path.exists("logs"):
-    os.makedirs("logs")
-
+def doExperiment(numCorticalColumns):
   objects = dict(
     (objectName, [{"top": location[0] * CM_PER_UNIT,
                    "left": location[1] * CM_PER_UNIT,
@@ -88,7 +50,7 @@ def doExperiment():
   objectPlacements = dict(
     (objectName, [placement[0] * CM_PER_UNIT,
                   placement[1] * CM_PER_UNIT])
-    for objectName, placement in DISCRETE_OBJECT_PLACEMENTS.iteritems())
+    for objectName, placement in OBJECT_PLACEMENTS_LEARN.iteritems())
 
   cellDimensions = (10, 10)
 
@@ -106,36 +68,55 @@ def doExperiment():
         "orientation": orientation,
       })
 
-  print("Initializing experiment")
   exp = MultiColumn2DExperiment(
-    featureNames=("A", "B"),
+    featureNames=(FEATURES),
     objects=objects,
     objectPlacements=objectPlacements,
     locationConfigs=locationConfigs,
-    numCorticalColumns=3,
-    worldDimensions=(100, 100))
+    numCorticalColumns=numCorticalColumns,
+    worldDimensions=(100, 100),
+    featureW=10,
+    cellsPerColumn=16,
+  )
 
-  print("Learning objects")
-  filename = "logs/{}-cells-learn.log".format(np.prod(cellDimensions))
-  with open(filename, "w") as fileOut:
-    with trace(exp, fileOut, includeSynapses=True):
-      print "Logging to", filename
-      bodyPlacement = [6. * CM_PER_UNIT, 1. * CM_PER_UNIT]
-      exp.learnObjects(bodyPlacement)
+  bodyPlacement = [6. * CM_PER_UNIT, 1. * CM_PER_UNIT]
+  exp.learnObjects(bodyPlacement)
 
-  filename = "logs/{}-cells-infer.log".format(np.prod(cellDimensions))
-  with open(filename, "w") as fileOut:
-    with trace(exp, fileOut, includeSynapses=True):
-      print "Logging to", filename
-
-      bodyPlacement = [6. * CM_PER_UNIT, 11. * CM_PER_UNIT]
-      exp.inferObjects(bodyPlacement, maxTouches=2)
+  bodyPlacement = [6. * CM_PER_UNIT, 11. * CM_PER_UNIT]
+  numTouchesRequired = exp.inferObjects(bodyPlacement, maxTouches=10)
+  for touches, count in sorted(numTouchesRequired.iteritems()):
+    print "{}: {}".format(touches, count)
 
 
 if __name__ == "__main__":
-  doExperiment()
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--columns", default=1, type=int, help="number of cortical columns")
+  parser.add_argument("--objects", default=4, type=int, help="number of objects")
+  parser.add_argument("--features", default=4, type=int, help="number of features")
+  args = parser.parse_args()
 
-  print "Visualize these logs at:"
-  print "http://numenta.github.io/htmresearch/visualizations/location-layer/multi-column-inference.html"
-  print ("or in a Jupyter notebook with the htmresearchviz0 package and the "
-         "printMultiColumnInferenceRecording function.")
+  OBJ_MAX_DIM = 10
+  POSSIBLE_FEATURE_LOCS = []
+  for i in xrange(OBJ_MAX_DIM):
+    for j in xrange(OBJ_MAX_DIM):
+      POSSIBLE_FEATURE_LOCS.append((i, j))
+
+  FEATURES = ["{}".format(i) for i in xrange(args.features)]
+
+  NUM_OBJECTS = args.objects
+  POINTS_PER_OBJ = 10
+  DISCRETE_OBJECTS = {}
+  OBJECT_PLACEMENTS_LEARN = {}
+  for i in xrange(NUM_OBJECTS):
+    np.random.shuffle(POSSIBLE_FEATURE_LOCS)
+    locs = POSSIBLE_FEATURE_LOCS[0:POINTS_PER_OBJ]
+    objName = "Object {}".format(i)
+    feats = [np.random.choice(FEATURES) for _ in xrange(POINTS_PER_OBJ)]
+    DISCRETE_OBJECTS[objName] = dict(zip(locs, feats))
+
+    objLoc = (np.random.randint(OBJ_MAX_DIM),
+              np.random.randint(OBJ_MAX_DIM))
+    OBJECT_PLACEMENTS_LEARN[objName] = objLoc
+
+  print "Columns: {} Features: {} Objects: {}".format(args.columns, args.features, args.objects)
+  doExperiment(args.columns)

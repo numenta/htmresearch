@@ -25,6 +25,7 @@ columns
 """
 
 import abc
+import collections
 import random
 
 import numpy as np
@@ -91,7 +92,8 @@ class MultiColumn2DExperiment(object):
   """
 
   def __init__(self, objects, objectPlacements, featureNames, locationConfigs,
-               numCorticalColumns, worldDimensions):
+               numCorticalColumns, worldDimensions, featureW=15,
+               cellsPerColumn=32):
 
     self.objects = objects
     self.objectPlacements = objectPlacements
@@ -100,7 +102,7 @@ class MultiColumn2DExperiment(object):
     self.locationConfigs = locationConfigs
 
     self.features = dict(
-      ((iCol, k), np.array(sorted(random.sample(xrange(150), 15)), dtype="uint32"))
+      ((iCol, k), np.array(sorted(random.sample(xrange(150), featureW)), dtype="uint32"))
       for k in featureNames
       for iCol in xrange(numCorticalColumns))
 
@@ -108,7 +110,7 @@ class MultiColumn2DExperiment(object):
     for _ in xrange(numCorticalColumns):
       inputLayer = ApicalTiebreakPairMemory(**{
         "columnCount": 150,
-        "cellsPerColumn": 32,
+        "cellsPerColumn": cellsPerColumn,
         "initialPermanence": 1.0,
         "basalInputSize": sum(
           np.prod(config["cellDimensions"])
@@ -117,7 +119,7 @@ class MultiColumn2DExperiment(object):
         "seed": random.randint(0,2048)})
 
       objectLayer = ColumnPooler(**{
-        "inputWidth": 150 * 32,
+        "inputWidth": 150 * cellsPerColumn,
         "initialProximalPermanence": 1.0,
         "initialProximalPermanence": 1.0,
         "lateralInputWidths": [4096] * (numCorticalColumns - 1),
@@ -342,13 +344,31 @@ class MultiColumn2DExperiment(object):
           c.objectRepresentations[objectName] = c.objectLayer.getActiveCells()
 
 
-  def inferObjectsWithTwoTouches(self, bodyPlacement):
+  def isObjectClassified(self, objectName, minOverlap=30, maxActive=60):
+    for c in self.corticalColumns:
+      overlap = len(np.intersect1d(
+        c.objectRepresentations[objectName],
+        c.objectLayer.getActiveCells()
+      ))
+      totalActive = len(c.objectLayer.getActiveCells())
+      if overlap < minOverlap or totalActive > maxActive:
+        return False
+
+    return True
+
+
+  def inferObjects(self, bodyPlacement, maxTouches=2):
     """
     Touch each object with multiple sensors twice.
+
+    :returns: dict mapping the number of touches required to the number of
+        objects that took that many touches to be uniquely inferred. The 'None'
+        key is reserved for objects not recognized after `maxTouches` touches
     """
     for monitor in self.monitors.itervalues():
       monitor.afterBodyWorldLocationChanged(bodyPlacement)
 
+    numTouchesRequired = collections.defaultdict(int)
     for objectName, objectFeatures in self.objects.iteritems():
       self.reset()
 
@@ -357,7 +377,7 @@ class MultiColumn2DExperiment(object):
       featureIndexByColumnIterator = (
         greedySensorPositions(self.numCorticalColumns, len(objectFeatures)))
 
-      for _ in xrange(2):
+      for touch in xrange(maxTouches):
         # Choose where to place each sensor.
         featureIndexByColumn = featureIndexByColumnIterator.next()
         sensedFeatures = [objectFeatures[i] for i in featureIndexByColumn]
@@ -396,6 +416,15 @@ class MultiColumn2DExperiment(object):
             prevCellActivity = cellActivity
             for monitor in self.monitors.itervalues():
               monitor.flush()
+
+        # Check if the object is narrowed down
+        if self.isObjectClassified(objectName):
+          numTouchesRequired[touch + 1] += 1
+          break
+      else:
+        numTouchesRequired[None] += 1
+
+    return numTouchesRequired
 
 
   def reset(self):
