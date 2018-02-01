@@ -89,7 +89,7 @@ def analyzeExperiment(dirName):
   """
   # Results are put into a pkl file which can be used to generate the plots.
   # dirName is the absolute path where the pkl file will be placed.
-  resultsFilename = os.path.join(dirName, "sequence_batch_results.pkl")
+  resultsFilename = os.path.join(dirName, "pure_sequences_example.pkl")
 
   with open(resultsFilename, "rb") as f:
     results = cPickle.load(f)
@@ -231,22 +231,22 @@ if __name__ == "__main__":
 
   dirname = os.path.dirname(os.path.realpath(__file__))
 
-  numTrials = 10
-  featureRange = [50, 100]
-  seqRange = [50, 51]
-  locationRange = [10, 100]
+  # numTrials = 10
+  # featureRange = [50, 100]
+  # seqRange = [50, 51]
+  # locationRange = [10, 100]
+  #
+  # args = createArgs(
+  #   numSequences=seqRange,
+  #   numFeatures=featureRange,
+  #   numLocations=locationRange,
+  #   numObjects=[0],
+  #   seqLength=[10],
+  #   nTrials=[numTrials]
+  # )
+  # pprint.pprint(args)
 
-  args = createArgs(
-    numSequences=seqRange,
-    numFeatures=featureRange,
-    numLocations=locationRange,
-    numObjects=[0],
-    seqLength=[10],
-    nTrials=[numTrials]
-  )
-  pprint.pprint(args)
-
-  # analyzeExperiment(dirname)
+  analyzeExperiment(dirname)
   # summarizeExperiment(dirname)
   # stripPickleFile(dirname)
   # joinPickleFiles(dirname,

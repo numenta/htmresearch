@@ -419,7 +419,7 @@ def plotAccuracyDuringSequenceInference(dirName, title="", yaxis=""):
 def plotAccuracyVsSequencesDuringSequenceInference(dirName, title="", yaxis=""):
 
   # Read in results file
-  with open(os.path.join(dirName, "sequences_range.pkl"), "rb") as f:
+  with open(os.path.join(dirName, "sequences_range_2048_mcs.pkl"), "rb") as f:
     results = cPickle.load(f)
 
   sequenceRange = []
@@ -466,7 +466,7 @@ def plotAccuracyVsSequencesDuringSequenceInference(dirName, title="", yaxis=""):
   # Create the plot.
   plt.figure()
   plotPath = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                          "plots", "accuracy_vs_sequences.pdf")
+                          "plots", "accuracy_vs_sequences_2048_mcs.pdf")
 
   # Plot each curve
   legendList = []

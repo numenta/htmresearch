@@ -235,7 +235,7 @@ class L4TMExperiment(L4L2Experiment):
       # Keep running total of how often the number of predictedActive cells are
       # in the range.  We always skip the first (unpredictable) count.
       predictedActiveStat = stats["TM PredictedActive C0"][1:]
-      TMRepresentationStat = stats["TM Representation C0"][1:]
+      TMRepresentationStat = stats["TM Full Representation C0"][1:]
       # print "\n-----------"
       # print stats["object"], predictedActiveStat
       for numCells,sdr in zip(predictedActiveStat, TMRepresentationStat):
@@ -268,7 +268,8 @@ class L4TMExperiment(L4L2Experiment):
   def stripStats(self):
     """Remove detailed stats - needed for large experiment pools."""
     for stat in self.statistics:
-      stat.pop("TM Representation C0")
+      stat.pop("TM Full Representation C0")
+      stat.pop("L2 Full Representation C0")
 
 
   def _unsetLearningMode(self):
@@ -343,8 +344,13 @@ class L4TMExperiment(L4L2Experiment):
       )
 
       # The indices of all active cells in the TM
-      statistics["TM Representation C" + str(i)].append(
+      statistics["TM Full Representation C" + str(i)].append(
         TMRepresentation[i]
+      )
+
+      # The indices of all active cells in the TM
+      statistics["L2 Full Representation C" + str(i)].append(
+        L2Representation[i]
       )
 
       # Insert exact TM representation into the classifier if the number of

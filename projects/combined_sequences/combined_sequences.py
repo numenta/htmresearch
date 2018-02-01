@@ -89,9 +89,9 @@ def printDiagnosticsAfterTraining(exp, verbosity=0):
       numConnectedCells += 1
       connectedSynapses += cp
 
-  print "Num connected cells:", numConnectedCells
+  print "Num L2 cells with connected synapses:", numConnectedCells
   if numConnectedCells > 0:
-    print "Avg per connected cell:", float(connectedSynapses)/numConnectedCells
+    print "Avg connected synapses per connected cell:", float(connectedSynapses)/numConnectedCells
 
   print
 
@@ -282,7 +282,8 @@ def inferSuperimposedSequenceObjects(exp, sequenceId, objectId, sequences, objec
 
   superimposedSDRs = createSuperimposedSDRs(inferenceSDRSequence, inferenceSDRObject)
 
-  exp.infer(superimposedSDRs, objectName=str(sequenceId) + "+" + str(objectId))
+  # exp.infer(superimposedSDRs, objectName=str(sequenceId) + "+" + str(objectId))
+  exp.infer(superimposedSDRs, objectName=sequenceId*len(objects) + objectId)
 
 
 def trainSuperimposedSequenceObjects(exp, numRepetitions,
@@ -456,14 +457,14 @@ def runExperiment(args):
     L4Overrides={"initialPermanence": 0.21,
            "activationThreshold": 18,
            "minThreshold": 18,
-           "basalPredictedSegmentDecrement": basalPredictedSegmentDecrement
+           "basalPredictedSegmentDecrement": basalPredictedSegmentDecrement,
     },
   )
 
   printDiagnostics(exp, sequences, objects, args, verbosity=0)
 
   # Train the network on all the sequences and then all the objects.
-  if figure in ["S", "6"]:
+  if figure in ["S", "6", "7"]:
     trainSuperimposedSequenceObjects(exp, numRepetitions, sequences, objects)
   else:
     trainObjects(objects, exp, numRepetitions)
@@ -585,10 +586,10 @@ def runExperimentPool(numSequences,
                       figure="",
                       numRepetitions=1,
                       synPermProximalDecL2=[0.001],
-                      minThresholdProximalL2=[15],
-                      sampleSizeProximalL2=[20],
+                      minThresholdProximalL2=[10],
+                      sampleSizeProximalL2=[15],
                       inputSize=[1024],
-                      basalPredictedSegmentDecrement=[0.0001],
+                      basalPredictedSegmentDecrement=[0.0006],
                       resultsName="convergence_results.pkl"):
   """
   Run a bunch of experiments using a pool of numWorkers multiple processes. For
@@ -683,9 +684,12 @@ def runExperiment4A(dirName):
       "seqLength": 10,
       "numFeatures": 100,
       "trialNum": 0,
-      "numObjects": 50,
-      "numLocations": 100,
+      "numObjects": 0,
+      "numLocations": 200,
       "numRepetitions": 30,
+      "inputSize": 2048,
+      "basalPredictedSegmentDecrement": 0.001,
+      "stripStats": False,
     }
   )
 
@@ -703,13 +707,12 @@ def runExperiment4B(dirName):
   """
   # Results are put into a pkl file which can be used to generate the plots.
   # dirName is the absolute path where the pkl file will be placed.
-  resultsName = os.path.join(dirName, "sequence_batch_results.pkl")
+  resultsName = os.path.join(dirName, "sequence_batch_high_dec_normal_features.pkl")
 
   numTrials = 10
-  featureRange = [5, 10, 100]
+  featureRange = [10, 50, 100, 200]
   seqRange = [50]
-  locationRange = [10, 100, 200, 300, 400, 500, 600, 700, 800, 900,
-                   1000, 1100, 1200, 1300, 1400, 1500, 1600]
+  locationRange = [10, 100, 200, 300, 400, 500]
 
   runExperimentPool(
     numSequences=seqRange,
@@ -719,6 +722,35 @@ def runExperiment4B(dirName):
     seqLength=10,
     nTrials=numTrials,
     numWorkers=cpu_count()-1,
+    basalPredictedSegmentDecrement=[0.005],
+    resultsName=resultsName)
+
+
+def runExperiment4C(dirName):
+  """
+  Similar to 4B but runs multiple sequences
+  """
+  # Results are put into a pkl file which can be used to generate the plots.
+  # dirName is the absolute path where the pkl file will be placed.
+  resultsName = os.path.join(dirName, "sequences_range_2048_mcs_500_locs.pkl")
+
+  numTrials = 10
+  featureRange = [50, 100, 200]
+  seqRange = [10, 25, 50, 75, 100, 150]
+  locationRange = [500]
+
+  runExperimentPool(
+    numSequences=seqRange,
+    numFeatures=featureRange,
+    numLocations=locationRange,
+    numObjects=[0],
+    seqLength=10,
+    nTrials=numTrials,
+    numWorkers=cpu_count()-1,
+    # minThresholdProximalL2=[15],
+    # sampleSizeProximalL2=[17],
+    basalPredictedSegmentDecrement=[0.0006],
+    inputSize=[2048],
     resultsName=resultsName)
 
 
@@ -755,12 +787,12 @@ def runExperiment5B(dirName):
   """
   # Results are put into a pkl file which can be used to generate the plots.
   # dirName is the absolute path where the pkl file will be placed.
-  resultsName = os.path.join(dirName, "sensorimotor_batch_results.pkl")
+  resultsName = os.path.join(dirName, "sensorimotor_batch_results_more_objects.pkl")
 
   # We run 10 trials for each column number and then analyze results
   numTrials = 10
-  featureRange = [5, 10, 50]
-  objectRange = [2, 5, 10, 20, 30, 40, 50, 70]
+  featureRange = [10, 50, 100, 150, 500]
+  objectRange = [110, 130, 200, 300]
   locationRange = [100]
 
   # Comment this out if you  are re-running analysis on already saved results.
@@ -816,14 +848,17 @@ def runExperiment7(dirName):
   resultsFilename = os.path.join(dirName, "superimposed_sequence_results.pkl")
   results = runExperiment(
     {
-      "numSequences": 5,
+      "numSequences": 50,
       "seqLength": 10,
-      "numObjects": 5,
-      "numFeatures": 50,
+      "numObjects": 50,
+      "numFeatures": 500,
       "trialNum": 8,
-      "numLocations": 50,
-      "settlingTime": 3,
+      "numLocations": 100,
+      "settlingTime": 1,
       "figure": "7",
+      "numRepetitions": 30,
+      "basalPredictedSegmentDecrement": 0.001,
+      "stripStats": False,
     }
   )
 
@@ -940,6 +975,7 @@ if __name__ == "__main__":
   generateFigureFunc = {
     "4A": runExperiment4A,
     "4B": runExperiment4B,
+    "4C": runExperiment4C,
     "5A": runExperiment5A,
     "5B": runExperiment5B,
     "6":  runExperiment6,
