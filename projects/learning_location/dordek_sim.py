@@ -44,8 +44,8 @@ def computeCorrelation(history, ws):
   return correlation
 
 
-def getNewLocation(x, y, width, viewDistance, wrap, locationHeatmap, stepSize):
-  if random.random() < 0.01:
+def getNewLocation(x, y, width, viewDistance, wrap, locationHeatmap, stepSize, jumpProb, direction, directionStability):
+  if random.random() < jumpProb:
     if wrap:
       border = 0
     else:
@@ -58,18 +58,45 @@ def getNewLocation(x, y, width, viewDistance, wrap, locationHeatmap, stepSize):
           options.append((locationHeatmap[i][j], (i, j)))
     options.sort()
     coord = options[0][1]
-    return coord
+    return coord + [direction]
 
-  options = []
+  options = set()
   if x - stepSize >= viewDistance or wrap:
-    options.append(((x - stepSize) % width, y))
+    options.add("left")
   if x + stepSize < width - viewDistance or wrap:
-    options.append(((x + stepSize) % width, y))
+    options.add("right")
   if y - stepSize >= viewDistance or wrap:
-    options.append((x, (y - stepSize) % width))
+    options.add("up")
   if y + stepSize < width - viewDistance or wrap:
-    options.append((x, (y + stepSize) % width))
-  return options[int(random.random() * len(options))]
+    options.add("down")
+
+  while True:
+    # This is a random value between (-180, +180) scaled by directionStability
+    dirChange = (((random.random() * 360.0) - 180.0) *
+                 (1.0 - directionStability))
+    direction = (direction + dirChange) % 360.0
+    if direction >= 135.0 and direction < 225.0:
+      movement = "left"
+    elif direction >= 315.0 or direction < 45.0:
+      movement = "right"
+    elif direction >=45.0 and direction < 135.0:
+      movement = "up"
+    elif direction >= 225.0 and direction < 315.0:
+      movement = "down"
+    else:
+      raise Exception("Invalid angle!!!")
+
+    if movement in options:
+      break
+
+  if movement == "left":
+    return ((x - stepSize) % width, y, direction)
+  elif movement == "right":
+    return ((x + stepSize) % width, y, direction)
+  elif movement == "up":
+    return (x, (y - stepSize) % width, direction)
+  else:
+    return (x, (y + stepSize) % width, direction)
 
 
 def getActive(world, ww, x, y, rr):
@@ -97,7 +124,7 @@ def frequencyAnalysis(m):
   plt.show()
 
 
-def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, steps, rr, spW, stimulusThreshold, connected, stepSize):
+def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, steps, rr, spW, stimulusThreshold, connected, stepSize, jumpProb, directionStability):
   ws = ww ** 2
   x = 10
   y = 10
@@ -119,9 +146,11 @@ def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, step
       dutyCyclePeriod=dutyCycle,
       boostStrength=boost,
       seed=1936,
+      globalInhibition=True,
   )
   output = np.zeros((numColumns,), dtype=np.uint32)
-  for _ in xrange(steps):
+  direction = 0
+  for i in xrange(steps):
     locationHeatmap[x][y] += 1
     active = getActive(world, ww, x, y, rr)
     history.append(active)
@@ -129,8 +158,15 @@ def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, step
     for v in active:
       activeInput[v] = 1
     sp.compute(activeInput, True, output)
-    x, y = getNewLocation(x, y, ww, rr, False, locationHeatmap=locationHeatmap, stepSize=stepSize)
+    x, y, direction = getNewLocation(x, y, ww, rr, wrap=True, locationHeatmap=locationHeatmap, stepSize=stepSize, jumpProb=jumpProb, direction=direction, directionStability=directionStability)
 
+    if (i + 1) % 10000 == 0:
+      saveImage(history, ws, ww, numColumns, locationHeatmap, potentialPct, inc, dec, mpo, dutyCycle, boost, rr, spW, i+1, sp)
+
+  saveImage(history, ws, ww, numColumns, locationHeatmap, potentialPct, inc, dec, mpo, dutyCycle, boost, rr, spW, steps, sp)
+
+
+def saveImage(history, ws, ww, numColumns, locationHeatmap, potentialPct, inc, dec, mpo, dutyCycle, boost, rr, spW, steps, sp):
   autoCorrelation = computeCorrelation(history, ws)
 
   pca = PCA(n_components=30)
@@ -169,7 +205,6 @@ def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, step
   maxVal = max([m.max() for m in reconstructions])
   reconstructions = [m / maxVal for m in reconstructions]
 
-  assert numColumns == 25
   zoomFactor = float(ww) / float(autoCorrelation.shape[0])
   autoCorrelation = scipy.ndimage.zoom(autoCorrelation, zoomFactor)
   autoCorrelation /= autoCorrelation.max()
@@ -177,7 +212,7 @@ def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, step
   padding = np.zeros((ww, ww))
   header = np.concatenate([autoCorrelation, locationHeatmap] +
                           ([padding] * 3))
-  rows = [np.concatenate(reconstructions[i*5:(i+1)*5]) for i in xrange(5)]
+  rows = [np.concatenate(reconstructions[i*5:(i+1)*5]) for i in xrange(numColumns / 5)]
   allPermanences = np.concatenate([header] + principleComponents + rows, axis=1)
   #allPermanences = np.concatenate(rows, axis=1)
   plt.imshow(allPermanences, cmap="hot", interpolation="nearest")
@@ -190,19 +225,21 @@ def main():
   stimulusThreshold = 0
   connected = 0.5
   totalTrials = 0
+  jumpProb = 0.0
+  directionStability = 0.9
   stepSize = 1
   for ww in (30,):
     for rr in (1,):
-      for steps in (100000,):
+      for steps in (5000000,):
         for numColumns in (25,):
           for spW in (1,):
             for potentialPct in (1.0,):
-              for inc in (0.01,):
-                for dec in (0.003,):
+              for inc in (0.04,):
+                for dec in (0.012,):
                   for mpo in (0.001,):
                     for dutyCycle in (3,):
                       for boost in (15.0,):
-                        runTrial(ww=ww, numColumns=numColumns, potentialPct=potentialPct, inc=inc, dec=dec, mpo=mpo, dutyCycle=dutyCycle, boost=boost, steps=steps, rr=rr, spW=spW, stimulusThreshold=stimulusThreshold, connected=connected, stepSize=stepSize)
+                        runTrial(ww=ww, numColumns=numColumns, potentialPct=potentialPct, inc=inc, dec=dec, mpo=mpo, dutyCycle=dutyCycle, boost=boost, steps=steps, rr=rr, spW=spW, stimulusThreshold=stimulusThreshold, connected=connected, stepSize=stepSize, jumpProb=jumpProb, directionStability=directionStability)
                         totalTrials += 1
   print "Total trials: {}".format(totalTrials)
   print "Time: {}".format(time.time() - start)
