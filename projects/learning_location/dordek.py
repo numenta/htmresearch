@@ -27,6 +27,8 @@ import random
 
 import matplotlib.pyplot as plt
 import numpy as np
+import scipy.ndimage
+import scipy.stats
 from sklearn.decomposition import PCA
 
 
@@ -64,7 +66,7 @@ def getActive(world, x, y):
 def main():
   x = 10
   y = 10
-  steps = 100000
+  steps = 10000
   history = []
   world = np.array([i for i in xrange(625)])
   world.resize((25, 25))
@@ -78,7 +80,7 @@ def main():
   #plt.imshow(correlation, cmap="hot", interpolation="nearest")
   #plt.show()
 
-  pca = PCA(n_components=50)
+  pca = PCA(n_components=25)
   pca.fit(correlation)
   print 'components'
   print pca.components_
@@ -90,9 +92,41 @@ def main():
   #transform[negativeMask] = 0
   print transform.shape
 
-  for i in [i * 2 for i in xrange(25)]:
+  for i in xrange(25):
     plt.imshow(transform[:,i].reshape((25, 25)), cmap="hot", interpolation="nearest")
     plt.show()
+
+  #hexGridness = []
+  #squareGridness = []
+  #for i in xrange(25):
+  #  # Generate rotation correlation every 6 degrees
+  #  orig = transform[:,i]
+  #  corr = orig.reshape((25, 25))
+  #  plt.imshow(corr, cmap="hot", interpolation="nearest")
+  #  plt.show()
+  #  plt.imshow(scipy.ndimage.rotate(corr, 60, reshape=False),
+  #             cmap="hot", interpolation="nearest")
+  #  plt.show()
+  #  plt.imshow(scipy.ndimage.rotate(corr, 90, reshape=False),
+  #             cmap="hot", interpolation="nearest")
+  #  plt.show()
+  #  angleCorr = dict(
+  #      [(d, np.corrcoef(orig, scipy.ndimage.rotate(
+  #          corr, d, reshape=False).flatten())[0][1])
+  #       for d in (30, 45, 60, 90, 120, 135, 150)])
+  #  print angleCorr
+  #  pHex = (angleCorr[60] + angleCorr[120]) / 2.0
+  #  nHex = (angleCorr[30] + angleCorr[90] + angleCorr[150]) / 3.0
+  #  hexGridness.append(pHex - nHex)
+  #  pSquare = angleCorr[90]
+  #  nSquare = (angleCorr[45] + angleCorr[135]) / 2.0
+  #  squareGridness.append(pSquare - nSquare)
+
+  #  hexness = sum(hexGridness) / float(len(hexGridness))
+  #  squareness = sum(squareGridness) / float(len(squareGridness))
+  #  plt.text(0, 0, "Gridness: {} sq and {} hex".format(squareness, hexness), fontsize=12)
+  #  plt.imshow(transform[:,i].reshape((25, 25)), cmap="hot", interpolation="nearest")
+  #  plt.show()
 
 
 if __name__ == "__main__":
