@@ -21,8 +21,9 @@
 # ----------------------------------------------------------------------
 import numbers
 import random
+import psutil
+import sys
 
-import numpy
 from htmresearch.support.expsuite import PyExperimentSuite
 
 from nupic.frameworks.opf.model_factory import ModelFactory
@@ -34,6 +35,8 @@ from htmresearch.support.sequence_prediction_dataset import SimpleDataset
 from htmresearch.support.sequence_prediction_dataset import HighOrderDataset
 from htmresearch.support.sequence_prediction_dataset import LongHighOrderDataset
 
+
+MODEL_MEMORY = 2e9  # Memory requirements per model: ~2Gb
 
 NUM_SYMBOLS = 16
 RANDOM_END = 50000
@@ -127,6 +130,15 @@ def classify(mapping, activeColumns, numPredictions):
 
 
 class Suite(PyExperimentSuite):
+
+  def parse_opt(self):
+    options, args = super(self.__class__, self).parse_opt()
+
+    # Make sure the number of cores used is compatible with the available memory
+    maxcores = min(int(psutil.TOTAL_PHYMEM / MODEL_MEMORY), psutil.NUM_CPUS)
+    options.ncores = min(self.options.ncores, maxcores)
+    self.options = options
+    return options, args
 
   def reset(self, params, repetition):
     random.seed(params['seed'])
