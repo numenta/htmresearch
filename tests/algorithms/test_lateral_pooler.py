@@ -22,6 +22,9 @@ import unittest
 import numpy as np
 from htmresearch.algorithms.lateral_pooler import LateralPooler
 import itertools
+from nupic.algorithms.spatial_pooler import SpatialPooler
+from htmresearch.support.lateral_pooler.utils import get_permanence_vals as get_W
+
 
 
 class LateralPoolerTest(unittest.TestCase):
@@ -29,75 +32,66 @@ class LateralPoolerTest(unittest.TestCase):
   Simplistic tests of the experimental lateral pooler implementation.
   """
 
-  def test_whether_encoding_is_the_same_as_wmax_for_uniform_H(self):
+  def test_whether_is_the_same_as_spatial_pooler(self):
     """
     Naive reality check for the encoding function 
     of the lateral pooler implementation.
     """
-    n = 24
-    m = 16
+    n = 1024
+    m = 784
     d = 100
-    w = 4
+    w = 20
 
-    X = np.random.rand(m,d)
-    
-    W = np.random.rand(n,m)
-    b = np.exp( - np.random.rand(n,1) )
-    H = np.ones((n,n))/n
-    np.fill_diagonal(H, 0.)
+    X = np.random.randint(0,2,size=(m,d))
+    Y_nup = np.zeros((n,d))
+    Y_lat = np.zeros((n,d))
 
-    pooler = LateralPooler(input_size=m, output_size=n, code_weight=4, seed=1)
-    pooler.set_connections(W,b,H)
-    Result = pooler.encode(X)
+    params_nup = {
+        "inputDimensions": [m,1],
+        "columnDimensions": [n,1],
+        "potentialRadius": n,
+        "potentialPct": 1.0,
+        "globalInhibition": True,
+        "localAreaDensity": -1.0,
+        "numActiveColumnsPerInhArea": w,
+        "stimulusThreshold": 0,
+        "synPermInactiveDec": 0.05,
+        "synPermActiveInc"  : 0.1,
+        "synPermConnected"  : 0.5,
+        "minPctOverlapDutyCycle": 0.001,
+        "dutyCyclePeriod": 1000,
+        "boostStrength"  : 100.0,
+        "seed": 1936 }
 
-    S    = b * np.dot(W, X)
-    wmax = np.sort(S, axis=0)[::-1][[w],:]
-    Expected = (S - wmax > 0).astype(float) 
+    params_lat = params_nup.copy()
+    params_lat["lateralLearningRate"]  = 0.0
+    params_lat["enforceDesiredWeight"] = False
+
+    sp_nup = SpatialPooler(**params_nup)
+    sp_lat = LateralPooler(**params_lat)
 
 
-    assert(np.all(Expected == Result))
-
-
-  def test_feedforward_weight_update(self):
-    """
-    Check if the Hebbian-like update works as expected.
-    """
-    X = np.array([
-      [1, 0, 1],
-      [1, 0, 0],
-      [0, 1, 0],
-      [0, 1, 0],
-      [0, 1, 1]
-    ])
-    Y = np.array([
-      [1, 0, 1],
-      [1, 0, 0],
-      [0, 1, 0]
-    ])
-
-    m = X.shape[0]
-    n = Y.shape[0]
-    d = X.shape[1]
-    
-    ratio = 2.
-    incr  = 1.
-    decr  = 1./ratio
-
-    pooler = LateralPooler(input_size=m, output_size=n, seed=1, inc_dec_ratio = ratio)
-
-    Result   = pooler.compute_dW(X,Y)
-    Expected = np.zeros((n,m))
     for t in range(d):
-      for i,j in itertools.product(range(n), range(m)):
-        if  Y[i,t] + X[j,t] == 2:
-          Expected[i,j] += incr
-        elif Y[i,t] + X[j,t] == 1:
-          Expected[i,j] -= decr
-    Expected = Expected/d
+      sp_nup.compute(X[:,t], False, Y_nup[:,t])
+      sp_lat.compute(X[:,t], False, Y_lat[:,t])
     
-    epsilon = 0.000000001
-    assert(np.all(Expected - Result < epsilon))
+    self.assertTrue(np.all(Y_nup == Y_lat), 
+      "Produces wrong output even without learning.")
 
+
+    for t in range(d):
+      sp_nup.compute(X[:,t], True, Y_nup[:,t])
+      sp_lat.compute(X[:,t], True, Y_lat[:,t])
+
+    self.assertTrue(np.all(Y_nup == Y_lat), 
+      "Wrong outputs, something diverges during learning.")
+
+    W_nup = get_W(sp_nup)
+    W_lat = get_W(sp_lat)
+    self.assertTrue(np.all(W_nup == W_lat), 
+      "Wrong synaptic weights, something diverges during learning.")
+
+      
 
 
 if __name__ == "__main__":

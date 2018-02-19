@@ -117,8 +117,9 @@ def random_mini_batches(X, Y, minibatch_size, seed=None):
 
 
 def scalar_reconstruction(x):
-  v = x*np.arange(len(x))
-  s = np.sum(v)/len(x)
+  # x = (x>0.05).astype(float)
+  v = [ x[i]*i  for i in range(len(x))]
+  s = np.mean(v)
   s = s/len(x)
   return s
 
@@ -174,4 +175,30 @@ def create_movie(fig, update_figure, filename, title, fps=15, dpi=100):
               t += 1
           else:
               break
+
+
+def add_noise(X, noise_level = 0.05):
+  noisy_X = X.copy()
+  noise = (np.random.sample(X.shape) < noise_level)
+  mask  = np.where( noise == True ) 
+  noisy_X[mask] = X[mask] + (-1.0)**X[mask] 
+  assert(noisy_X.shape == X.shape)
+  return noisy_X
+
+def add_noisy_bits(X, noise_level = 0.05):
+  noisy_X = X.copy()
+  noise = (np.random.sample(X.shape) < noise_level)
+  mask  = np.where( noise == True ) 
+  noisy_X[mask] = 1.0
+  assert(noisy_X.shape == X.shape)
+  return noisy_X
+
+def subtract_noisy_bits(X, noise_level = 0.05):
+  noisy_X = X.copy()
+  noise = (np.random.sample(X.shape) < noise_level)
+  mask  = np.where( noise == True ) 
+  noisy_X[mask] = 0.0
+  assert(noisy_X.shape == X.shape)
+  return noisy_X
+
 

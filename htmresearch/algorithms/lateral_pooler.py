@@ -18,250 +18,283 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+from nupic.algorithms.spatial_pooler import SpatialPooler 
 import numpy as np
-from htmresearch.support.lateral_pooler.utils import random_mini_batches
+import numpy
+from nupic.bindings.math import GetNTAReal
+realDType = GetNTAReal()
+PERMANENCE_EPSILON = 0.000001
 
 
 
-class LateralPooler(object):
+class LateralPooler(SpatialPooler):
   """
-  A lightweight experimental spatial pooler implementation
+  An experimental spatial pooler implementation
   with learned lateral inhibitory connections.
-
-  Example Usage
-  -------------
-  ```
-  # Instantiate
-  pooler = SpatialPooler(...)
-
-  # Training
-  X = load_training_data()
-  pooler.fit(X, batch_size=32, num_epochs=10)
-
-  ```
   """
+  def __init__(self, lateralLearningRate = 1.0, lateralDutyCyclePeriod=None, enforceDesiredWeight=True, **spArgs):
 
-  def __init__(self, 
-               input_size           = 784, 
-               output_size          = 128, 
-               code_weight          = 4, 
-               seed                = -1,
-               learning_rate        = 0.01,
-               smoothing_period     = 50., 
-               boost_strength       = 100.,
-               boost_strength_hidden = 100.,
-               inc_dec_ratio         = 1.,
-               permanence_threshold = .5
-    ):
-    """
-    Args
-    ----
-    input_size: 
-        Number of visible units
-    output_size:
-        Number of hidden units
-    code_weight:
-        Number of desired active output units
-    seed:
-        Random seed
 
-    ...
+    super(LateralPooler, self).__init__(**spArgs)
 
-    """
-    self.seed = seed
-    if seed != -1:
-        self._random = np.random.RandomState(seed)
+    self.shape      = (self._numColumns, self._numInputs)
+    self.codeWeight = self._numActiveColumnsPerInhArea
+    self.sparsity   = float(self.codeWeight)/float(self._numColumns)
+
+    # If true we activate `codeWeight` 
+    # columns at most
+    self.enforceDesiredWeight = enforceDesiredWeight
+
+    # The new lateral inhibitory connections
+    # and learning rates
+    n = self._numColumns
+    self.lateralConnections = np.ones((n,n))/float(n-1)
+    np.fill_diagonal(self.lateralConnections, 0.0)
+    self.lateralLearningRate = lateralLearningRate
+    if lateralDutyCyclePeriod == None:
+      self.lateralDutyCyclePeriod = self._dutyCyclePeriod
     else:
-        self._random = np.random
+      self.lateralDutyCyclePeriod = lateralDutyCyclePeriod
 
-    self.input_size  = input_size
-    self.output_size = output_size
-    self.shape       = (output_size, input_size)
-    self.code_weight = code_weight
-    self.sparsity    = float(code_weight)/float(output_size)
-
-    # ---------------------
-    #  Network connections 
-    # ---------------------
-    (n, m) = self.shape
-    self.feedforward = self._random.rand(n, m)
-    self.inhibitory  = self._random.rand(n, n)
-    np.fill_diagonal(self.inhibitory, 0.)
-    self.boostfactor = np.zeros((n, 1))
-
-    # ---------------------
-    #  Statistics
-    # ---------------------
-    self.avg_activity_units = 0.0000001*np.ones(n)
-    self.avg_activity_pairs = 0.0000001*np.ones((n, n))
-
-    # ---------------------
-    #  Learning parameters
-    # ---------------------
-    self.boost_strength        = boost_strength
-    self.boost_strength_hidden = boost_strength_hidden
-    self.permanence_threshold = float(permanence_threshold)
-    self.smoothing_period = float(smoothing_period)
-    self.learning_rate    = float(learning_rate)
-    self.inc_dec_ratio    = float(inc_dec_ratio)
-
-
-  def get_connections(self):
-    return self.feedforward, self.boostfactor, self.inhibitory
-
-
-  def set_connections(self, W, b, H):
-    self.feedforward[:,:] = W
-    self.boostfactor[:,:] = b
-    self.inhibitory[:,:]  = H
-    return self
-
-
-  def encode(self, X):
-    """
-    Encodes a batch of input vectors, where the inputs are 
-    given as the columns (!!!) of the matrix X (not the rows).
-    """ 
-    W, boost, H = self.get_connections()
-    n, m  = W.shape 
-    
-    # Optional thresholding of permanence values:
-    # (note that the original SP does this)
-    # W_prime = (W > self.permanence_threshold).astype(float)
-    
-    W_prime = W
-    d = X.shape[1]
-    Y = np.zeros((n,d))
+    # Varibale to store average pairwise activities
     s = self.sparsity
+    self.avgActivityPairs = np.ones((n,n))*(s**2)
+    np.fill_diagonal(self.avgActivityPairs, s)
 
-    score             = boost * np.dot(W_prime, X)
-    sorted_score_args = np.argsort(score, axis=0)[::-1, :]
-    inh_signal = np.zeros((n, d))
+    # experimental boosting
+    self._beta = 0.0
+    
+  def _inhibitColumnsWithLateral(self, overlaps, lateralConnections):
+    """
+    Performs an experimentatl local inhibition. Local inhibition is 
+    iteratively performed on a column by column basis.
+    """
+    n,m = self.shape
+    y   = np.zeros(n)
+    s   = self.sparsity
+    L   = lateralConnections
+    desiredWeight = self.codeWeight
+    inhSignal     = np.zeros(n)
+    sortedIndices = np.argsort(overlaps, kind='mergesort')[::-1]
 
+    currentWeight = 0
+    for i in sortedIndices:
+
+      if overlaps[i] < self._stimulusThreshold:
+        break
+
+      inhTooStrong = ( inhSignal[i] >= s )
+
+      if not inhTooStrong:
+        y[i]              = 1.
+        currentWeight    += 1
+        inhSignal[:]     += L[i,:]
+
+      if self.enforceDesiredWeight and currentWeight == desiredWeight:
+        break
+
+    activeColumns = np.where(y==1.0)[0]
+
+    return activeColumns    
+
+
+  def _updateAvgActivityPairs(self, activeArray):
+    """
+    Updates the average firing activity of pairs of 
+    columns.
+    """
+    n, m = self.shape
+    Y    = activeArray.reshape((n,1))
+    beta = 1.0 - 1.0/self._dutyCyclePeriod
+
+    Q = np.dot(Y, Y.T) 
+
+    self.avgActivityPairs = beta*self.avgActivityPairs + (1-beta)*Q
+
+
+
+  def _updateLateralConnections(self, epsilon, avgActivityPairs):
+    """
+    Sets the weights of the lateral connections based on 
+    average pairwise activity of the SP's columns. Intuitively: The more 
+    two columns fire together on average the stronger the inhibitory
+    connection gets. 
+    """
+    oldL = self.lateralConnections
+    newL = avgActivityPairs.copy()
+    np.fill_diagonal(newL, 0.0)
+    newL = newL/np.sum(newL, axis=1, keepdims=True)
+
+    self.lateralConnections[:,:] = (1 - epsilon)*oldL + epsilon*newL
+
+
+
+  def compute(self, inputVector, learn, activeArray, applyLateralInhibition=True):
+    """
+    This is the primary public method of the LateralPooler class. This
+    function takes a input vector and outputs the indices of the active columns.
+    If 'learn' is set to True, this method also updates the permanences of the
+    columns and their lateral inhibitory connection weights.
+    """
+    if not isinstance(inputVector, np.ndarray):
+      raise TypeError("Input vector must be a numpy array, not %s" %
+                      str(type(inputVector)))
+
+    if inputVector.size != self._numInputs:
+      raise ValueError(
+          "Input vector dimensions don't match. Expecting %s but got %s" % (
+              inputVector.size, self._numInputs))
+
+    self._updateBookeepingVars(learn)
+    inputVector = np.array(inputVector, dtype=realDType)
+    inputVector.reshape(-1)
+    self._overlaps = self._calculateOverlap(inputVector)
+
+    # Apply boosting when learning is on
+    if learn:
+      self._boostedOverlaps = self._boostFactors * self._overlaps
+    else:
+      self._boostedOverlaps = self._overlaps
+
+    # Apply inhibition to determine the winning columns
+    if applyLateralInhibition == True:
+      activeColumns = self._inhibitColumnsWithLateral(self._boostedOverlaps, self.lateralConnections)
+    else:
+      activeColumns = self._inhibitColumns(self._boostedOverlaps)
+    activeArray.fill(0)
+    activeArray[activeColumns] = 1.0
+
+    if learn:
+      self._adaptSynapses(inputVector, activeColumns, self._boostedOverlaps)
+      self._updateDutyCycles(self._overlaps, activeColumns)
+      self._bumpUpWeakColumns()
+      self._updateBoostFactors()
+      self._updateAvgActivityPairs(activeArray)
+
+      epsilon = self.lateralLearningRate
+      if epsilon > 0:
+        self._updateLateralConnections(epsilon, self.avgActivityPairs)
+
+      if self._isUpdateRound():
+        self._updateInhibitionRadius()
+        self._updateMinDutyCycles()
+
+    return activeArray
+
+
+  def encode(self, X, applyLateralInhibition=True):
+    """
+    This method encodes a batch of input vectors.
+    Note the inputs are assumed to be given as the 
+    columns of the matrix X (not the rows).
+    """
+    d = X.shape[1]
+    n = self._numColumns
+    Y = np.zeros((n,d))
     for t in range(d):
-      for i in sorted_score_args[:, t]:
-
-        too_strong = ( inh_signal[i,t] >= s )
-
-        if not too_strong:
-          Y[i, t] = 1.
-          inh_signal[:, t] += H[i,:]
-
+        self.compute(X[:,t], False, Y[:,t], applyLateralInhibition)
+        
     return Y
 
 
-  def compute_dW(self, X, Y):
+  @property
+  def feedforward(self):
     """
-    Computes the weight update for the feedforward weights
-    according to the Hebbian-like update rule in the paper.
+    Soon to be depriciated.
+    Needed to make the SP implementation compatible 
+    with some older code.
     """
-    n, m, d = Y.shape[0], X.shape[0], X.shape[1]
-    r       = self.inc_dec_ratio
+    m = self._numInputs
+    n = self._numColumns
+    W = np.zeros((n, m))
+    for i in range(self._numColumns):
+        self.getPermanence(i, W[i, :])
 
-    Pos = np.mean(np.expand_dims(Y , axis=1) * np.expand_dims(    X, axis=0), axis=2)
-    Neg = np.mean(np.expand_dims(Y , axis=1) * np.expand_dims(1 - X, axis=0), axis=2)
-    dW  = Pos  -  1/r * Neg
+    return W
 
-    return dW
-
-
-  def update_feedforward(self, X, Y):
-    alpha = self.learning_rate
-    W  = self.feedforward
-    dW = self.compute_dW(X, Y)
-
-    W[:,:] = W  +  alpha * dW 
-    W[np.where(W > 1.0)] = 1.0
-    W[np.where(W < 0.0)] = 0.0
-
-
-  def update_inhibitory(self):
-    C = self.boost_strength_hidden
-    H = self.inhibitory
-    P = self.avg_activity_pairs
-    H[:,:] = P[:,:]
-    # H[:,:] = np.exp( C * P )
-    np.fill_diagonal( H, 0.0)
-    H[:,:] = H/np.sum( H, axis=1, keepdims=True)
-
-
-  def update_boost(self):
-    C = self.boost_strength
-    p = self.avg_activity_units
-    n = self.output_size
-    self.boostfactor = np.exp( - C * p).reshape((n,1))
-
-
-  def update_connections(self, X, Y):
+  @property
+  def code_weight(self):
     """
-    Method that updates the model parameters, i.e. feedforward connections, 
-    lateral connections, and homeostatic boost factors, according to the
-    update rules in the paper.
+    Soon to be depriciated.
+    Needed to make the SP implementation compatible 
+    with some older code.
     """
-    beta = 1 - 1/self.smoothing_period
-    self.update_feedforward(X,Y)
-    self.update_statistics(Y, beta)
-    self.update_boost()
-    self.update_inhibitory()
+    return self._numActiveColumnsPerInhArea
 
 
-  def fit(self, X, batch_size=32, num_epochs=10, initial_epoch=0, callbacks=[]):
+  @property
+  def smoothing_period(self):
     """
-    Fits a model to a training set of inputs.
+    Soon to be depriciated.
+    Needed to make the SP implementation compatible 
+    with some older code.
     """
-    seed  = self.seed
-
-    for callback in callbacks:
-      callback.set_model(self)
-
-    cache = {
-      "num_epochs": num_epochs,
-      "initial_epoch": initial_epoch,
-      "batch_size": batch_size
-    }
-
-    for epoch in range(initial_epoch, num_epochs):
+    return self._dutyCyclePeriod
 
 
-        for callback in callbacks:
-          callback.on_epoch_begin(epoch, cache)
-
-        minibatches = random_mini_batches(X, None, batch_size, seed)
-        cache["num_batches"] = len(minibatches)
-
-        num_batches = len(minibatches)
-        for t, (X_t, _) in enumerate(minibatches):
-
-            for callback in callbacks:
-              callback.on_batch_begin((X_t, None), cache)
-
-            Y_t = self.encode(X_t)
-            self.update_connections(X_t, Y_t)
-
-            for callback in callbacks:
-              callback.on_batch_end((X_t, Y_t), cache)
-
-        for callback in callbacks:
-          callback.on_epoch_end(epoch, cache)
+  @property
+  def avg_activity_pairs(self):
+    """
+    Soon to be depriciated.
+    Needed to make the SP implementation compatible 
+    with some older code.
+    """
+    return self.avgActivityPairs
 
 
-  def update_statistics(self, Y, beta=0.9, bias_correction=False):
-      """
-      Updates the exponential moving averages over pairwise and individual 
-      cell activities. 
-      """
-      P_pairs = self.avg_activity_pairs 
-      P_units = self.avg_activity_units
+  def _updateBoostFactorsGlobal(self):
+    """
+    Update boost factors when global inhibition is used
+    """
+    # When global inhibition is enabled, the target activation level is
+    # the sparsity of the spatial pooler
+    if (self._localAreaDensity > 0):
+      targetDensity = self._localAreaDensity
+    else:
+      inhibitionArea = ((2 * self._inhibitionRadius + 1)
+                        ** self._columnDimensions.size)
+      inhibitionArea = min(self._numColumns, inhibitionArea)
+      targetDensity = float(self._numActiveColumnsPerInhArea) / inhibitionArea
+      targetDensity = min(targetDensity, 0.5)
 
-      A = np.expand_dims(Y, axis=1) * np.expand_dims(Y, axis=0)        
-      Q = np.mean(A, axis=2)
-      # Q[np.where(Q == 0.)] = 0.000001
 
-      P_pairs[:,:] = beta*P_pairs + (1-beta)*Q
-      P_units[:]   = P_pairs.diagonal()
+    # Usual definition
+    self._beta = (targetDensity - self._activeDutyCycles)
+
+    # Experimental setting
+    # self._beta += 0.001*(targetDensity - self._activeDutyCycles)
+    
+    self._boostFactors = np.exp(self._beta * self._boostStrength)
 
 
+  def _adaptSynapses(self, inputVector, activeColumns, overlaps):
+    """
+    The primary method in charge of learning. Adapts the permanence values of
+    the synapses based on the input vector, and the chosen columns after
+    inhibition round. Permanence values are increased for synapses connected to
+    input bits that are turned on, and decreased for synapses connected to
+    inputs bits that are turned off.
 
+    Parameters:
+    ----------------------------
+    :param inputVector:
+                    A numpy array of 0's and 1's that comprises the input to
+                    the spatial pooler. There exists an entry in the array
+                    for every input bit.
+    :param activeColumns:
+                    An array containing the indices of the columns that
+                    survived inhibition.
+    """
+    inputIndices = np.where(inputVector > 0)[0]
+
+    permChanges = np.zeros(self._numInputs, dtype=realDType)
+    permChanges.fill(-1 * self._synPermInactiveDec)
+    permChanges[inputIndices] = self._synPermActiveInc
+    for columnIndex in activeColumns:
+      perm = self._permanences[columnIndex]
+      maskPotential = np.where(self._potentialPools[columnIndex] > 0)[0]
+      perm[maskPotential] += permChanges[maskPotential]
+      self._updatePermanencesForColumn(perm, columnIndex, raisePerm=True)
 
 
 
