@@ -88,7 +88,7 @@ def getGlobalIndices(modules, moduleSize):
   return globalIndices
 
 
-class SMV1(object):
+class RelationalMemory(object):
 
   def __init__(self, l4N, l4W, numModules, moduleDimensions,
                maxActivePerModule, l6ActivationThreshold):
@@ -333,7 +333,7 @@ def runExperiment(numObjects, numFeatures, testNoise, l6thresh, outputPath):
   l6ActivationThreshold = 8
 
   # Create a network
-  net = SMV1(l4N=l4N, l4W=l4W, numModules=numModules,
+  net = RelationalMemory(l4N=l4N, l4W=l4W, numModules=numModules,
              moduleDimensions=moduleDims,
              maxActivePerModule=maxActivePerModule,
              l6ActivationThreshold=l6ActivationThreshold)
