@@ -62,21 +62,21 @@ class CoordinateSensorRegion(PyRegion):
       "outputs": {
         "dataOut": {
           "description": "Encoded coordinate SDR.",
-          "dataType": "uint",
+          "dataType": "Real32",
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": True,
         },
         "resetOut": {
           "description": "0/1 reset flag output.",
-          "dataType": "uint",
+          "dataType": "UInt32",
           "count": 1,
           "regionLevel": True,
           "isDefaultOutput": False,
         },
         "sequenceIdOut": {
           "description": "Sequence ID",
-          "dataType": "uint",
+          "dataType": "UInt32",
           "count": 1,
           "regionLevel": True,
           "isDefaultOutput": False,
@@ -93,21 +93,21 @@ class CoordinateSensorRegion(PyRegion):
         },
         "outputWidth": {
           "description": "Size of output vector",
-          "dataType": "uint",
+          "dataType": "UInt32",
           "accessMode": "ReadWrite",
           "count": 1,
           "defaultValue": 1000
         },
         "radius": {
           "description": "Radius around 'coordinate'",
-          "dataType": "uint",
+          "dataType": "UInt32",
           "accessMode": "ReadWrite",
           "count": 1,
           "defaultValue": 2
         },
         "verbosity": {
           "description": "Verbosity level",
-          "dataType": "uint",
+          "dataType": "UInt32",
           "accessMode": "ReadWrite",
           "count": 1
         },
