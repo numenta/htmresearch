@@ -160,7 +160,7 @@ def runTrial(ww, numColumns, potentialPct, inc, dec, mpo, dutyCycle, boost, step
     sp.compute(activeInput, True, output)
     x, y, direction = getNewLocation(x, y, ww, rr, wrap=True, locationHeatmap=locationHeatmap, stepSize=stepSize, jumpProb=jumpProb, direction=direction, directionStability=directionStability)
 
-    if (i + 1) % 10000 == 0:
+    if (i + 1) % 100 == 0:
       saveImage(history, ws, ww, numColumns, locationHeatmap, potentialPct, inc, dec, mpo, dutyCycle, boost, rr, spW, i+1, sp)
 
   saveImage(history, ws, ww, numColumns, locationHeatmap, potentialPct, inc, dec, mpo, dutyCycle, boost, rr, spW, steps, sp)
@@ -207,8 +207,8 @@ def saveImage(history, ws, ww, numColumns, locationHeatmap, potentialPct, inc, d
 
   zoomFactor = float(ww) / float(autoCorrelation.shape[0])
   autoCorrelation = scipy.ndimage.zoom(autoCorrelation, zoomFactor)
-  autoCorrelation /= autoCorrelation.max()
-  locationHeatmap /= locationHeatmap.max()
+  autoCorrelation = autoCorrelation / autoCorrelation.max()
+  locationHeatmap = locationHeatmap / locationHeatmap.max()
   padding = np.zeros((ww, ww))
   header = np.concatenate([autoCorrelation, locationHeatmap] +
                           ([padding] * 3))
@@ -234,8 +234,8 @@ def main():
         for numColumns in (25,):
           for spW in (1,):
             for potentialPct in (1.0,):
-              for inc in (0.04,):
-                for dec in (0.012,):
+              for inc in (0.03,):
+                for dec in (0.009,):
                   for mpo in (0.001,):
                     for dutyCycle in (3,):
                       for boost in (15.0,):
