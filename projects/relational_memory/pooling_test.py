@@ -28,9 +28,6 @@ import numpy as np
 from htmresearch.algorithms.column_pooler import ColumnPooler
 from nupic.algorithms.knn_classifier import KNNClassifier
 
-TRAIN_FEATURES = dict([(i, collections.defaultdict(int)) for i in xrange(2)])
-TEST_FEATURES = dict([(i, collections.defaultdict(int)) for i in xrange(2)])
-
 
 def train(pooler, classifier, objs, numPasses):
   for label, obj in objs:
@@ -40,8 +37,6 @@ def train(pooler, classifier, objs, numPasses):
       np.random.shuffle(obj)
       for feature in obj:
         sortedFeature = sorted(set(feature))
-        for v in sortedFeature:
-          TRAIN_FEATURES[label][v] += 1
         pooler.compute(feedforwardInput=sortedFeature,
                        learn=True,
                        predictedInput=sortedFeature)
@@ -61,11 +56,10 @@ def test(pooler, classifier, objs):
     classifierGuesses = collections.defaultdict(int)
     for feature in obj:
       sortedFeature = sorted(set(feature))
-      for v in sortedFeature:
-        TEST_FEATURES[label][v] += 1
-      poolerOutput = pooler.compute(feedforwardInput=sortedFeature,
-                                    learn=False,
-                                    predictedInput=sortedFeature)
+      pooler.compute(feedforwardInput=sortedFeature,
+                     learn=False,
+                     predictedInput=sortedFeature)
+      poolerOutput = pooler.getActiveCells()
 
       classifierInput = np.zeros(4096, dtype=np.uint32)
       classifierInput[poolerOutput] = 1
@@ -82,8 +76,8 @@ def test(pooler, classifier, objs):
 
 
 def run():
-  numObjects = 2
-  objSize = 4
+  numObjects = 10
+  objSize = 10
   numPasses = 2
 
   allIndices = np.array(xrange(1024), dtype=np.uint32)

@@ -242,7 +242,7 @@ class RelationalMemory(object):
                         predictedInput=globalL5ActiveCells)
 
     # Classifier
-    classifierInput = np.zeros((self.pooler.numberOfCells(),), dtype=np.int32)
+    classifierInput = np.zeros((self.pooler.numberOfCells(),), dtype=np.uint32)
     classifierInput[self.pooler.getActiveCells()] = 1
     #print classifierInput.nonzero()
     #print self.pooler.getActiveCells()
