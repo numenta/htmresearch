@@ -41,6 +41,9 @@ from htmresearch.frameworks.layers.l2456_network_creation import (
 from htmresearch.frameworks.layers.combined_sequence_network_creation import (
   createL4L2TMColumn
 )
+from htmresearch.frameworks.layers.combined_sequence_network_creation2 import (
+  createCombinedSequenceColumn
+)
 from htmresearch.support.register_regions import registerAllResearchRegions
 
 
@@ -66,6 +69,8 @@ def createNetwork(networkConfig):
     return createL2456Columns(network, networkConfig)
   elif networkConfig["networkType"] == "L4L2TMColumn":
     return createL4L2TMColumn(network, networkConfig, "_0")
+  elif networkConfig["networkType"] == "CombinedSequenceColumn":
+    return createCombinedSequenceColumn(network, networkConfig, "_0")
 
 
 

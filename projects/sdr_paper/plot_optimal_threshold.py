@@ -125,13 +125,13 @@ layout = Layout(
         title='$\\text{No. of synapses required for dendritic spike } ('
               '\\theta)$',
         titlefont=Font(
-            family='',
+            family='Arial',
             size=24,
             color='rgb(0, 0, 0)',
         ),
         tickfont=Font(
-            family='',
-            size=18,
+            family='Arial',
+            size=24,
             color='rgb(0, 0, 0)',
         ),
         showline=True,
@@ -142,15 +142,16 @@ layout = Layout(
         exponentformat='power',
         autorange=True,
         titlefont=Font(
-            family='',
+            family='Arial',
             size=24,
             color='rgb(0, 0, 0)',
         ),
         tickfont=Font(
-            family='',
-            size=18,
+            family='Arial',
+            size=16,
             color='rgb(0, 0, 0)',
         ),
+        # showticklabels=False,
         showline=True,
     ),
     annotations=Annotations([
@@ -162,7 +163,7 @@ layout = Layout(
             text='Median false positive error',
             showarrow=True,
             font=Font(
-                family='',
+                family='Arial',
                 size=24,
                 color='rgb(0, 0, 0)',
             ),
@@ -190,7 +191,7 @@ layout = Layout(
           text='$\\text{Error rate} \leq 10^{-9}$',
           showarrow=True,
           font=Font(
-              family='',
+              family='Arial',
               size=24,
               color='rgb(0, 0, 0)',
           ),
@@ -214,7 +215,7 @@ layout = Layout(
 )
 
 fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
+plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
 py.image.save_as(figure, 'images/optimal_threshold.pdf', scale=2)

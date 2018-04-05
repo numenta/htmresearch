@@ -29,7 +29,10 @@ is identical to the use of its superclass.
 import pprint
 import random
 
+import numpy
+
 from nupic.bindings.math import SparseMatrix
+from nupic.algorithms.knn_classifier import KNNClassifier
 from htmresearch.support.register_regions import registerAllResearchRegions
 from htmresearch.frameworks.layers.laminar_network import createNetwork
 from htmresearch.frameworks.layers.l2_l4_inference import L4L2Experiment
@@ -87,6 +90,7 @@ class L4TMExperiment(L4L2Experiment):
       "numCorticalColumns": numCorticalColumns,
       "externalInputSize": externalInputSize,
       "sensorInputSize": inputSize,
+      "enableFeedback": False,
       "L4Params": self.getDefaultL4Params(inputSize, numExternalInputBits),
       "L2Params": self.getDefaultL2Params(inputSize, numInputBits),
       "TMParams": self.getDefaultTMParams(self.inputSize, self.numInputBits),
@@ -139,6 +143,11 @@ class L4TMExperiment(L4L2Experiment):
     self.objectNameToIndex = {}
     self.statistics = []
 
+    # Create classifier to hold supposedly unique TM states
+    self.classifier = KNNClassifier(distanceMethod="rawOverlap")
+    self.numTMCells = (self.TMColumns[0].cellsPerColumn *
+                       self.TMColumns[0].columnCount)
+
 
   def getTMRepresentations(self):
     """
@@ -190,38 +199,77 @@ class L4TMExperiment(L4L2Experiment):
       "initialPermanence": 0.41,
       "connectedPermanence": 0.6,
       "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.02,
+      "permanenceDecrement": 0.03,
       "minThreshold": minThreshold,
-      "basalPredictedSegmentDecrement": 0.001,
+      "basalPredictedSegmentDecrement": 0.003,
+      "apicalPredictedSegmentDecrement": 0.0,
+      "reducedBasalThreshold": int(activationThreshold*0.6),
       "activationThreshold": activationThreshold,
       "sampleSize": sampleSize,
-      "implementation": "ApicalTiebreakCPP",
+      "implementation": "ApicalTiebreak",
       "seed": self.seed
     }
 
 
-  def averageSequenceAccuracy(self, minOverlap, maxOverlap):
+  def averageSequenceAccuracy(self, minOverlap, maxOverlap,
+                              firstStat=0, lastStat=None):
     """
     For each object, decide whether the TM uniquely classified it by checking
     that the number of predictedActive cells are in an acceptable range.
     """
-    numCorrect = 0.0
+    numCorrectSparsity = 0.0
+    numCorrectClassifications = 0.0
     numStats = 0.0
-    prefix = "TM PredictedActive"
 
-    # For each object
-    for stats in self.statistics:
+    # For each object or sequence we classify every point or element
+    #
+    # A sequence element is considered correctly classified only if the number
+    # of predictedActive cells is within a reasonable range and if the KNN
+    # Classifier correctly classifies the active cell representation as
+    # belonging to this sequence.
+    #
+    # A point on an object is considered correctly classified by the TM if the
+    # number of predictedActive cells is within range.
+    for stats in self.statistics[firstStat:lastStat]:
 
       # Keep running total of how often the number of predictedActive cells are
-      # in the range.
-      for key in stats.iterkeys():
-        if prefix in key:
-          for numCells in stats[key]:
-            numStats += 1.0
-            if numCells in range(minOverlap, maxOverlap + 1):
-              numCorrect += 1.0
+      # in the range.  We always skip the first (unpredictable) count.
+      predictedActiveStat = stats["TM PredictedActive C0"][1:]
+      TMRepresentationStat = stats["TM Full Representation C0"][1:]
+      # print "\n-----------"
+      # print stats["object"], predictedActiveStat
+      for numCells,sdr in zip(predictedActiveStat, TMRepresentationStat):
+        numStats += 1.0
+        # print "numCells: ", numCells
+        if numCells in range(minOverlap, maxOverlap + 1):
+          numCorrectSparsity += 1.0
 
-    return numCorrect / numStats
+          # Check KNN Classifier
+          sdr = list(sdr)
+          sdr.sort()
+          dense = numpy.zeros(self.numTMCells)
+          dense[sdr] = 1.0
+          (winner, inferenceResult, dist, categoryDist) = \
+            self.classifier.infer(dense)
+          # print sdr, winner, stats['object'], winner == stats['object']
+          # print categoryDist
+          # print
+
+          if winner == stats['object']:
+            numCorrectClassifications += 1.0
+
+    if numStats==0:
+      return 0.0, 0.0
+
+    return ((numCorrectSparsity / numStats),
+            (numCorrectClassifications / numStats) )
+
+
+  def stripStats(self):
+    """Remove detailed stats - needed for large experiment pools."""
+    for stat in self.statistics:
+      stat.pop("TM Full Representation C0")
+      stat.pop("L2 Full Representation C0")
 
 
   def _unsetLearningMode(self):
@@ -288,15 +336,34 @@ class L4TMExperiment(L4L2Experiment):
       statistics["TM PredictedActive C" + str(i)].append(
         len(TMPredictedActive[i])
       )
+
+      # The number of cells that are in predictive state as a result of this
+      # input
       statistics["TM NextPredicted C" + str(i)].append(
         len(TMNextPredicted[i])
       )
-      statistics["TM Representation C" + str(i)].append(
-        len(TMRepresentation[i])
+
+      # The indices of all active cells in the TM
+      statistics["TM Full Representation C" + str(i)].append(
+        TMRepresentation[i]
       )
 
+      # The indices of all active cells in the TM
+      statistics["L2 Full Representation C" + str(i)].append(
+        L2Representation[i]
+      )
+
+      # Insert exact TM representation into the classifier if the number of
+      # predictive active cells is potentially unique (otherwise we say it
+      # failed to correctly predict this step).
+      if ( (len(TMPredictedActive[i]) < 1.5*self.numInputBits) and
+             (len(TMPredictedActive[i]) > 0.5*self.numInputBits) ):
+        sdr = list(TMPredictedActive[i])
+        sdr.sort()
+        self.classifier.learn(sdr, objectName, isSparse=self.numTMCells)
+
       # add true overlap if objectName was provided
-      if objectName is not None:
+      if objectName in self.objectL2Representations:
         objectRepresentation = self.objectL2Representations[objectName]
         statistics["Overlap L2 with object C" + str(i)].append(
           len(objectRepresentation[i] & L2Representation[i])

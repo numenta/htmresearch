@@ -98,6 +98,24 @@ class SimpleObjectMachine(ObjectMachineBase):
     values are lists of sensations, each sensation being a mapping from
     cortical column index to a pair of SDR's (one location and one feature).
 
+    returnDict = {
+      "objectId1": [
+        {
+          0: (set([1, 5, 10]), set([6, 12, 52]),  # location, feature for CC0
+          1: (set([6, 2, 15]), set([64, 1, 5]),  # location, feature for CC1
+        },
+        {
+          0: (set([5, 46, 50]), set([8, 10, 11]),  # location, feature for CC0
+          1: (set([1, 6, 45]), set([12, 17, 23]),  # location, feature for CC1
+        },
+      ],
+      "objectId2": [
+        :
+      ]
+      :
+    }
+
+
     Parameters:
     ----------------------------
     @param   objectNames (list)

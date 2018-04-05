@@ -164,13 +164,13 @@ layout = Layout(
     xaxis=XAxis(
         title='Noise (percent of a)',
         titlefont=Font(
-            family='',
+            family='Arial',
             size=26,
             color=''
         ),
         tickfont=Font(
-            family='',
-            size=16,
+            family='Arial',
+            size=24,
             color=''
         ),
         exponentformat="none",
@@ -184,13 +184,13 @@ layout = Layout(
         exponentformat='power',
         autorange=True,
         titlefont=Font(
-            family='',
+            family='Arial',
             size=26,
             color=''
         ),
         tickfont=Font(
-            family='',
-            size=12,
+            family='Arial',
+            size=16,
             color=''
         ),
         showline=True,
@@ -204,7 +204,7 @@ layout = Layout(
             text='$\\theta = 8$',
             showarrow=False,
             font=Font(
-                family='',
+                family='Arial',
                 size=16,
                 color=''
             ),
@@ -224,7 +224,7 @@ layout = Layout(
             text='$\\theta = 12$',
             showarrow=False,
             font=Font(
-                family='',
+                family='Arial',
                 size=16,
                 color=''
             ),
@@ -244,7 +244,7 @@ layout = Layout(
             text='$\\theta = 16$',
             showarrow=False,
             font=Font(
-                family='',
+                family='Arial',
                 size=16,
                 color=''
             ),
@@ -262,4 +262,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_noise.png', scale=4)
+py.image.save_as(figure, 'images/effect_of_noise.pdf', scale=1)

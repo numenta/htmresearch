@@ -30,6 +30,7 @@ networkConfig1 = {
   "networkType": "L4L2TMColumn",
   "externalInputSize": 1024,
   "sensorInputSize": 1024,
+  "enableFeedback": False,
   "L4Params": {
     "columnCount": 1024,
     "cellsPerColumn": 8,
@@ -132,7 +133,6 @@ class CombinedSequenceNetworkTest(unittest.TestCase):
     desired_links = {
       "sensorInput_0.dataOut-->L4Column_0.activeColumns",
       "sensorInput_0.dataOut-->TMColumn_0.activeColumns",
-      "L2Column_0.feedForwardOutput-->L4Column_0.apicalInput",
       "externalInput_0.dataOut-->L4Column_0.basalInput",
       "L4Column_0.predictedActiveCells-->L2Column_0.feedforwardGrowthCandidates",
       "L4Column_0.activeCells-->L2Column_0.feedforwardInput",

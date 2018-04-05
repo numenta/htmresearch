@@ -493,6 +493,13 @@ class ApicalTMPairRegion(PyRegion):
       raise Exception("Unknown parameter: " + parameterName)
 
 
+  def reset(self):
+    """
+    Explicitly reset the TM.
+    """
+    self._tm.reset()
+
+
   def getOutputElementCount(self, name):
     """
     Return the number of elements for the given output.
