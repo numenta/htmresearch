@@ -19,7 +19,12 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-"""TODO"""
+"""Use SP over randomly arranged binary input space to learn grid cells.
+
+This differs from the other scripts in that the SP does not receive
+the entire 'world' as input and instead only sees a small window.
+Additionally, the world is comprised of 50% 1s and 50% 0s randomly aranged.
+The input is the binary values in a local area around the current location."""
 
 import random
 
@@ -80,10 +85,12 @@ def main():
       inputDimensions=(rw ** 2,),
       columnDimensions=(nCols,),
       potentialRadius=25,
-      numActiveColumnsPerInhArea=5,
-      synPermActiveInc=0.1,
-      synPermInactiveDec=0.02,
-      boostStrength=10.0,
+      potentialPct=1.0,
+      numActiveColumnsPerInhArea=1,
+      synPermActiveInc=0.01,
+      synPermInactiveDec=0.003,
+      boostStrength=15.0,
+      dutyCyclePeriod=5,
   )
   output = np.zeros((nCols,), dtype=np.uint32)
   for _ in xrange(steps):
@@ -93,6 +100,9 @@ def main():
     activeInput = binaryWorld[active]
     sp.compute(activeInput, True, output)
     x, y = getNewLocation(x, y, ww, rr, False)
+
+  # Check firing fields
+  sp.setBoostStrength(0.0)
 
   firingFields = {}
   for i in xrange(nCols):

@@ -2,7 +2,7 @@
 
 ## V2 - Dordek, et. al.
 
-Reproduced something similar to the Dordek paper calculations using PCA in `dordek.py`. Working on simulations of the Hebbian-learning variant in `dordek_sim.py`.
+Reproduced something similar to the Dordek paper calculations using PCA in `dordek.py`. Working on simulations of the Hebbian-learning variant in `dordek_sim.py`. These attempts were able to create tilings but not reproduce the gridiness show in the literature.
 
 ## V1 - Motor Mappings and Grid Cells
 

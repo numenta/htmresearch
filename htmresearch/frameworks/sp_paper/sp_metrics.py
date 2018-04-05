@@ -832,7 +832,8 @@ def reconstructionError(sp, inputVectors, activeColumnVectors, threshold=0.):
   connectionMatrix = getConnectedSyns(sp)
 
   reconstructionVectors = np.dot(activeColumnVectors, connectionMatrix)
-  numActiveColumns      = np.sum(activeColumnVectors, 1)[0]
+  # numActiveColumns      = np.sum(activeColumnVectors, 1)[0]
+  numActiveColumns = int(sp._localAreaDensity * sp._numColumns) + 0.0
   reconstructionVectors = reconstructionVectors/numActiveColumns
 
   if threshold > 0.:
