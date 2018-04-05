@@ -36,9 +36,9 @@ environment:
       PYTHONHOME: "C:\\Python27-x64"
 
     # Win32-gcc
-    - PYTHON_VERSION: "2.7.13"
-      PYTHON_ARCH: "32"
-      PYTHONHOME: "C:\\Python27"
+    #- PYTHON_VERSION: "2.7.13"
+      #PYTHON_ARCH: "32"
+      #PYTHONHOME: "C:\\Python27"
 
 #---------------------------------#
 #       build configuration       #
@@ -48,7 +48,7 @@ environment:
 configuration: Release
 
 install:
-  - pip install --upgrade pip
+  - python -m pip install -U pip
   - pip install --upgrade setuptools wheel
   - pip install -r requirements.txt
 
