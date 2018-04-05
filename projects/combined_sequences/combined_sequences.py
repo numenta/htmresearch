@@ -450,6 +450,8 @@ def runExperiment(args):
     L2Overrides={"synPermProximalDec": synPermProximalDecL2,
            "minThresholdProximal": minThresholdProximalL2,
            "sampleSizeProximal": sampleSizeProximalL2,
+           "initialProximalPermanence": 0.45,
+           "synPermProximalDec": 0.002,
     },
     TMOverrides={
       "basalPredictedSegmentDecrement": basalPredictedSegmentDecrement
