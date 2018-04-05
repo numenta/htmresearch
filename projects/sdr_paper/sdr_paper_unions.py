@@ -67,6 +67,44 @@ p0 = Pow((1-(s/n)),M)
 numOnBits = (1-p0)*n
 
 
+# If a dendrite has s synapses, and the activity at time t is a union of
+# M patterns, plot probability of a false match as a function of M
+#
+def falseMatchDendritevsMPatterns(n_=1000):
+  a_ = 30
+  theta_ = 10
+  s_ = 20
+
+  # Arrays used for plotting
+  MList = []
+  errorList = []
+
+  print "\n\nn=%d, a=%d, theta=%d, s=%d" % (n_,a_,theta_,s_)
+
+  error = 0.0
+  for M_ in range(1, 40):
+
+    # Number of bits active in At
+    atAfterUnion = numOnBits.subs(n, n_).subs(s, a_).subs(M,M_).evalf()
+    if error >= 0.9999999999:
+      error = 1.0
+    else:
+      if M_ <= 8:
+        eq3 = subsampledFpFSlow.subs(n, n_).subs(a, atAfterUnion).subs(theta, theta_)
+      else:
+        eq3 = subsampledFpF.subs(n, n_).subs(a, atAfterUnion).subs(theta, theta_)
+      error = eq3.subs(s,s_).evalf()
+
+    print M_,atAfterUnion,error
+
+    MList.append(M_)
+    errorList.append(error)
+
+  print MList
+  print errorList
+  return MList,errorList
+
+
 # Plot probability of a false match as a function of M
 def falseMatchvsM(n_=1000):
   a_ = 200
@@ -83,6 +121,8 @@ def falseMatchvsM(n_=1000):
   for M_ in range(1, 20):
 
     # Need this otherwise calculation goes to 0
+    numSynapsesAfterUnion = numOnBits.subs(n, n_).subs(s, s_).subs(M,
+                                                                   M_).evalf()
     if error >= 0.9999999999:
       error = 1.0
     else:
@@ -90,7 +130,6 @@ def falseMatchvsM(n_=1000):
         eq3 = subsampledFpFSlow.subs(n, n_).subs(a, a_).subs(theta, theta_)
       else:
         eq3 = subsampledFpF.subs(n, n_).subs(a, a_).subs(theta, theta_)
-      numSynapsesAfterUnion = numOnBits.subs(n,n_).subs(s,s_).subs(M,M_).evalf()
       error = eq3.subs(s,round(numSynapsesAfterUnion)).evalf()
 
     print M_,numSynapsesAfterUnion,error
@@ -107,36 +146,89 @@ def plotFalseMatchvsM():
   # Plot probability of a false match as a function of M
   # Plot three different values of n. n=1000, 10000, 20000?
 
-  # listofMValues,errorsN1000 = falseMatchvsM(1000)
-  # listofMValues,errorsN10000 = falseMatchvsM(10000)
-  # listofMValues,errorsN20000 = falseMatchvsM(20000)
+  # listofMValues, errorsN1000 = falseMatchDendritevsMPatterns(1000)
+  # listofMValues, errorsN4000 = falseMatchDendritevsMPatterns(4000)
+  # listofMValues, errorsN8000 = falseMatchDendritevsMPatterns(8000)
 
   # I get a JSON serialization error if I try to use the above values directly
   # Go figure!
-
   listofMValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
-                   18, 19]
+  18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36,
+  37, 38, 39]
 
-  errorsN1000 = [1.00140315240769e-5, 0.0473894530292855, 0.501650232353378,
-  0.899154755459308, 0.991079536716752, 0.999523524650922, 0.999981553264809,
-  0.999999512691584, 0.999999990860972, 0.999999999845828, 0.999999999997526, 1.0,
-  1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
 
-  errorsN10000 = [5.30352419025194e-20, 2.35602184920806e-14,
-  1.53934243906984e-11, 1.10302867119927e-9, 2.27921915526762e-8,
-  2.69253218125502e-7, 1.98072351729197e-6, 9.75307801058064e-6,
-  3.98373263650013e-5, 0.000127080441383853, 0.000362630253250421,
-  0.000874610762751977, 0.00190208641223641, 0.00378812896412743,
-  0.00716447200395456, 0.0123542384410630, 0.0201165770143612, 0.0311403472140338,
-  0.0453789479134073]
+  errorsN1000 = [1.74966917747145e-11, 2.82658811059119e-8, 1.39651026490819e-6,
+  1.85276803498981e-5, 0.000122462323694764, 0.000525455686291461,
+  0.00168037428756938, 0.00434432548818933, 0.00956421362220440,
+  0.0185736190367658, 0.0326241695265783, 0.0527946135484057,
+  0.0798227334712682, 0.113993339287459, 0.155097506782092, 0.202460851761100,
+  0.255026162466195, 0.311469519214058, 0.370328446983243, 0.430123973179965,
+  0.489463792982226, 0.547119475740302, 0.602075692288738, 0.653553242557473,
+  0.701010071550924, 0.744125611399872, 0.782773952468071, 0.816990843307732,
+  0.846938639252940, 0.872872296277516, 0.895108505724166, 0.913999187918402,
+  0.929909857645548, 0.943202853231983, 0.954225070369372, 0.963299635403854,
+  0.970720859072523, 0.976751799514041, 0.981623805319142]
 
-  errorsN20000 = [1.75826328738259e-24, 9.73603540551588e-19,
-  7.92130752699486e-16, 7.08428692442973e-14, 2.03825914561597e-12,
-  2.93568736488724e-11, 2.44471331836285e-10, 1.59493239439383e-9,
-  8.04780894887436e-9, 3.32242567600452e-8, 1.11328056326208e-7,
-  3.44426535137730e-7, 9.53448550682057e-7, 2.31864104977855e-6,
-  5.40383164541756e-6, 1.13919680675529e-5, 2.33141516738363e-5,
-  4.40336400781654e-5, 8.14089056445047e-5]
+  errorsN4000 = [1.85597138333997e-17, 4.17574792548866e-14,
+  2.84761986763360e-12, 5.19578251035665e-11, 4.70969827213147e-10,
+  2.76394389581973e-9, 1.20571177807438e-8, 4.24050541935861e-8,
+  1.26640697074757e-7, 3.32635948387612e-7, 7.87813300982585e-7,
+  1.71350339989923e-6, 3.47030215618841e-6, 6.61498904948652e-6,
+  1.19688817202398e-5, 2.06967802112776e-5, 3.43949533871793e-5,
+  5.51859885899797e-5, 8.58178016036501e-5, 0.000129763714131879,
+  0.000191320265399264, 0.000275699337707405, 0.000389111238164987,
+  0.000538835578257418, 0.000733277111714841, 0.000982004107773168,
+  0.00129576732778743, 0.00168649821399632, 0.00216728546638854,
+  0.00275232975498735, 0.00345687687063695, 0.00429713014050859,
+  0.00529014341106307, 0.00645369632028853, 0.00780615393496547,
+  0.00936631311273528, 0.0111532381608081, 0.0131860885035822,
+  0.0154839411426565]
+
+  errorsN8000 = [1.84408018909783e-20, 4.38205425485483e-17,
+  3.15228206823515e-15, 6.06524481280268e-14, 5.79646066756809e-13,
+  3.58598795197947e-12, 1.64883751834296e-11, 6.11160288580599e-11,
+  1.92337498577987e-10, 5.32308966989701e-10, 1.32822871042413e-9,
+  3.04326996437801e-9, 6.49201569794134e-9, 1.30331279847690e-8,
+  2.48330734422034e-8, 4.52154349885235e-8, 7.91106310476925e-8,
+  1.33620715829301e-7, 2.18713348143796e-7, 3.48058004061341e-7,
+  5.40016098895161e-7, 8.18794913513682e-7, 1.21577313632138e-6,
+  1.77100348692262e-6, 2.53489533726787e-6, 3.57007754920002e-6,
+  4.95343896161834e-6, 6.77834114373759e-6, 9.15699523688480e-6,
+  1.22229919872450e-5, 1.61339714722548e-5, 2.10744165854308e-5,
+  2.72585521047319e-5, 3.49333291580426e-5, 4.43814731417444e-5,
+  5.59245716630590e-5, 6.99261778781310e-5, 8.67949036939708e-5,
+  0.000106987476696977]
+
+  # listofMValues,errorsN1000 = falseMatchvsM(1000)
+  # listofMValues,errorsN10000 = falseMatchvsM(10000)
+  # listofMValues,errorsN20000 = falseMatchvsM(20000)
+  #
+  # # I get a JSON serialization error if I try to use the above values directly
+  # # Go figure!
+  #
+  # listofMValues = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
+  #                  18, 19]
+  #
+  # errorsN1000 = [1.00140315240769e-5, 0.0473894530292855, 0.501650232353378,
+  # 0.899154755459308, 0.991079536716752, 0.999523524650922, 0.999981553264809,
+  # 0.999999512691584, 0.999999990860972, 0.999999999845828, 0.999999999997526, 1.0,
+  # 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  #
+  # errorsN10000 = [5.30352419025194e-20, 2.35602184920806e-14,
+  # 1.53934243906984e-11, 1.10302867119927e-9, 2.27921915526762e-8,
+  # 2.69253218125502e-7, 1.98072351729197e-6, 9.75307801058064e-6,
+  # 3.98373263650013e-5, 0.000127080441383853, 0.000362630253250421,
+  # 0.000874610762751977, 0.00190208641223641, 0.00378812896412743,
+  # 0.00716447200395456, 0.0123542384410630, 0.0201165770143612, 0.0311403472140338,
+  # 0.0453789479134073]
+  #
+  # errorsN20000 = [1.75826328738259e-24, 9.73603540551588e-19,
+  # 7.92130752699486e-16, 7.08428692442973e-14, 2.03825914561597e-12,
+  # 2.93568736488724e-11, 2.44471331836285e-10, 1.59493239439383e-9,
+  # 8.04780894887436e-9, 3.32242567600452e-8, 1.11328056326208e-7,
+  # 3.44426535137730e-7, 9.53448550682057e-7, 2.31864104977855e-6,
+  # 5.40383164541756e-6, 1.13919680675529e-5, 2.33141516738363e-5,
+  # 4.40336400781654e-5, 8.14089056445047e-5]
 
 
   plotlyUser = os.environ['PLOTLY_USERNAME']
@@ -152,17 +244,17 @@ def plotFalseMatchvsM():
   )
 
   trace2 = Scatter(
-      y=errorsN10000,
+      y=errorsN4000,
       x=listofMValues,
       line=Line( color='rgb(0, 0, 0)', width=3, shape='spline' ),
-      name="n=10000"
+      name="n=4000"
   )
 
   trace3 = Scatter(
-      y=errorsN20000,
+      y=errorsN8000,
       x=listofMValues,
       line=Line( color='rgb(0, 0, 0)', width=3, shape='spline' ),
-      name="n=20000"
+      name="n=8000"
   )
 
   data = Data([trace1, trace2, trace3])
@@ -189,7 +281,27 @@ def plotFalseMatchvsM():
       ),
       annotations=Annotations([
         Annotation(
-          x=7.7906, y=0.916,
+          x=10,
+          y=0.1243,
+          xref='x',
+          yref='paper',
+          text='$s = 20, \\theta=10, a=30$',
+          showarrow=False,
+          font=Font(
+            family='Arial',
+            size=20,
+            color=''
+          ),
+          align='center',
+          textangle=0,
+          bordercolor='',
+          borderwidth=1,
+          borderpad=1,
+          bgcolor='rgba(0, 0, 0, 0)',
+          opacity=1
+        ),
+        Annotation(
+          x=7.7906, y=0.9,
           xref='x',
           yref='paper',
           text='$n = 1000$',
@@ -202,10 +314,10 @@ def plotFalseMatchvsM():
           opacity=1
         ),
         Annotation(
-          x=7.906, y=0.7148,
+          x=7.906, y=0.6548,
           xref='x',
           yref='paper',
-          text='$n = 10000$',
+          text='$n = 4000$',
           showarrow=False,
           font=Font( family='', size=16, color='' ),
           align='center',
@@ -215,10 +327,10 @@ def plotFalseMatchvsM():
           opacity=1
         ),
         Annotation(
-          x=7.906, y=0.534,
+          x=7.906, y=0.44,
           xref='x',
           yref='paper',
-          text='$n = 20000$',
+          text='$n = 8000$',
           showarrow=False,
           font=Font( family='', size=16, color='' ),
           align='center',
@@ -231,10 +343,10 @@ def plotFalseMatchvsM():
   )
 
   fig = Figure(data=data, layout=layout)
-  plot_url = py.plot(fig)
+  plot_url = py.plot(fig, auto_open=False)
   print "url=",plot_url
   figure = py.get_figure(plot_url)
-  py.image.save_as(figure, 'union_effect_of_n.png', scale=4)
+  py.image.save_as(figure, 'union_effect_of_n.pdf', scale=1)
 
 
 def synapsesvsM(s_ = 25):
@@ -364,11 +476,16 @@ def plotSynapsesvsM():
   )
 
   fig = Figure(data=data, layout=layout)
-  plot_url = py.plot(fig)
+  plot_url = py.plot(fig, auto_open=False)
   print "url=",plot_url
   figure = py.get_figure(plot_url)
-  py.image.save_as(figure, 'union_number_synapses.png', scale=4)
+  py.image.save_as(figure, 'union_number_synapses.pdf', scale=1)
+
 
 
 plotFalseMatchvsM()
-plotSynapsesvsM()
+# plotSynapsesvsM()
+
+# falseMatchDendritevsMPatterns(1000)
+# falseMatchDendritevsMPatterns(4000)
+# falseMatchDendritevsMPatterns(8000)

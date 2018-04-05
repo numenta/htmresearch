@@ -61,13 +61,16 @@ table = PrettyTable(["Sparsity", "n", "a", "s", "theta", "error rate"])
 
 # Compute the various traces. Print out a table and put everything in a csv
 # file.
-with open("out.csv","w") as f:
+print "range for n: 1000 to 20000"
+print "range for s: 20 to 50"
+print "range for sparsity: 0.5% to 0.3%"
+with open("out2.csv","w") as f:
   csvWriter = csv.writer(f)
   csvWriter.writerow( ["Sparsity", "n", "a", "s", "theta","error rate"])
 
   for theta in range(3,25,1):
     fpRate[theta] = []
-    for n in range(10000,200000,20000):
+    for n in range(1000,21000,4000):
       print "theta=",theta,"n=",n
       sparsity = 0.005
       while sparsity < 0.035:
