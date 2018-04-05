@@ -885,8 +885,8 @@ class L4L2Experiment(object):
     Returns a good default set of parameters to use in the L2 region.
     """
     if numInputBits == 20:
-      sampleSizeProximal = 10
-      minThresholdProximal = 5
+      sampleSizeProximal = 20
+      minThresholdProximal = 15
     elif numInputBits == 10:
       sampleSizeProximal = 6
       minThresholdProximal = 3
@@ -899,7 +899,7 @@ class L4L2Experiment(object):
       "cellCount": 4096,
       "sdrSize": 40,
       "synPermProximalInc": 0.1,
-      "synPermProximalDec": 0.005,
+      "synPermProximalDec": 0.002,
       "initialProximalPermanence": 0.45,
       "minThresholdProximal": minThresholdProximal,
       "sampleSizeProximal": sampleSizeProximal,
