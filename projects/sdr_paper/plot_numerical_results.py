@@ -172,7 +172,7 @@ layout = Layout(
         range=[0,4000],
     ),
     yaxis=YAxis(
-        title='Frequency of false positives',
+        title='Probability of false positives',
         type='log',
         exponentformat='power',
         autorange=True,
@@ -252,7 +252,7 @@ layout = Layout(
     ]),)
 
 fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
+plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
 py.image.save_as(figure, 'images/effect_of_n.pdf', scale=1)

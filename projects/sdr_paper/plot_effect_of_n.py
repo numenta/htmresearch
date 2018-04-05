@@ -69,7 +69,7 @@ errorsA64 = [0.00109461662333690, 5.69571108769533e-6, 1.41253230930730e-7,
 4.37095353819125e-24, 3.82084594311781e-24, 3.34495593004021e-24,
 2.93261202567532e-24, 2.57476990096962e-24, 2.26375041804855e-24,
 1.99302203415240e-24, 1.75701968882530e-24, 1.55099376138908e-24,
-1.37088386401156e-24, 1.21321318827475e-24, 1.07499989501613e-24]
+1.37088386401156e-24, 1.21321318827475e-24, 1.07499989501613e-24][0:30]
 
 # a=128 cells active, s=24 synapses on segment, dendritic threshold is theta=12
 errorsA128 = [0.292078213737764, 0.00736788303358289, 0.000320106080889471,
@@ -104,7 +104,7 @@ errorsA128 = [0.292078213737764, 0.00736788303358289, 0.000320106080889471,
 3.03310286648971e-20, 2.65256965853905e-20, 2.32321622214084e-20,
 2.03770629346944e-20, 1.78981879590753e-20, 1.57426885025016e-20,
 1.38655900262325e-20, 1.22285532217681e-20, 1.07988400985754e-20,
-9.54844958066234e-21, 8.45339347007471e-21, 7.49308887332261e-21]
+9.54844958066234e-21, 8.45339347007471e-21, 7.49308887332261e-21][0:30]
 
 # a=256 cells active, s=24 synapses on segment, dendritic threshold is theta=12
 errorsA256 = [0.999997973443107, 0.629372754740777, 0.121087724790945,
@@ -139,7 +139,7 @@ errorsA256 = [0.999997973443107, 0.629372754740777, 0.121087724790945,
 1.50103879041435e-16, 1.31391692394609e-16, 1.15180306705465e-16,
 1.01113495891954e-16, 8.88888471340935e-17, 7.82491770468619e-17,
 6.89753881281890e-17, 6.08805121319100e-17, 5.38047335965072e-17,
-4.76112244136112e-17, 4.21826508250283e-17, 3.74182390049037e-17]
+4.76112244136112e-17, 4.21826508250283e-17, 3.74182390049037e-17][0:30]
 
 # a=n/2 cells active, s=24 synapses on segment, dendritic threshold is theta=12
 errorsAHalfOfN = [0.00518604306750049, 0.00595902789913702, 0.00630387009654985,
@@ -174,7 +174,7 @@ errorsAHalfOfN = [0.00518604306750049, 0.00595902789913702, 0.00630387009654985,
 0.00716334048926185, 0.00716374579015949, 0.00716414214270805,
 0.00716452984001762, 0.00716490916253519, 0.00716528037872114,
 0.00716564374568296, 0.00716599950976899, 0.00716634790712550,
-0.00716668916421930, 0.00716702349832872, 0.00716735111800491]
+0.00716668916421930, 0.00716702349832872, 0.00716735111800491][0:30]
 
 listofNValues = [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
 2500, 2700, 2900, 3100, 3300, 3500, 3700, 3900, 4100, 4300, 4500, 4700, 4900,
@@ -184,14 +184,14 @@ listofNValues = [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
 12500, 12700, 12900, 13100, 13300, 13500, 13700, 13900, 14100, 14300, 14500,
 14700, 14900, 15100, 15300, 15500, 15700, 15900, 16100, 16300, 16500, 16700,
 16900, 17100, 17300, 17500, 17700, 17900, 18100, 18300, 18500, 18700, 18900,
-19100, 19300, 19500, 19700, 19900]
+19100, 19300, 19500, 19700, 19900][0:30]
 
 trace1 = Scatter(
     y=errorsA64,
     x=listofNValues,
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=64"
@@ -202,7 +202,7 @@ trace2 = Scatter(
     x=listofNValues[1:],
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=128"
@@ -213,7 +213,7 @@ trace3 = Scatter(
     x=listofNValues[1:],
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=256"
@@ -224,7 +224,7 @@ trace4 = Scatter(
     x=listofNValues[1:],
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         dash='dash',
         shape='spline',
     ),
@@ -242,19 +242,19 @@ layout = Layout(
     xaxis=XAxis(
         title='Cell population size (n)',
         titlefont=Font(
-            family='',
-            size=26,
+            family='Arial',
+            size=22,
             color=''
         ),
         tickfont=Font(
-            family='',
-            size=16,
+            family='Arial',
+            size=14,
             color=''
         ),
         exponentformat="none",
-        dtick=2000,
+        dtick=1000,
         showline=True,
-        range=[0,20000],
+        range=[0,7500],
     ),
     yaxis=YAxis(
         title='Probability of false positives',
@@ -262,28 +262,68 @@ layout = Layout(
         exponentformat='power',
         autorange=True,
         titlefont=Font(
-            family='',
-            size=26,
+            family='Arial',
+            size=22,
             color=''
         ),
         tickfont=Font(
-            family='',
-            size=24,
+            family='Arial',
+            size=14,
             color=''
         ),
         showline=True,
     ),
     annotations=Annotations([
       Annotation(
-            x=16988,
+            x=900,
+            y=0.1243,
+            xref='x',
+            yref='paper',
+            text='$s = 24, \\theta=12$',
+            showarrow=False,
+            font=Font(
+                family='Arial',
+                size=20,
+                color=''
+            ),
+            align='center',
+            textangle=0,
+            bordercolor='',
+            borderwidth=1,
+            borderpad=1,
+            bgcolor='rgba(0, 0, 0, 0)',
+            opacity=1
+        ),
+      Annotation(
+            x=1800,
+            y=0.0843,
+            xref='x',
+            yref='paper',
+            text='a = no. of active presynaptic cells',
+            showarrow=False,
+            font=Font(
+                family='Arial',
+                size=20,
+                color=''
+            ),
+            align='center',
+            textangle=0,
+            bordercolor='',
+            borderwidth=1,
+            borderpad=1,
+            bgcolor='rgba(0, 0, 0, 0)',
+            opacity=1
+        ),
+      Annotation(
+            x=5500,
             y=0.1143,
             xref='x',
             yref='paper',
             text='$a = 64$',
             showarrow=False,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=20,
                 color=''
             ),
             align='center',
@@ -295,15 +335,15 @@ layout = Layout(
             opacity=1
         ),
       Annotation(
-            x=17103,
-            y=0.259,
+            x=5500,
+            y=0.31,
             xref='x',
             yref='paper',
             text='$a = 128$',
             showarrow=False,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=20,
                 color=''
             ),
             align='center',
@@ -315,15 +355,15 @@ layout = Layout(
             opacity=1
         ),
       Annotation(
-            x=17132,
-            y=0.411,
+            x=5500,
+            y=0.511,
             xref='x',
             yref='paper',
             text='$a = 256$',
             showarrow=False,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=20,
                 color=''
             ),
             align='center',
@@ -335,14 +375,14 @@ layout = Layout(
             opacity=1
         ),
       Annotation(
-            x=16845,
-            y=0.933,
+            x=5500,
+            y=0.92,
             xref='x',
             yref='paper',
             text='$a = \\frac{n}{2}$',
             showarrow=False,
             font=Font(
-                family='',
+                family='Arial',
                 size=24,
                 color=''
             ),
@@ -357,7 +397,7 @@ layout = Layout(
     ]),)
 
 fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
+plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_n.pdf', scale=4)
+py.image.save_as(figure, 'images/effect_of_n_theory.pdf', scale=1)
