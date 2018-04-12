@@ -31,7 +31,7 @@ import numpy as np
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
   ApicalTiebreakPairMemory)
 from htmresearch.algorithms.column_pooler import ColumnPooler
-from htmresearch.algorithms.location_modules import SuperficialLocationModule2D
+from htmresearch.algorithms.location_modules import Superficial2DLocationModule
 
 
 class Grid2DLocationExperiment(object):
@@ -50,7 +50,7 @@ class Grid2DLocationExperiment(object):
       (k, np.array(sorted(random.sample(xrange(150), 15)), dtype="uint32"))
       for k in featureNames)
 
-    self.locationModules = [SuperficialLocationModule2D(anchorInputSize=150*32,
+    self.locationModules = [Superficial2DLocationModule(anchorInputSize=150*32,
                                                         **config)
                             for config in locationConfigs]
 
@@ -142,10 +142,10 @@ class Grid2DLocationExperiment(object):
         monitor.beforeMove(deltaLocation)
 
       params = {
-        "deltaLocation": deltaLocation
+        "displacement": deltaLocation
       }
       for module in self.locationModules:
-        module.shift(**params)
+        module.movementCompute(**params)
 
       for monitor in self.monitors.values():
         monitor.afterLocationShift(**params)
@@ -174,10 +174,12 @@ class Grid2DLocationExperiment(object):
       self.objectLayer.compute(**objectParams)
 
       locationParams = {
-        "anchorInput": self.inputLayer.getActiveCells()
+        "anchorInput": self.inputLayer.getActiveCells(),
+        "anchorGrowthCandidates": self.inputLayer.getWinnerCells(),
+        "learn": False
       }
       for module in self.locationModules:
-        module.anchor(**locationParams)
+        module.sensoryCompute(**locationParams)
 
       cellActivity = (set(self.objectLayer.getActiveCells()),
                       set(self.inputLayer.getActiveCells()),
@@ -214,10 +216,12 @@ class Grid2DLocationExperiment(object):
     self.objectLayer.compute(**objectParams)
 
     locationParams = {
-      "anchorInput": self.inputLayer.getWinnerCells()
+      "anchorInput": self.inputLayer.getActiveCells(),
+      "anchorGrowthCandidates": self.inputLayer.getWinnerCells(),
+      "learn": True,
     }
     for module in self.locationModules:
-      module.learn(**locationParams)
+      module.sensoryCompute(**locationParams)
 
     for monitor in self.monitors.values():
       monitor.afterInputCompute(**inputParams)

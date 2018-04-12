@@ -49,8 +49,6 @@ function timelineChart() {
 
       let touchNumber = 0;
 
-      // First, change this to display repeats to the right
-
       timelineData.timesteps.forEach((timestep, iTimestep) => {
 
         if (timestep.reset && iTimestep !== 0) {
@@ -135,7 +133,7 @@ function timelineChart() {
                 .style('width', '50px')
                 .style('left', '-18px')
                 .style('top', '-16px')
-                .style('font', '10px Verdana')
+                .style('font', '10px Helvetica')
               .merge(selectedText)
                 .text(d => d.text);
           })
@@ -178,7 +176,7 @@ function timelineChart() {
           .attr('y', 25)
           .attr('cursor', onchange ? 'pointer' : null)
           .attr('text-anchor', 'middle')
-          .style('font', `bold 13px Verdana`)
+          .style('font', `bold 13px Helvetica`)
           .text('?')
         .merge(phase0)
           .on('click', predictionPhaseFn);
@@ -195,7 +193,7 @@ function timelineChart() {
           .attr('y', 40)
           .attr('cursor', onchange ? 'pointer' : null)
           .attr('text-anchor', 'middle')
-          .style('font', `bold 13px Verdana`)
+          .style('font', `bold 13px Helvetica`)
           .text('!')
         .merge(phase1)
           .on('click', sensePhaseFn);

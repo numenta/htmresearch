@@ -30,7 +30,7 @@ import math
 import os
 import random
 
-from htmresearch.algorithms.location_modules import SuperficialLocationModule2D
+from htmresearch.algorithms.location_modules import Superficial2DLocationModule
 
 
 def go():
@@ -58,14 +58,14 @@ def go():
           "cellDimensions": (5, 5),
           "moduleMapDimensions": (scale, scale),
           "orientation": orientation,
-          "pointOffsets": (0.5,),
+          "cellCoordinateOffsets": (0.5,),
         })
 
     print(json.dumps({"width": worldWidth,
                       "height": worldHeight}), file=fileOut)
     print(json.dumps(locationConfigs), file=fileOut)
 
-    modules = [SuperficialLocationModule2D(anchorInputSize=0, **config)
+    modules = [Superficial2DLocationModule(anchorInputSize=0, **config)
                for config in locationConfigs]
 
     location = [5.0, 5.0]
@@ -83,7 +83,7 @@ def go():
       print(json.dumps(location), file=fileOut)
 
       for module in modules:
-        module.shift(deltaLocation)
+        module.movementCompute(deltaLocation)
 
       print("shift", file=fileOut)
       cellsByModule = [module.getActiveCells().tolist()
@@ -91,7 +91,7 @@ def go():
       print(json.dumps(cellsByModule), file=fileOut)
       pointsByModule = []
       for module in modules:
-        pointsByModule.append(module.activePoints.tolist())
+        pointsByModule.append((module.activePhases * module.cellDimensions).tolist())
       print(json.dumps(pointsByModule), file=fileOut)
 
 

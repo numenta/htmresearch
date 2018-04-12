@@ -30,7 +30,7 @@ import random
 import numpy as np
 
 from grid_2d_location_experiment import Grid2DLocationExperiment
-from tracing import Grid2DLocationExperimentVisualizer as trace
+from three_layer_tracing import Grid2DLocationExperimentVisualizer as trace
 
 
 DISCRETE_OBJECTS = {
@@ -71,7 +71,7 @@ DISCRETE_OBJECT_PLACEMENTS = {
 CM_PER_UNIT = 100.0 / 12.0
 
 
-def doExperiment(cellDimensions, pointOffsets):
+def doExperiment(cellDimensions, cellCoordinateOffsets):
   if not os.path.exists("logs"):
     os.makedirs("logs")
 
@@ -101,7 +101,7 @@ def doExperiment(cellDimensions, pointOffsets):
         "cellDimensions": cellDimensions,
         "moduleMapDimensions": (scale, scale),
         "orientation": orientation,
-        "pointOffsets": pointOffsets,
+        "cellCoordinateOffsets": cellCoordinateOffsets,
       })
 
   exp = Grid2DLocationExperiment(
@@ -114,9 +114,9 @@ def doExperiment(cellDimensions, pointOffsets):
   exp.learnObjects()
 
   filename = "logs/{}-points-{}-cells.log".format(
-    len(pointOffsets)**2, np.prod(cellDimensions))
+    len(cellCoordinateOffsets)**2, np.prod(cellDimensions))
   synapseFilename = "logs/{}-points-{}-cells-synapses.log".format(
-    len(pointOffsets)**2, np.prod(cellDimensions))
+    len(cellCoordinateOffsets)**2, np.prod(cellDimensions))
 
   with open(filename, "w") as fileOut, \
        open(synapseFilename, "w") as synapseFileOut:
@@ -130,13 +130,13 @@ def doExperiment(cellDimensions, pointOffsets):
 
 if __name__ == "__main__":
   doExperiment(cellDimensions=(5, 5),
-               pointOffsets=(0.5,))
+               cellCoordinateOffsets=(0.5,))
 
   doExperiment(cellDimensions=(5, 5),
-               pointOffsets=(0.05, 0.5, 0.95))
+               cellCoordinateOffsets=(0.05, 0.5, 0.95))
 
   doExperiment(cellDimensions=(10, 10),
-               pointOffsets=(0.05, 0.5, 0.95))
+               cellCoordinateOffsets=(0.05, 0.5, 0.95))
 
   print "Visualize these logs at:"
   print "http://numenta.github.io/htmresearch/visualizations/location-layer/location-module-inference.html"
