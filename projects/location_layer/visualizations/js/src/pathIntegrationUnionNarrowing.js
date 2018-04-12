@@ -375,12 +375,11 @@ function getFeatureCenter(feature) {
 }
 
 let firstRowTop = 24,
-    secondColumnLeft = 180,
-    secondRowTop = firstRowTop + 120,
+    layerHeight = 120,
+    secondRowTop = firstRowTop + layerHeight + 40,
     thirdRowTop = secondRowTop + 100,
-    layerHeight = 90,
-    layerWidth = 150,
-    worldLeft = 370,
+    layerWidth = 200,
+    worldLeft = 400,
     worldTop = firstRowTop,
     decodingsWidth = 142, // 76,
     decodingsHeight = layerHeight - 8;
@@ -408,21 +407,21 @@ let layout = {
     }],
 
   location: {
-    left: 0, top: secondRowTop, width: 150, height: layerHeight
+    left: 0, top: secondRowTop, width: layerWidth, height: layerHeight
   },
   decodedLocation: {
     left: layerWidth + 10, top: secondRowTop, width: decodingsWidth, height: decodingsHeight
   },
 
   input: {
-    left: 0, top: firstRowTop, width: 150, height: layerHeight
+    left: 0, top: firstRowTop, width: layerWidth, height: layerHeight
   },
   decodedInput: {
     left: layerWidth + 10, top: firstRowTop, width: decodingsWidth, height: decodingsHeight
   },
 
   motion: {
-    left: layerWidth + 40, top: thirdRowTop + 20, width: layerWidth, height: 81,
+    left: layerWidth / 2, top: thirdRowTop + 40, width: layerWidth, height: 81,
     secondary: true
   },
   moduleDisplacements: {
@@ -430,7 +429,7 @@ let layout = {
   },
 
   feature: {
-    left: 0, top: firstRowTop + layerHeight, width: 150, height: 5,
+    left: 0, top: firstRowTop + layerHeight, width: layerWidth, height: 5,
     secondary: true
   },
   decodedFeature: {
@@ -438,7 +437,7 @@ let layout = {
   },
 
   world: {
-    left: worldLeft, top: worldTop, width: 100, height: 100
+    left: worldLeft, top: worldTop, width: 120, height: 120
   }
 };
 
