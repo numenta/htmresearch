@@ -16,24 +16,19 @@ const CURSOR_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAA1CAYAAA
  *    activePoints: [[11.0, 12.0]]
  *  }}
  */
-function worldChart() {
+function sensorOnObjectChart() {
   var width,
       height,
       color,
-      t = 0;
+      xScale,
+      yScale;
 
   let drawFiringFields = function(selection) {
     selection.each(function(worldData) {
       let worldBackground = d3.select(this).select('.worldBackground'),
           firingFields = worldBackground.select('.firingFields');
 
-      let xScale = d3.scaleLinear()
-            .domain([0, worldData.dims.width])
-            .range([0, width]),
-          x = location => xScale(location.left),
-          yScale =  d3.scaleLinear()
-            .domain([0, worldData.dims.height])
-            .range([0, height]),
+      let x = location => xScale(location.left),
           y = location => yScale(location.top);
 
       let pattern = worldBackground.select('.myDefs')
@@ -48,8 +43,10 @@ function worldChart() {
         let config = worldData.selectedLocationModule,
             distancePerCell = [config.moduleMapDimensions[0] / config.cellDimensions[0],
                                config.moduleMapDimensions[1] / config.cellDimensions[1]],
-            pixelsPerCell = [height * (distancePerCell[0] / worldData.dims.height),
-                             width * (distancePerCell[1] / worldData.dims.width)];
+            pixelsPerCell = [height * (distancePerCell[0] /
+                                       (yScale.domain()[1] - yScale.domain()[0])),
+                             width * (distancePerCell[1] /
+                                      (xScale.domain()[1] - xScale.domain()[0]))];
 
         pattern.enter().append('pattern')
           .attr('id', 'FiringField')
@@ -119,20 +116,15 @@ function worldChart() {
 
   var chart = function(selection) {
     selection.each(function(worldData) {
+
       let worldNode = d3.select(this);
 
-      let xScale = d3.scaleLinear()
-            .domain([0, worldData.dims.width])
-            .range([0, width]),
-          x = location => xScale(location.left),
-          yScale =  d3.scaleLinear()
-            .domain([0, worldData.dims.height])
-            .range([0, height]),
+      let x = location => xScale(location.left),
           y = location => yScale(location.top);
 
 
       let features = worldNode.selectAll('.features')
-        .data(d => [d]);
+          .data(d => [d]);
 
       features = features.enter().append('g')
         .attr('class', 'features')
@@ -151,8 +143,8 @@ function worldChart() {
         .each(function(featureData) {
           d3.select(this)
             .call(featureChart()
-                  .width(xScale(featureData.width))
-                  .height(yScale(featureData.height))
+                  .width(xScale(featureData.width) - xScale(0))
+                  .height(yScale(featureData.height) - yScale(0))
                   .color(color));
         });
 
@@ -218,8 +210,19 @@ function worldChart() {
     return chart;
   };
 
+  chart.xScale = function(_) {
+    if (!arguments.length) return xScale;
+    xScale = _;
+    return chart;
+  };
+
+  chart.yScale = function(_) {
+    if (!arguments.length) return yScale;
+    yScale = _;
+    return chart;
+  };
 
   return chart;
 }
 
-export {worldChart};
+export {sensorOnObjectChart};

@@ -109,3 +109,18 @@ def printMultiColumnInferenceRecording(logText):
            logText.replace("\r", "\\r").replace("\n", "\\n"))
 
     display(HTML(addChart))
+
+
+def printPathIntegrationUnionNarrowingRecording(logText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.pathIntegrationUnionNarrowing.printRecording(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           logText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))

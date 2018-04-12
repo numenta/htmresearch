@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2017, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2017-2018, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -20,59 +20,54 @@
 # ----------------------------------------------------------------------
 
 """
-Connect the Grid2DLocationExperiment to the locationModuleInference.js
-visualization.
+Connect the Path Integration Union Narrowing experiment to the
+PathIntegrationUnionNarrowing.js visualization.
 """
 
 from __future__ import print_function
 from collections import defaultdict
 import json
+import os
+from pkg_resources import resource_string
+import StringIO
 
 import numpy as np
 
-from grid_2d_location_experiment import Grid2DLocationExperimentMonitor
+from htmresearch.frameworks.location.path_integration_union_narrowing import (
+  PIUNExperimentMonitor)
 
 
 
-class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
+class PIUNLogger(PIUNExperimentMonitor):
   """
   Logs the state of the world and the state of each layer to a file.
   """
 
-  def __init__(self, exp, out, includeSynapses=True):
+  def __init__(self, out, exp, includeSynapses=True):
     self.exp = exp
     self.out = out
     self.includeSynapses = includeSynapses
 
     self.locationRepresentations = exp.locationRepresentations
     self.inputRepresentations = exp.inputRepresentations
-    self.objectRepresentations = exp.objectRepresentations
 
-    self.locationModules = exp.locationModules
-    self.inputLayer = exp.inputLayer
-    self.objectLayer = exp.objectLayer
+    self.locationModules = exp.column.L6aModules
+    self.inputLayer = exp.column.L4
 
     self.subscriberToken = exp.addMonitor(self)
 
-    # World dimensions
-    print(json.dumps({"width": exp.worldDimensions[1],
-                      "height": exp.worldDimensions[0]}),
+    print(json.dumps({"numMinicolumns": exp.column.L4.numberOfColumns(),
+                      "cellsPerColumn": exp.column.L4.getCellsPerColumn()}),
           file=self.out)
-
-    print(json.dumps({"A": "red",
-                      "B": "blue",
-                      "C": "gray"}),
-          file=self.out)
-    print(json.dumps(exp.objects), file=self.out)
 
     print(json.dumps([{"cellDimensions": module.cellDimensions.tolist(),
                        "moduleMapDimensions": module.moduleMapDimensions.tolist(),
                        "orientation": module.orientation}
-                      for module in exp.locationModules]),
+                      for module in self.locationModules]),
           file=self.out)
 
-    print("objectPlacements", file=self.out)
-    print(json.dumps(exp.objectPlacements), file=self.out)
+    print("learnedObjects", file=self.out)
+    print(json.dumps(exp.learnedObjects), file=self.out)
 
 
   def __enter__(self, *args):
@@ -90,7 +85,7 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
 
 
   def beforeSense(self, featureSDR):
-    print("sense", file=self.out)
+    print("featureInput", file=self.out)
     print(json.dumps(featureSDR.tolist()), file=self.out)
     print(json.dumps(
       [k
@@ -98,49 +93,58 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
        if np.intersect1d(featureSDR, sdr).size == sdr.size]), file=self.out)
 
 
-  def beforeMove(self, deltaLocation):
-    print("move", file=self.out)
-    print(json.dumps(list(deltaLocation)), file=self.out)
+  def afterLocationInitialize(self):
+    print("initialSensation", file=self.out)
 
 
   def afterReset(self):
     print("reset", file=self.out)
 
 
-  def markSensoryRepetition(self):
+  def beforeSensoryRepetition(self):
     print("sensoryRepetition", file=self.out)
 
 
-  def afterWorldLocationChanged(self, locationInWorld):
-    print("locationInWorld", file=self.out)
-    print(json.dumps(locationInWorld), file=self.out)
+  def beforeInferObject(self, obj):
+    print("currentObject", file=self.out)
+    print(json.dumps(obj), file=self.out)
 
 
-  def afterLocationShift(self, deltaLocation):
+  def afterLocationChanged(self, locationOnObject):
+    print("locationOnObject", file=self.out)
+    print(json.dumps(locationOnObject), file=self.out)
+
+
+  def afterLocationShift(self, displacement):
     print("shift", file=self.out)
+    print(json.dumps({"top": displacement[0], "left": displacement[1]}),
+                     file=self.out)
+    phaseDisplacementByModule = [module.phaseDisplacement.tolist()
+                                 for module in self.locationModules]
+    print(json.dumps(phaseDisplacementByModule), file=self.out)
 
     cellsByModule = [module.getActiveCells().tolist()
                      for module in self.locationModules]
     print(json.dumps(cellsByModule), file=self.out)
 
-    pointsByModule = []
+    cellPointsByModule = []
     for module in self.locationModules:
-      pointsByModule.append(module.activePoints.tolist())
-    print(json.dumps(pointsByModule), file=self.out)
+      cellPoints = module.activePhases * module.cellDimensions
+      cellPointsByModule.append(cellPoints.tolist())
+    print(json.dumps(cellPointsByModule), file=self.out)
 
-    activeLocationCells = self.exp.getActiveLocationCells()
+    activeLocationCells = self.exp.column.getLocationRepresentation()
 
     decodings = []
-    for (objectName, location), sdr in self.locationRepresentations.iteritems():
+    for (objectName, iFeature), sdr in self.locationRepresentations.iteritems():
       amountContained = (np.intersect1d(sdr, activeLocationCells).size /
                          float(sdr.size))
-      decodings.append(
-        [objectName, location[0], location[1], amountContained])
+      decodings.append([objectName, iFeature, amountContained])
 
     print(json.dumps(decodings), file=self.out)
 
 
-  def afterLocationAnchor(self, anchorInput):
+  def afterLocationAnchor(self, anchorInput, **kwargs):
     print("locationLayer", file=self.out)
 
     cellsByModule = []
@@ -174,20 +178,21 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
 
     print(json.dumps(cellsByModule), file=self.out)
 
-    pointsByModule = []
+    cellPointsByModule = []
     for module in self.locationModules:
-      pointsByModule.append(module.activePoints.tolist())
-    print(json.dumps(pointsByModule), file=self.out)
+      cellPoints = module.activePhases * module.cellDimensions
+      cellPointsByModule.append(cellPoints.tolist())
+    print(json.dumps(cellPointsByModule), file=self.out)
 
 
-    activeLocationCells = self.exp.getActiveLocationCells()
+    activeLocationCells = self.exp.column.getLocationRepresentation()
 
     decodings = []
-    for (objectName, location), sdr in self.locationRepresentations.iteritems():
+    for (objectName, iFeature), sdr in self.locationRepresentations.iteritems():
       amountContained = (np.intersect1d(sdr, activeLocationCells).size /
                          float(sdr.size))
       decodings.append(
-        [objectName, location[0], location[1], amountContained])
+        [objectName, iFeature, amountContained])
     print(json.dumps(decodings), file=self.out)
 
 
@@ -225,69 +230,114 @@ class Grid2DLocationExperimentVisualizer(Grid2DLocationExperimentMonitor):
         activeSynapses.tolist())
 
     return {
-      "locationLayer": [basalSegmentsForCellDict[cell] for cell in cells],
-      "objectLayer": [apicalSegmentsForCellDict[cell] for cell in cells],
+      "locationLayer": [basalSegmentsForCellDict[cell] for cell in cells]
     }
 
 
   def getInputDecodings(self, activeCells):
     decodings = []
-    for (objectName, location, feature), sdr in self.inputRepresentations.iteritems():
+    for (objectName, iFeature, featureName), sdr in self.inputRepresentations.iteritems():
       amountContained = (np.intersect1d(sdr, activeCells).size /
                          float(sdr.size))
-      decodings.append([objectName, location[0], location[1], amountContained])
+      decodings.append([objectName, iFeature, amountContained])
 
     return decodings
 
 
-  def afterInputCompute(self, activeColumns, basalInput, apicalInput, **kwargs):
+  def afterInputCompute(self, activeColumns, basalInput, **kwargs):
     activeCells = self.inputLayer.getActiveCells().tolist()
     predictedCells = self.inputLayer.getPredictedCells().tolist()
 
-    print("inputLayer", file=self.out)
+    print("predictedFeatureLocationPair", file=self.out)
+    if self.includeSynapses:
+      segmentsForPredictedCells = self.getInputSegments(predictedCells, basalInput,
+                                                        [])
+      print(json.dumps(
+        [predictedCells, segmentsForPredictedCells]), file=self.out)
+    else:
+      print(json.dumps(
+        [predictedCells]), file=self.out)
+    print(json.dumps(self.getInputDecodings(activeCells)), file=self.out)
 
+    print("featureLocationPair", file=self.out)
     if self.includeSynapses:
       segmentsForActiveCells = self.getInputSegments(activeCells, basalInput,
-                                                     apicalInput)
-      segmentsForPredictedCells = self.getInputSegments(predictedCells, basalInput,
-                                                        apicalInput)
+                                                     [])
 
       print(json.dumps(
-        [activeCells, predictedCells, segmentsForActiveCells,
-         segmentsForPredictedCells]), file=self.out)
+        [activeCells, segmentsForActiveCells]), file=self.out)
 
     else:
       print(json.dumps(
-        [activeCells, predictedCells]), file=self.out)
-
-    print(json.dumps({
-      "activeCellDecodings": self.getInputDecodings(activeCells),
-      "predictedCellDecodings": self.getInputDecodings(predictedCells)
-    }), file=self.out)
+        [activeCells]), file=self.out)
+    print(json.dumps(self.getInputDecodings(activeCells)), file=self.out)
 
 
-  def afterObjectCompute(self, feedforwardInput, **kwargs):
-    activeCells = self.objectLayer.getActiveCells()
 
-    print("objectLayer", file=self.out)
-    if self.includeSynapses:
-      segmentsForActiveCells = [[] for _ in activeCells]
+class PIUNVisualizer(PIUNLogger):
+  """
+  Creates a self-contained interactive HTML file.
+  """
+  def __init__(self, out, *args, **kwargs):
+    self.htmlOut = out
+    self.logOut = StringIO.StringIO()
+    super(PIUNVisualizer, self).__init__(self.logOut, *args, **kwargs)
 
-      for i, cell in enumerate(activeCells):
-        connectedSynapses = np.where(
-          self.objectLayer.proximalPermanences.getRow(cell)
-          >= self.objectLayer.connectedPermanenceProximal)[0]
 
-        activeSynapses = np.intersect1d(connectedSynapses, feedforwardInput)
-        segmentsForActiveCells[i].append(activeSynapses.tolist())
+  def __exit__(self, *args):
+    super(PIUNVisualizer, self).__exit__(*args)
 
-      print(json.dumps([activeCells.tolist(),
-                        {"inputLayer": segmentsForActiveCells}]),
-            file=self.out)
-    else:
-      print(json.dumps([activeCells.tolist()]), file=self.out)
+    self.close()
 
-    decodings = [k
-                 for k, sdr in self.objectRepresentations.iteritems()
-                 if np.intersect1d(activeCells, sdr).size == sdr.size]
-    print(json.dumps(decodings), file=self.out)
+
+  def close(self):
+    cssText = """
+        .noselect {
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+        }
+    """
+
+    jsText = get_htmresearchviz0_js()
+
+    logText = self.logOut.getvalue()
+
+    page_content = u"""
+    <!doctype html>
+    <html>
+    <head>
+    <style>
+    {}
+    </style>
+    <script>
+    {}
+    </script>
+    </head>
+    <body>
+    <div id="putItHere"></div>
+    <script>
+      htmresearchviz0.pathIntegrationUnionNarrowing.printRecording(document.getElementById('putItHere'), '{}');
+    </script>
+    </body>
+    </html>
+    """.format(cssText,
+               jsText,
+               logText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    print(page_content, file=self.htmlOut)
+
+
+def get_htmresearchviz0_js():
+    path = os.path.join('package_data', 'htmresearchviz0-bundle.js')
+    try:
+      htmresearchviz0_js = resource_string('htmresearchviz0', path).decode('utf-8')
+    except ImportError:
+      print("===========")
+      print("Error: You need to install the htmresearchviz0 package. "
+            "Follow the instructions in htmresearch/projects/location_layer/visualizations/README.md")
+      print("===========")
+      raise
+    return htmresearchviz0_js

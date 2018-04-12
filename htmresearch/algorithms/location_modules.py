@@ -32,7 +32,7 @@ from nupic.bindings.math import SparseMatrixConnections, Random
 
 
 
-class SuperficialLocationModule2D(object):
+class Superficial2DLocationModule(object):
   """
   A model of a location module. It's similar to a grid cell module, but it uses
   squares rather than triangles.
@@ -64,34 +64,18 @@ class SuperficialLocationModule2D(object):
   (This model doesn't attempt to propose how "path integration" works. It
   attempts to show how locations are anchored to sensory cues.)
 
-  When orientation is set to 0 degrees, the deltaLocation is a [di, dj],
+  When orientation is set to 0 degrees, the displacement is a [di, dj],
   moving di cells "down" and dj cells "right".
 
-  When orientation is set to 90 degrees, the deltaLocation is essentially a
+  When orientation is set to 90 degrees, the displacement is essentially a
   [dx, dy], applied in typical x,y coordinates with the origin on the bottom
   left.
 
   Usage:
-
-  Adjust the location in response to motor input:
-    lm.shift([di, dj])
-
-  Adjust the location in response to sensory input:
-    lm.anchor(anchorInput)
-
-  Learn an anchor input for the current location:
-    lm.learn(anchorInput)
+  - When the sensor moves, call movementCompute.
+  - When the sensor senses something, call sensoryCompute.
 
   The "anchor input" is typically a feature-location pair SDR.
-
-  During inference, you'll typically call:
-    lm.shift(...)
-    # Consume lm.getActiveCells()
-    # ...
-    lm.anchor(...)
-
-  During learning, you'll do the same, but you'll call lm.learn() instead of
-  lm.anchor().
   """
 
   def __init__(self,
@@ -99,7 +83,7 @@ class SuperficialLocationModule2D(object):
                moduleMapDimensions,
                orientation,
                anchorInputSize,
-               pointOffsets=(0.5,),
+               cellCoordinateOffsets=(0.5,),
                activationThreshold=10,
                initialPermanence=0.21,
                connectedPermanence=0.50,
@@ -125,29 +109,31 @@ class SuperficialLocationModule2D(object):
     @param anchorInputSize (int)
     The number of input bits in the anchor input.
 
-    @param pointOffsets (list of floats)
+    @param cellCoordinateOffsets (list of floats)
     These must each be between 0.0 and 1.0. Every time a cell is activated by
-    anchor input, this class adds a "point" which is shifted in subsequent
-    motions. By default, this point is placed at the center of the cell. This
+    anchor input, this class adds a "phase" which is shifted in subsequent
+    motions. By default, this phase is placed at the center of the cell. This
     parameter allows you to control where the point is placed and whether multiple
-    are placed. For example, With value [0.2, 0.8], it will place 4 points:
-    [0.2, 0.2], [0.2, 0.8], [0.8, 0.2], [0.8, 0.8]
+    are placed. For example, With value [0.2, 0.8], when cell [2, 3] is activated
+    it will place 4 phases, corresponding to the following points in cell
+    coordinates: [2.2, 3.2], [2.2, 3.8], [2.8, 3.2], [2.8, 3.8]
     """
 
     self.cellDimensions = np.asarray(cellDimensions, dtype="int")
     self.moduleMapDimensions = np.asarray(moduleMapDimensions, dtype="float")
-    self.cellFieldsPerUnitDistance = self.cellDimensions / self.moduleMapDimensions
+    self.phasesPerUnitDistance = 1.0 / self.moduleMapDimensions
 
     self.orientation = orientation
     self.rotationMatrix = np.array(
       [[math.cos(orientation), -math.sin(orientation)],
        [math.sin(orientation), math.cos(orientation)]])
 
-    self.pointOffsets = pointOffsets
+    self.cellCoordinateOffsets = cellCoordinateOffsets
 
-    # These coordinates are in units of "cell fields".
-    self.activePoints = np.empty((0,2), dtype="float")
-    self.cellsForActivePoints = np.empty(0, dtype="int")
+    # Phase is measured as a number in the range [0.0, 1.0)
+    self.activePhases = np.empty((0,2), dtype="float")
+    self.cellsForActivePhases = np.empty(0, dtype="int")
+    self.phaseDisplacement = np.empty((0,2), dtype="float")
 
     self.activeCells = np.empty(0, dtype="int")
     self.activeSegments = np.empty(0, dtype="uint32")
@@ -171,48 +157,56 @@ class SuperficialLocationModule2D(object):
     """
     Clear the active cells.
     """
-    self.activePoints = np.empty((0,2), dtype="float")
-    self.cellsForActivePoints = np.empty(0, dtype="int")
+    self.activePhases = np.empty((0,2), dtype="float")
+    self.phaseDisplacement = np.empty((0,2), dtype="float")
+    self.cellsForActivePhases = np.empty(0, dtype="int")
     self.activeCells = np.empty(0, dtype="int")
 
 
   def _computeActiveCells(self):
     # Round each coordinate to the nearest cell.
-    flooredActivePoints = np.floor(self.activePoints).astype("int")
+    activeCellCoordinates = np.floor(
+      self.activePhases * self.cellDimensions).astype("int")
 
     # Convert coordinates to cell numbers.
-    self.cellsForActivePoints = (
-      np.ravel_multi_index(flooredActivePoints.T, self.cellDimensions))
-    self.activeCells = np.unique(self.cellsForActivePoints)
+    self.cellsForActivePhases = (
+      np.ravel_multi_index(activeCellCoordinates.T, self.cellDimensions))
+    self.activeCells = np.unique(self.cellsForActivePhases)
 
 
   def activateRandomLocation(self):
     """
     Set the location to a random point.
     """
-    self.activePoints = np.array([np.random.random(2) * self.cellDimensions])
+    self.activePhases = np.array([np.random.random(2)])
     self._computeActiveCells()
 
 
-  def shift(self, deltaLocation):
+  def movementCompute(self, displacement):
     """
     Shift the current active cells by a vector.
 
-    @param deltaLocation (pair of floats)
+    @param displacement (pair of floats)
     A translation vector [di, dj].
     """
     # Calculate delta in the module's coordinates.
-    deltaLocationInCellFields = (np.matmul(self.rotationMatrix, deltaLocation) *
-                                 self.cellFieldsPerUnitDistance)
+    phaseDisplacement = (np.matmul(self.rotationMatrix, displacement) *
+                         self.phasesPerUnitDistance)
 
     # Shift the active coordinates.
-    np.add(self.activePoints, deltaLocationInCellFields, out=self.activePoints)
-    np.mod(self.activePoints, self.cellDimensions, out=self.activePoints)
+    np.add(self.activePhases, phaseDisplacement, out=self.activePhases)
+
+    # In Python, (x % 1.0) can return 1.0 because of floating point goofiness.
+    # Generally this doesn't cause problems, it's just confusing when you're
+    # debugging.
+    np.round(self.activePhases, decimals=9, out=self.activePhases)
+    np.mod(self.activePhases, 1.0, out=self.activePhases)
 
     self._computeActiveCells()
+    self.phaseDisplacement = phaseDisplacement
 
 
-  def anchor(self, anchorInput):
+  def _sensoryComputeInferenceMode(self, anchorInput):
     """
     Infer the location from sensory input. Activate any cells with enough active
     synapses to this sensory input. Deactivate all other cells.
@@ -231,10 +225,10 @@ class SuperficialLocationModule2D(object):
       self.connections.mapSegmentsToCells(activeSegments))
 
     inactivated = np.setdiff1d(self.activeCells, sensorySupportedCells)
-    inactivatedIndices = np.in1d(self.cellsForActivePoints,
+    inactivatedIndices = np.in1d(self.cellsForActivePhases,
                                  inactivated).nonzero()[0]
     if inactivatedIndices.size > 0:
-      self.activePoints = np.delete(self.activePoints, inactivatedIndices,
+      self.activePhases = np.delete(self.activePhases, inactivatedIndices,
                                     axis=0)
 
     activated = np.setdiff1d(sensorySupportedCells, self.activeCells)
@@ -244,17 +238,19 @@ class SuperficialLocationModule2D(object):
 
     activatedCoords = np.concatenate(
       [activatedCoordsBase + [iOffset, jOffset]
-       for iOffset in self.pointOffsets
-       for jOffset in self.pointOffsets]
+       for iOffset in self.cellCoordinateOffsets
+       for jOffset in self.cellCoordinateOffsets]
     )
     if activatedCoords.size > 0:
-      self.activePoints = np.append(self.activePoints, activatedCoords, axis=0)
+      self.activePhases = np.append(self.activePhases,
+                                    activatedCoords / self.cellDimensions,
+                                    axis=0)
 
     self._computeActiveCells()
     self.activeSegments = activeSegments
 
 
-  def learn(self, anchorInput):
+  def _sensoryComputeLearningMode(self, anchorInput):
     """
     Associate this location with a sensory input. Subsequently, anchorInput will
     activate the current location during anchor().
@@ -313,8 +309,14 @@ class SuperficialLocationModule2D(object):
     self.connections.growSynapsesToSample(
       newSegments, anchorInput, numNewSynapses,
       self.initialPermanence, self.rng)
-
     self.activeSegments = activeSegments
+
+
+  def sensoryCompute(self, anchorInput, anchorGrowthCandidates, learn):
+    if learn:
+      self._sensoryComputeLearningMode(anchorGrowthCandidates)
+    else:
+      self._sensoryComputeInferenceMode(anchorInput)
 
 
   @staticmethod
@@ -387,6 +389,7 @@ class BodyToSpecificObjectModule2D(object):
 
   def reset(self):
     self.activeCells = np.empty(0, dtype="int")
+    self.inhibitedCells = np.empty(0, dtype="int")
 
 
   def formReciprocalSynapses(self, sensorToSpecificObjectByColumn):
@@ -542,6 +545,9 @@ class BodyToSpecificObjectModule2D(object):
       # Otherwise, activate all cells with the maximum number of active
       # segments.
       self.activeCells = candidates
+
+    self.inhibitedCells = np.setdiff1d(np.where(votesByCell > 0)[0],
+                                       self.activeCells)
 
 
   def getActiveCells(self):
