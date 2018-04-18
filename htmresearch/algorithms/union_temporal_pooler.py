@@ -174,7 +174,6 @@ class UnionTemporalPooler(SpatialPooler):
     self.setOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
     self.setActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
     self.setMinOverlapDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
-    self.setMinActiveDutyCycles(numpy.zeros(self.getNumColumns(), dtype=REAL_DTYPE))
     self.setBoostFactors(numpy.ones(self.getNumColumns(), dtype=REAL_DTYPE))
 
 
