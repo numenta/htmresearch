@@ -13,13 +13,37 @@ import {layerOfCellsChart} from './layerOfCellsChart.js';
 function locationModulesChart() {
   var width,
       height,
-      numRows = 3,
-      numCols = 6,
       color = null,
       onCellSelected = (iModule, selectedCell, layerId) => {};
 
+  function getDimensions(numModules) {
+    let [numRows0, numCols0] = (width > height)
+        ? [1, width/height]
+        : [height/width, 1],
+        scalingFactor = 1;
+
+    let numRows, numCols;
+
+    for (;; scalingFactor++) {
+      let numRows1 = Math.ceil(scalingFactor*numRows0),
+          numCols1 = Math.ceil(scalingFactor*numCols0);
+      if (numRows1 * numCols1 >= numModules) {
+        // Assumes a layout that arranges modules into columns, not rows.
+        let numRowsUsed = (numModules >= numRows1) ? numRows1 : numModules;
+        let numColsUsed = Math.ceil(numModules / numRows1);
+        numRows = numRowsUsed;
+        numCols = numColsUsed;
+        break;
+      }
+    }
+
+    return [numRows, numCols];
+  }
+
   let drawHighlightedCells = function(selection) {
     selection.each(function(moduleArrayData) {
+      let [numRows, numCols] = getDimensions(moduleArrayData.modules.length);
+
       let moduleWidth = width / numCols,
           moduleHeight = height / numRows,
           highlightedCellsByModule = [];
@@ -83,6 +107,8 @@ function locationModulesChart() {
       .attr('height', height);
 
     modules.each(function(moduleArrayData) {
+      let [numRows, numCols] = getDimensions(moduleArrayData.modules.length);
+
       let moduleWidth = width / numCols,
           moduleHeight = height / numRows;
 
@@ -129,18 +155,6 @@ function locationModulesChart() {
   chart.height = function(_) {
     if (!arguments.length) return height;
     height = _;
-    return chart;
-  };
-
-  chart.numRows = function(_) {
-    if (!arguments.length) return numRows;
-    numRows = _;
-    return chart;
-  };
-
-  chart.numCols = function(_) {
-    if (!arguments.length) return numCols;
-    numCols = _;
     return chart;
   };
 

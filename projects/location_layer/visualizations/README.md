@@ -10,6 +10,7 @@ This folder contains:
 
 ~~~
 npm install
+npm run build
 
 cd py/
 python setup.py develop --user

@@ -21,25 +21,25 @@
 """
 The methods here contain a factory to create a network that handles both
 temporal sequences as well as sensorimotor sequences.  It contains our
-normal L2L4 network with an additional layer that contains a sequence
-memory.
+normal L2L4 network except that L4 (renamed to TMColumn) makes
+both external and internal lateral connections.
 
-The network type supported is called "L4L2TMColumn". It is a single cortical
-column containing and L4 and an L2 layer plus a TM layer. L4 gets two inputs and
-feeds into L2. The L2 column feeds back to L4. TM gets the sensorInput.
+The network type supported is called "CombinedSequenceColumn". It is a single
+cortical column containing an L2 layer plus a temporal memory layer. L4 gets two
+inputs and feeds into L2. The L2 column feeds back to L4.
 
 
-                     L2Column   <-----------------+
-                       ^  +                       |
-                       |  |                       |
-                       +  v                       |
-     +------------->  L4Column  <-----------------+
-     |                   ^                        |
-     |                   |                        |
-     |                   |        TMColumn <------+
-     |                   |           ^            |
-     +                   +           |            +
-externalInput        sensorInput +---+          reset
+                     L2Column   <------------+
+                       ^  +                  |
+                       |  |                  |
+                       +  v                  |
+     +------------->  L4Column  <------------+
+     |                   ^                   |
+     |                   |                   |
+     |                   |                   |
+     |                   |                   |
+     +                   +                   +
+externalInput        sensorInput           reset
 
 
 Regions will be named as shown above plus a suffix indicating column number,
@@ -53,7 +53,7 @@ import numpy
 
 from htmresearch.frameworks.layers.l2_l4_network_creation import enableProfiling
 
-def createL4L2TMColumn(network, networkConfig, suffix=""):
+def createCombinedSequenceColumn(network, networkConfig, suffix=""):
   """
   Create a a single column containing one L4, one L2, and one TM.
 
@@ -63,14 +63,11 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
     {
       "externalInputSize": 1024,
       "sensorInputSize": 1024,
-      "L4Params": {
-        <constructor parameters for ApicalTMPairRegion>
-      },
       "L2Params": {
         <constructor parameters for ColumnPoolerRegion>
       },
       "TMParams": {
-        <constructor parameters for ApicalTMSequenceRegion>
+        <constructor parameters for ApicalTMPairRegion>
       },
     }
 
@@ -82,11 +79,6 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
   sensorInputName = "sensorInput" + suffix
   L4ColumnName = "L4Column" + suffix
   L2ColumnName = "L2Column" + suffix
-  TMColumnName = "TMColumn" + suffix
-
-  L4Params = copy.deepcopy(networkConfig["L4Params"])
-  L4Params["basalInputWidth"] = networkConfig["externalInputSize"]
-  L4Params["apicalInputWidth"] = networkConfig["L2Params"]["cellCount"]
 
   if networkConfig["externalInputSize"] > 0:
       network.addRegion(
@@ -96,10 +88,8 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
     sensorInputName, "py.RawSensor",
     json.dumps({"outputWidth": networkConfig["sensorInputSize"]}))
 
-  network.addRegion(L4ColumnName, "py.ApicalTMPairRegion", json.dumps(L4Params))
-  network.addRegion(TMColumnName,
-                    "py.ApicalTMSequenceRegion",
-                    json.dumps(networkConfig["TMParams"]))
+  network.addRegion(L4ColumnName, "py.ApicalTMPairRegion",
+                    json.dumps(networkConfig["L4Params"]))
   network.addRegion(L2ColumnName,
                     "py.ColumnPoolerRegion",
                     json.dumps(networkConfig["L2Params"]))
@@ -112,22 +102,25 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
   network.setPhases(sensorInputName,[0])
 
   # L4 and L2 regions always have phases 2 and 3, respectively
-  # TM region has same phase as L4 since they do not interconnect
   network.setPhases(L4ColumnName,[2])
-  network.setPhases(TMColumnName,[2])
   network.setPhases(L2ColumnName,[3])
 
-  # Link sensors to L4
-  network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="basalInput")
-  network.link(externalInputName, L4ColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="basalGrowthCandidates")
+  # Link sensor to L4
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="dataOut", destInput="activeColumns")
 
-  # Link main inputs to TM
-  network.link(sensorInputName, TMColumnName, "UniformLink", "",
-               srcOutput="dataOut", destInput="activeColumns")
+  # Create links for lateral connections including growth candidates
+  # Here we link both active cells from L4 and external input to the basal
+  # input to L4.
+  network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
+               srcOutput="activeCells", destInput="basalInput")
+  network.link(externalInputName, L4ColumnName, "UniformLink", "",
+               srcOutput="dataOut", destInput="basalInput")
+
+  network.link(L4ColumnName, L4ColumnName, "UniformLink", "",
+               srcOutput="winnerCells", destInput="basalGrowthCandidates")
+  network.link(externalInputName, L4ColumnName, "UniformLink", "",
+               srcOutput="dataOut", destInput="basalGrowthCandidates")
 
   # Link L4 to L2
   network.link(L4ColumnName, L2ColumnName, "UniformLink", "",
@@ -136,7 +129,7 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
                srcOutput="predictedActiveCells",
                destInput="feedforwardGrowthCandidates")
 
-  # Link L2 feedback to L4
+  # Link L2 feedback to L4 if requested
   if networkConfig["enableFeedback"]:
     network.link(L2ColumnName, L4ColumnName, "UniformLink", "",
                  srcOutput="feedForwardOutput", destInput="apicalInput",
@@ -144,8 +137,6 @@ def createL4L2TMColumn(network, networkConfig, suffix=""):
 
   # Link reset output to L2, TM, and L4
   network.link(sensorInputName, L2ColumnName, "UniformLink", "",
-               srcOutput="resetOut", destInput="resetIn")
-  network.link(sensorInputName, TMColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")
   network.link(sensorInputName, L4ColumnName, "UniformLink", "",
                srcOutput="resetOut", destInput="resetIn")

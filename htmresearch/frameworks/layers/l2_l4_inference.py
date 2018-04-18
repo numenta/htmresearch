@@ -591,7 +591,7 @@ class L4L2Experiment(object):
 
 
   def averageConvergencePoint(self, prefix, minOverlap, maxOverlap,
-                              settlingTime=1):
+                              settlingTime=1, firstStat=0, lastStat=None):
 
     """
     For each object, compute the convergence time - the first point when all
@@ -615,7 +615,7 @@ class L4L2Experiment(object):
     inferenceLength = 1000000
 
     # For each object
-    for stats in self.statistics:
+    for stats in self.statistics[firstStat:lastStat]:
 
       # For each L2 column locate convergence time
       convergencePoint = 0.0
@@ -625,9 +625,6 @@ class L4L2Experiment(object):
           columnConvergence = L4L2Experiment._locateConvergencePoint(
             stats[key], minOverlap, maxOverlap)
 
-          # Ensure this column has converged by the last iteration
-          # assert(columnConvergence <= len(stats[key]))
-
           convergencePoint = max(convergencePoint, columnConvergence)
 
       convergenceSum += ceil(float(convergencePoint) / settlingTime)
@@ -635,7 +632,11 @@ class L4L2Experiment(object):
       if ceil(float(convergencePoint) / settlingTime) <= inferenceLength:
         numCorrect += 1
 
-    return convergenceSum / len(self.statistics), numCorrect / len(self.statistics)
+    if len(self.statistics[firstStat:lastStat]) == 0:
+      return 10000.0, 0.0
+
+    return (convergenceSum / len(self.statistics[firstStat:lastStat]),
+            numCorrect / len(self.statistics[firstStat:lastStat]) )
 
 
   def printProfile(self, reset=False):

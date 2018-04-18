@@ -433,7 +433,7 @@ class ApicalTMSequenceRegion(PyRegion):
 
   def reset(self):
     """
-    Reset the TM.
+    Explicitly reset the TM.
     """
     self._tm.reset()
 
