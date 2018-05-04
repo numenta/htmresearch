@@ -309,10 +309,6 @@ class PIUNExperiment(object):
         self._sense(featureSDR, learn=False, waitForSettle=False)
 
         inferred = (
-          set(self.column.getSensoryRepresentation()) ==
-          set(self.inputRepresentations[
-            (objectDescription["name"], iFeature, feature["name"])]) and
-
           set(self.column.getLocationRepresentation()) ==
           set(self.locationRepresentations[
             (objectDescription["name"], iFeature)]))
