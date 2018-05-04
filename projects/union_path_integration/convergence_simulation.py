@@ -78,7 +78,7 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, featurePool):
 
 
 def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
-                 featuresPerObject, objectWidth, numFeatures):
+                 featuresPerObject, objectWidth, numFeatures, trace):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -137,14 +137,22 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
     len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures)
 
   convergence = collections.defaultdict(int)
-  with io.open(filename, "w", encoding="utf8") as fileOut:
-    with trace(fileOut, exp, includeSynapses=False):
-      print "Logging to", filename
-      for objectDescription in objects:
-        steps = exp.inferObjectWithRandomMovements(objectDescription)
-        convergence[steps] += 1
-        if steps is None:
-          print 'Failed to infer object "{}"'.format(objectDescription["name"])
+  if trace:
+    with io.open(filename, "w", encoding="utf8") as fileOut:
+      with trace(fileOut, exp, includeSynapses=False):
+        print "Logging to", filename
+        for objectDescription in objects:
+          steps = exp.inferObjectWithRandomMovements(objectDescription)
+          convergence[steps] += 1
+          if steps is None:
+            print 'Failed to infer object "{}"'.format(objectDescription["name"])
+  else:
+    print "Logging to", filename
+    for objectDescription in objects:
+      steps = exp.inferObjectWithRandomMovements(objectDescription)
+      convergence[steps] += 1
+      if steps is None:
+        print 'Failed to infer object "{}"'.format(objectDescription["name"])
 
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
@@ -158,6 +166,7 @@ if __name__ == "__main__":
   parser.add_argument("--locationModuleWidth", type=int, required=True)
 
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
+  parser.add_argument("--trace", action="store_true")
 
   args = parser.parse_args()
 
@@ -171,4 +180,5 @@ if __name__ == "__main__":
     featuresPerObject=10,
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
+    trace=args.trace,
   )
