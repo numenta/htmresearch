@@ -55,7 +55,7 @@ class PIUNCorticalColumn(object):
     """
     L4Params = {
       "columnCount": 150,
-      "cellsPerColumn": 32,
+      "cellsPerColumn": 16,
       "basalInputSize": (len(locationConfigs) *
                          sum(np.prod(config["cellDimensions"])
                              for config in locationConfigs))
@@ -249,6 +249,7 @@ class PIUNExperiment(object):
       self._move(feature)
 
       featureSDR = self.features[feature["name"]]
+      # TODO: Change this to single pass learning
       for _ in xrange(10):
         self._sense(featureSDR, learn=True, waitForSettle=False)
 
@@ -281,6 +282,7 @@ class PIUNExperiment(object):
     for monitor in self.monitors.values():
       monitor.beforeInferObject(objectDescription)
 
+    currentStep = 0
     inferred = False
     prevTouchSequence = None
 
@@ -299,17 +301,14 @@ class PIUNExperiment(object):
         break
 
       for iFeature in touchSequence:
+        currentStep += 1
         feature = objectDescription["features"][iFeature]
         self._move(feature)
 
         featureSDR = self.features[feature["name"]]
-        self._sense(featureSDR, learn=False, waitForSettle=True)
+        self._sense(featureSDR, learn=False, waitForSettle=False)
 
         inferred = (
-          set(self.column.getSensoryRepresentation()) ==
-          set(self.inputRepresentations[
-            (objectDescription["name"], iFeature, feature["name"])]) and
-
           set(self.column.getLocationRepresentation()) ==
           set(self.locationRepresentations[
             (objectDescription["name"], iFeature)]))
@@ -322,7 +321,7 @@ class PIUNExperiment(object):
       if inferred:
         break
 
-    return inferred
+    return currentStep if inferred else None
 
 
   def _move(self, feature):
