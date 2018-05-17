@@ -78,7 +78,7 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, featurePool):
 
 
 def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
-                 featuresPerObject, objectWidth, numFeatures, trace):
+                 featuresPerObject, objectWidth, numFeatures, useTrace):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -137,7 +137,7 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
     len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures)
 
   convergence = collections.defaultdict(int)
-  if trace:
+  if useTrace:
     with io.open(filename, "w", encoding="utf8") as fileOut:
       with trace(fileOut, exp, includeSynapses=False):
         print "Logging to", filename
@@ -166,7 +166,7 @@ if __name__ == "__main__":
   parser.add_argument("--locationModuleWidth", type=int, required=True)
 
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
-  parser.add_argument("--trace", action="store_true")
+  parser.add_argument("--useTrace", action="store_true")
 
   args = parser.parse_args()
 
@@ -180,5 +180,5 @@ if __name__ == "__main__":
     featuresPerObject=10,
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
-    trace=args.trace,
+    useTrace=args.useTrace,
   )
