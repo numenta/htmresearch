@@ -182,13 +182,17 @@ class Superficial2DLocationModule(object):
     self._computeActiveCells()
 
 
-  def movementCompute(self, displacement):
+  def movementCompute(self, displacement, use_noise = False, noise_factor = 0):
     """
     Shift the current active cells by a vector.
 
     @param displacement (pair of floats)
     A translation vector [di, dj].
     """
+    if use_noise:
+      noise = np.random.multivariate_normal((0, 0), [[noise_factor, 0], [0, noise_factor]])
+      displacement += noise
+
     # Calculate delta in the module's coordinates.
     phaseDisplacement = (np.matmul(self.rotationMatrix, displacement) *
                          self.phasesPerUnitDistance)
@@ -234,13 +238,15 @@ class Superficial2DLocationModule(object):
     activated = np.setdiff1d(sensorySupportedCells, self.activeCells)
 
     activatedCoordsBase = np.transpose(
-      np.unravel_index(activated, self.cellDimensions)).astype('float')
+      np.unravel_index(sensorySupportedCells, self.cellDimensions)).astype('float')
 
     activatedCoords = np.concatenate(
       [activatedCoordsBase + [iOffset, jOffset]
        for iOffset in self.cellCoordinateOffsets
        for jOffset in self.cellCoordinateOffsets]
     )
+    #import ipdb; ipdb.set_trace()
+    #print(len(activated), len(self.activeCells))
     if activatedCoords.size > 0:
       self.activePhases = np.append(self.activePhases,
                                     activatedCoords / self.cellDimensions,

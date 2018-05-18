@@ -28,8 +28,18 @@ import collections
 import io
 import os
 import random
+from multiprocessing import cpu_count, Pool
+from copy import copy
+import time
+try:
+  import cPickle as pkl
+except:
+  import pickle as pkl
 
 import numpy as np
+
+np.random.seed(865486387)
+random.seed(357627)
 
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
@@ -77,8 +87,16 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, featurePool):
   return objects
 
 
-def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
-                 featuresPerObject, objectWidth, numFeatures, useTrace):
+def doExperiment(cellDimensions,
+                 cellCoordinateOffsets,
+                 numObjects,
+                 featuresPerObject,
+                 objectWidth,
+                 numFeatures,
+                 useTrace,
+                 use_noise,
+                 noise_factor,
+                 module_noise_factor):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -128,7 +146,11 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
   }
 
   column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides)
-  exp = PIUNExperiment(column, featureNames=features, numActiveMinicolumns=10)
+  exp = PIUNExperiment(column, featureNames=features,
+                       numActiveMinicolumns=10,
+                       use_noise = use_noise,
+                       noise_factor = noise_factor,
+                       module_noise_factor = module_noise_factor)
 
   for objectDescription in objects:
     exp.learnObject(objectDescription)
@@ -139,7 +161,7 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
   convergence = collections.defaultdict(int)
   if useTrace:
     with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=False):
+      with trace(fileOut, exp, includeSynapses=True):
         print "Logging to", filename
         for objectDescription in objects:
           steps = exp.inferObjectWithRandomMovements(objectDescription)
@@ -157,6 +179,57 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
 
+  return(convergence)
+
+
+def experimentWrapper(args):
+  return doExperiment(**args)
+
+def run_multiprocess_noise_experiment(resultName, **kwargs):
+  """
+  :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
+  :return:
+  """
+
+  experiments = [{}]
+  for key, values in kwargs.items():
+    if type(values) is list:
+      new_experiments = []
+      for experiment in experiments:
+        for val in values:
+          new_experiment = copy(experiment)
+          new_experiment[key] = val
+          new_experiments.append(new_experiment)
+      experiments = new_experiments
+    else:
+      [a.__setitem__(key, values) for a in experiments]
+
+  numWorkers = cpu_count()
+  if numWorkers > 1:
+    pool = Pool(processes=numWorkers)
+    rs = pool.map_async(experimentWrapper, experiments, chunksize=1)
+    while not rs.ready():
+      remaining = rs._number_left
+      pctDone = 100.0 - (100.0*remaining) / len(experiments)
+      print "    =>", remaining, "experiments remaining, percent complete=",pctDone
+      time.sleep(5)
+    pool.close()  # No more work
+    pool.join()
+    result = rs.get()
+  else:
+    result = []
+    for arg in experiments:
+      result.append(doExperiment(arg))
+
+  # print "Full results:"
+  # pprint.pprint(result, width=150)
+
+  # Pickle results for later use
+  results = [(args,res) for args, res in zip(experiments, result)]
+  with open(resultName,"wb") as f:
+    pkl.dump(results,f)
+
+  return results
 
 
 if __name__ == "__main__":
@@ -164,16 +237,27 @@ if __name__ == "__main__":
   parser.add_argument("--numObjects", type=int, required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
-
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
+  parser.add_argument("--useNoise", action="store_true")
+  # parser.add_argument("--noiseFactor", type=float, default=0)
+  # parser.add_argument("--moduleNoiseFactor", type=float, default=0)
   parser.add_argument("--useTrace", action="store_true")
+  parser.add_argument("--resultName", type = str, default = "Results.txt")
+
 
   args = parser.parse_args()
 
   numOffsets = args.coordinateOffsetWidth
-  cellCoordinateOffsets = [i * (0.998 / (numOffsets-1)) + 0.001
-                           for i in xrange(numOffsets)]
-  doExperiment(
+  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001
+                           for i in xrange(numOffsets)])
+
+
+  noiseFactor = list(np.arange(0, 10, .5))
+  moduleNoiseFactor = list(np.arange(0, 10, .5))
+
+
+
+  run_multiprocess_noise_experiment(args.resultName,
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
@@ -181,4 +265,9 @@ if __name__ == "__main__":
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
+    use_noise=args.useNoise,
+    noise_factor=noiseFactor,
+    module_noise_factor=moduleNoiseFactor,
   )
+
+

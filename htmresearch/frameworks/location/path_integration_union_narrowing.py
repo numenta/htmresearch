@@ -72,7 +72,7 @@ class PIUNCorticalColumn(object):
       for config in locationConfigs]
 
 
-  def movementCompute(self, displacement):
+  def movementCompute(self, displacement, use_noise = False, noise_factor = 0, module_noise_factor = 0):
     """
     @param displacement (dict)
     The change in location. Example: {"top": 10, "left", 10}
@@ -80,9 +80,21 @@ class PIUNCorticalColumn(object):
     @return (dict)
     Data for logging/tracing.
     """
+
+    if use_noise:
+      xdisp = np.random.normal(0, noise_factor)
+      ydisp = np.random.normal(0, noise_factor)
+    else:
+      xdisp = 0
+      ydisp = 0
+
     locationParams = {
-      "displacement": [displacement["top"], displacement["left"]]
+      "displacement": [displacement["top"] + ydisp,
+                       displacement["left"] + xdisp],
+      "use_noise": use_noise,
+      "noise_factor": module_noise_factor
     }
+
     for module in self.L6aModules:
       module.movementCompute(**locationParams)
 
@@ -175,7 +187,12 @@ class PIUNExperiment(object):
   wouldn't be equivalent).
   """
 
-  def __init__(self, column, featureNames, numActiveMinicolumns=15):
+  def __init__(self, column,
+               featureNames,
+               numActiveMinicolumns=15,
+               use_noise = False,
+               noise_factor = 0,
+               module_noise_factor = 0):
     """
     @param column (PIUNColumn)
     A two-layer network.
@@ -218,6 +235,9 @@ class PIUNExperiment(object):
     self.monitors = {}
     self.nextMonitorToken = 1
 
+    self.use_noise = use_noise
+    self.noise_factor = noise_factor
+    self.module_noise_factor = module_noise_factor
 
   def reset(self):
     self.column.reset()
@@ -338,7 +358,11 @@ class PIUNExperiment(object):
     if self.locationOnObject is not None:
       displacement = {"top": locationOnObject["top"] - self.locationOnObject["top"],
                       "left": locationOnObject["left"] - self.locationOnObject["left"]}
-      params = self.column.movementCompute(displacement)
+      params = self.column.movementCompute(displacement,
+                                           self.use_noise,
+                                           self.noise_factor,
+                                           self.module_noise_factor)
+
       for monitor in self.monitors.values():
         monitor.afterLocationShift(**params)
     else:
@@ -396,7 +420,6 @@ class PIUNExperiment(object):
     @return (object)
     An opaque object that can be used to refer to this monitor.
     """
-
     token = self.nextMonitorToken
     self.nextMonitorToken += 1
 
