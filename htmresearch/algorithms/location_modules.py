@@ -76,6 +76,8 @@ class Superficial2DLocationModule(object):
   - When the sensor senses something, call sensoryCompute.
 
   The "anchor input" is typically a feature-location pair SDR.
+
+  To specify how points are tracked, pass anchoringMethod = "reanchoring" or method = "narrowing"
   """
 
   def __init__(self,
@@ -92,6 +94,7 @@ class Superficial2DLocationModule(object):
                permanenceIncrement=0.1,
                permanenceDecrement=0.0,
                maxSynapsesPerSegment=-1,
+               anchoringMethod="narrowing",
                seed=42):
     """
     @param cellDimensions (tuple(int, int))
@@ -150,6 +153,8 @@ class Superficial2DLocationModule(object):
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
+    self.anchoringMethod = anchoringMethod
+
     self.rng = Random(seed)
 
 
@@ -182,13 +187,17 @@ class Superficial2DLocationModule(object):
     self._computeActiveCells()
 
 
-  def movementCompute(self, displacement):
+  def movementCompute(self, displacement, noiseFactor = 0):
     """
     Shift the current active cells by a vector.
 
     @param displacement (pair of floats)
     A translation vector [di, dj].
     """
+    if noiseFactor != 0:
+      noise = np.random.multivariate_normal((0, 0), [[noiseFactor, 0], [0, noiseFactor]])
+      displacement += noise
+
     # Calculate delta in the module's coordinates.
     phaseDisplacement = (np.matmul(self.rotationMatrix, displacement) *
                          self.phasesPerUnitDistance)
@@ -233,18 +242,28 @@ class Superficial2DLocationModule(object):
 
     activated = np.setdiff1d(sensorySupportedCells, self.activeCells)
 
-    activatedCoordsBase = np.transpose(
-      np.unravel_index(activated, self.cellDimensions)).astype('float')
+    # Find centers of point clouds
+    if "reanchoring" in self.anchoringMethod:
+      activatedCoordsBase = np.transpose(
+        np.unravel_index(sensorySupportedCells, self.cellDimensions)).astype('float')
+    else:
+      activatedCoordsBase = np.transpose(
+        np.unravel_index(activated, self.cellDimensions)).astype('float')
 
+    # Generate points to add
     activatedCoords = np.concatenate(
       [activatedCoordsBase + [iOffset, jOffset]
        for iOffset in self.cellCoordinateOffsets
        for jOffset in self.cellCoordinateOffsets]
     )
-    if activatedCoords.size > 0:
-      self.activePhases = np.append(self.activePhases,
-                                    activatedCoords / self.cellDimensions,
-                                    axis=0)
+    if "reanchoring" in self.anchoringMethod:
+      self.activePhases = activatedCoords / self.cellDimensions
+
+    else:
+      if activatedCoords.size > 0:
+        self.activePhases = np.append(self.activePhases,
+                                      activatedCoords / self.cellDimensions,
+                                      axis=0)
 
     self._computeActiveCells()
     self.activeSegments = activeSegments

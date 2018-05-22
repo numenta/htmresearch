@@ -115,7 +115,7 @@ class PIUNLogger(PIUNExperimentMonitor):
     print(json.dumps(locationOnObject), file=self.out)
 
 
-  def afterLocationShift(self, displacement):
+  def afterLocationShift(self, displacement, **kwargs):
     print("shift", file=self.out)
     print(json.dumps({"top": displacement[0], "left": displacement[1]}),
                      file=self.out)

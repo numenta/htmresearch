@@ -28,8 +28,15 @@ import collections
 import io
 import os
 import random
+from multiprocessing import cpu_count, Pool
+from copy import copy
+import time
+import json
 
 import numpy as np
+
+np.random.seed(865486387)
+random.seed(357627)
 
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
@@ -77,8 +84,16 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, featurePool):
   return objects
 
 
-def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
-                 featuresPerObject, objectWidth, numFeatures, useTrace):
+def doExperiment(cellDimensions,
+                 cellCoordinateOffsets,
+                 numObjects,
+                 featuresPerObject,
+                 objectWidth,
+                 numFeatures,
+                 useTrace,
+                 noiseFactor,
+                 moduleNoiseFactor,
+                 anchoringMethod = "narrowing"):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -117,6 +132,7 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
       "sampleSize": 10,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.0,
+      "anchoringMethod": anchoringMethod,
     })
   l4Overrides = {
     "initialPermanence": 1.0,
@@ -128,7 +144,10 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
   }
 
   column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides)
-  exp = PIUNExperiment(column, featureNames=features, numActiveMinicolumns=10)
+  exp = PIUNExperiment(column, featureNames=features,
+                       numActiveMinicolumns=10,
+                       noiseFactor=noiseFactor,
+                       moduleNoiseFactor=moduleNoiseFactor)
 
   for objectDescription in objects:
     exp.learnObject(objectDescription)
@@ -139,7 +158,7 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
   convergence = collections.defaultdict(int)
   if useTrace:
     with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=False):
+      with trace(fileOut, exp, includeSynapses=True):
         print "Logging to", filename
         for objectDescription in objects:
           steps = exp.inferObjectWithRandomMovements(objectDescription)
@@ -157,23 +176,77 @@ def doExperiment(cellDimensions, cellCoordinateOffsets, numObjects,
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
 
+  return(convergence)
+
+
+def experimentWrapper(args):
+  return doExperiment(**args)
+
+def runMultiprocessNoiseExperiment(resultName, **kwargs):
+  """
+  :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
+  :return: results, in the format [(arguments, results)].  Also saved to json at resultName, in the same format.
+  """
+  experiments = [{}]
+  for key, values in kwargs.items():
+    if type(values) is list:
+      newExperiments = []
+      for experiment in experiments:
+        for val in values:
+          newExperiment = copy(experiment)
+          newExperiment[key] = val
+          newExperiments.append(newExperiment)
+      experiments = newExperiments
+    else:
+      [a.__setitem__(key, values) for a in experiments]
+
+  numWorkers = cpu_count()
+  if numWorkers > 1:
+    pool = Pool(processes=numWorkers)
+    rs = pool.map_async(experimentWrapper, experiments, chunksize=1)
+    while not rs.ready():
+      remaining = rs._number_left
+      pctDone = 100.0 - (100.0*remaining) / len(experiments)
+      print "    =>", remaining, "experiments remaining, percent complete=",pctDone
+      time.sleep(5)
+    pool.close()  # No more work
+    pool.join()
+    result = rs.get()
+  else:
+    result = []
+    for arg in experiments:
+      result.append(doExperiment(arg))
+
+  # Pickle results for later use
+  results = [(arg,res) for arg, res in zip(experiments, result)]
+  with open(resultName,"wb") as f:
+    json.dump(results,f)
+
+  return results
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--numObjects", type=int, required=True)
+  parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
-
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
+  parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
+  parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--useTrace", action="store_true")
+  parser.add_argument("--resultName", type = str, default = "results.json")
+  parser.add_argument("--anchoringMethod", type = str, default = "narrowing")
 
   args = parser.parse_args()
 
   numOffsets = args.coordinateOffsetWidth
-  cellCoordinateOffsets = [i * (0.998 / (numOffsets-1)) + 0.001
-                           for i in xrange(numOffsets)]
-  doExperiment(
+  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
+
+  if "both" in args.anchoringMethod:
+    args.anchoringMethod = ["narrowing", "reanchoring"]
+
+
+  runMultiprocessNoiseExperiment(args.resultName,
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
@@ -181,4 +254,7 @@ if __name__ == "__main__":
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
+    noiseFactor=args.noiseFactor,
+    moduleNoiseFactor=args.moduleNoiseFactor,
+    anchoringMethod=args.anchoringMethod,
   )

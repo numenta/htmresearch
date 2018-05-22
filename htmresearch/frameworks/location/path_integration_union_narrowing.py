@@ -72,7 +72,7 @@ class PIUNCorticalColumn(object):
       for config in locationConfigs]
 
 
-  def movementCompute(self, displacement):
+  def movementCompute(self, displacement, noiseFactor = 0, moduleNoiseFactor = 0):
     """
     @param displacement (dict)
     The change in location. Example: {"top": 10, "left", 10}
@@ -80,9 +80,20 @@ class PIUNCorticalColumn(object):
     @return (dict)
     Data for logging/tracing.
     """
+
+    if noiseFactor != 0:
+      xdisp = np.random.normal(0, noiseFactor)
+      ydisp = np.random.normal(0, noiseFactor)
+    else:
+      xdisp = 0
+      ydisp = 0
+
     locationParams = {
-      "displacement": [displacement["top"], displacement["left"]]
+      "displacement": [displacement["top"] + ydisp,
+                       displacement["left"] + xdisp],
+      "noiseFactor": moduleNoiseFactor
     }
+
     for module in self.L6aModules:
       module.movementCompute(**locationParams)
 
@@ -175,7 +186,11 @@ class PIUNExperiment(object):
   wouldn't be equivalent).
   """
 
-  def __init__(self, column, featureNames, numActiveMinicolumns=15):
+  def __init__(self, column,
+               featureNames,
+               numActiveMinicolumns=15,
+               noiseFactor = 0,
+               moduleNoiseFactor = 0):
     """
     @param column (PIUNColumn)
     A two-layer network.
@@ -218,6 +233,8 @@ class PIUNExperiment(object):
     self.monitors = {}
     self.nextMonitorToken = 1
 
+    self.noiseFactor = noiseFactor
+    self.moduleNoiseFactor = moduleNoiseFactor
 
   def reset(self):
     self.column.reset()
@@ -338,7 +355,10 @@ class PIUNExperiment(object):
     if self.locationOnObject is not None:
       displacement = {"top": locationOnObject["top"] - self.locationOnObject["top"],
                       "left": locationOnObject["left"] - self.locationOnObject["left"]}
-      params = self.column.movementCompute(displacement)
+      params = self.column.movementCompute(displacement,
+                                           self.noiseFactor,
+                                           self.moduleNoiseFactor)
+
       for monitor in self.monitors.values():
         monitor.afterLocationShift(**params)
     else:
@@ -396,7 +416,6 @@ class PIUNExperiment(object):
     @return (object)
     An opaque object that can be used to refer to this monitor.
     """
-
     token = self.nextMonitorToken
     self.nextMonitorToken += 1
 
