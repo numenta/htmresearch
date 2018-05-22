@@ -31,10 +31,7 @@ import random
 from multiprocessing import cpu_count, Pool
 from copy import copy
 import time
-try:
-  import cPickle as pkl
-except:
-  import pickle as pkl
+import json
 
 import numpy as np
 
@@ -94,10 +91,9 @@ def doExperiment(cellDimensions,
                  objectWidth,
                  numFeatures,
                  useTrace,
-                 use_noise,
-                 noise_factor,
-                 module_noise_factor,
-                 method = "narrowing"):
+                 noiseFactor,
+                 moduleNoiseFactor,
+                 anchoringMethod = "narrowing"):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -136,7 +132,7 @@ def doExperiment(cellDimensions,
       "sampleSize": 10,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.0,
-      "method": method,
+      "anchoringMethod": anchoringMethod,
     })
   l4Overrides = {
     "initialPermanence": 1.0,
@@ -150,9 +146,8 @@ def doExperiment(cellDimensions,
   column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides)
   exp = PIUNExperiment(column, featureNames=features,
                        numActiveMinicolumns=10,
-                       use_noise = use_noise,
-                       noise_factor = noise_factor,
-                       module_noise_factor = module_noise_factor)
+                       noiseFactor=noiseFactor,
+                       moduleNoiseFactor=moduleNoiseFactor)
 
   for objectDescription in objects:
     exp.learnObject(objectDescription)
@@ -187,7 +182,7 @@ def doExperiment(cellDimensions,
 def experimentWrapper(args):
   return doExperiment(**args)
 
-def run_multiprocess_noise_experiment(resultName, **kwargs):
+def runMultiprocessNoiseExperiment(resultName, **kwargs):
   """
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
   :return:
@@ -195,13 +190,13 @@ def run_multiprocess_noise_experiment(resultName, **kwargs):
   experiments = [{}]
   for key, values in kwargs.items():
     if type(values) is list:
-      new_experiments = []
+      newExperiments = []
       for experiment in experiments:
         for val in values:
-          new_experiment = copy(experiment)
-          new_experiment[key] = val
-          new_experiments.append(new_experiment)
-      experiments = new_experiments
+          newExperiment = copy(experiment)
+          newExperiment[key] = val
+          newExperiments.append(newExperiment)
+      experiments = newExperiments
     else:
       [a.__setitem__(key, values) for a in experiments]
 
@@ -225,7 +220,7 @@ def run_multiprocess_noise_experiment(resultName, **kwargs):
   # Pickle results for later use
   results = [(arg,res) for arg, res in zip(experiments, result)]
   with open(resultName,"wb") as f:
-    pkl.dump(results,f)
+    json.dump(results,f)
 
   return results
 
@@ -236,27 +231,22 @@ if __name__ == "__main__":
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
-  parser.add_argument("--useNoise", action="store_true")
+  parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
+  parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--useTrace", action="store_true")
-  parser.add_argument("--resultName", type = str, default = "results.pkl")
-  parser.add_argument("--method", type = str, default = "narrowing")
+  parser.add_argument("--resultName", type = str, default = "results.json")
+  parser.add_argument("--anchoringMethod", type = str, default = "narrowing")
 
   args = parser.parse_args()
 
   numOffsets = args.coordinateOffsetWidth
   cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
-  if args.useNoise:
-    noiseFactor = list(np.arange(0, 5, .5))
-    moduleNoiseFactor = list(np.arange(0, 5, .5))
-  else:
-    noiseFactor = moduleNoiseFactor = 0
-
-  if "both" in args.method:
-    args.method = ["narrowing", "corners"]
+  if "both" in args.anchoringMethod:
+    args.anchoringMethod = ["narrowing", "reanchoring"]
 
 
-  run_multiprocess_noise_experiment(args.resultName,
+  runMultiprocessNoiseExperiment(args.resultName,
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
@@ -264,13 +254,7 @@ if __name__ == "__main__":
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
-    use_noise=args.useNoise,
-    noise_factor=noiseFactor,
-    module_noise_factor=moduleNoiseFactor,
-    method=args.method,
+    noiseFactor=args.noiseFactor,
+    moduleNoiseFactor=args.moduleNoiseFactor,
+    anchoringMethod=args.anchoringMethod,
   )
-
-
-# Widths = [5, 10, 20]
-# numFeatures = 5000 for capacity.  For convergence, [10, 100, 5000]
-# numObjects = [ ]

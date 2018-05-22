@@ -77,7 +77,7 @@ class Superficial2DLocationModule(object):
 
   The "anchor input" is typically a feature-location pair SDR.
 
-  To specify how points are tracked, pass method = "corners" or method = "narrowing"
+  To specify how points are tracked, pass anchoringMethod = "corners" or method = "narrowing"
   """
 
   def __init__(self,
@@ -94,7 +94,7 @@ class Superficial2DLocationModule(object):
                permanenceIncrement=0.1,
                permanenceDecrement=0.0,
                maxSynapsesPerSegment=-1,
-               method = "narrowing",
+               anchoringMethod="narrowing",
                seed=42):
     """
     @param cellDimensions (tuple(int, int))
@@ -153,7 +153,7 @@ class Superficial2DLocationModule(object):
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
 
-    self.method = method
+    self.anchoringMethod = anchoringMethod
 
     self.rng = Random(seed)
 
@@ -187,15 +187,15 @@ class Superficial2DLocationModule(object):
     self._computeActiveCells()
 
 
-  def movementCompute(self, displacement, use_noise = False, noise_factor = 0):
+  def movementCompute(self, displacement, noiseFactor = 0):
     """
     Shift the current active cells by a vector.
 
     @param displacement (pair of floats)
     A translation vector [di, dj].
     """
-    if use_noise:
-      noise = np.random.multivariate_normal((0, 0), [[noise_factor, 0], [0, noise_factor]])
+    if noiseFactor != 0:
+      noise = np.random.multivariate_normal((0, 0), [[noiseFactor, 0], [0, noiseFactor]])
       displacement += noise
 
     # Calculate delta in the module's coordinates.
@@ -243,7 +243,7 @@ class Superficial2DLocationModule(object):
     activated = np.setdiff1d(sensorySupportedCells, self.activeCells)
 
     # Find centers of point clouds
-    if "corners" in self.method:
+    if "reanchoring" in self.anchoringMethod:
       activatedCoordsBase = np.transpose(
         np.unravel_index(sensorySupportedCells, self.cellDimensions)).astype('float')
     else:
@@ -256,7 +256,7 @@ class Superficial2DLocationModule(object):
        for iOffset in self.cellCoordinateOffsets
        for jOffset in self.cellCoordinateOffsets]
     )
-    if "corners" in self.method:
+    if "reanchoring" in self.anchoringMethod:
       self.activePhases = activatedCoords / self.cellDimensions
 
     else:
