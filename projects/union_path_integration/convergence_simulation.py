@@ -96,7 +96,8 @@ def doExperiment(cellDimensions,
                  useTrace,
                  use_noise,
                  noise_factor,
-                 module_noise_factor):
+                 module_noise_factor,
+                 method = "narrowing"):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -135,6 +136,7 @@ def doExperiment(cellDimensions,
       "sampleSize": 10,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.0,
+      "method": method,
     })
   l4Overrides = {
     "initialPermanence": 1.0,
@@ -190,7 +192,6 @@ def run_multiprocess_noise_experiment(resultName, **kwargs):
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
   :return:
   """
-
   experiments = [{}]
   for key, values in kwargs.items():
     if type(values) is list:
@@ -221,11 +222,8 @@ def run_multiprocess_noise_experiment(resultName, **kwargs):
     for arg in experiments:
       result.append(doExperiment(arg))
 
-  # print "Full results:"
-  # pprint.pprint(result, width=150)
-
   # Pickle results for later use
-  results = [(args,res) for args, res in zip(experiments, result)]
+  results = [(arg,res) for arg, res in zip(experiments, result)]
   with open(resultName,"wb") as f:
     pkl.dump(results,f)
 
@@ -234,27 +232,28 @@ def run_multiprocess_noise_experiment(resultName, **kwargs):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--numObjects", type=int, required=True)
+  parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
   parser.add_argument("--useNoise", action="store_true")
-  # parser.add_argument("--noiseFactor", type=float, default=0)
-  # parser.add_argument("--moduleNoiseFactor", type=float, default=0)
   parser.add_argument("--useTrace", action="store_true")
-  parser.add_argument("--resultName", type = str, default = "Results.txt")
-
+  parser.add_argument("--resultName", type = str, default = "results.pkl")
+  parser.add_argument("--method", type = str, default = "narrowing")
 
   args = parser.parse_args()
 
   numOffsets = args.coordinateOffsetWidth
-  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001
-                           for i in xrange(numOffsets)])
+  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
+  if args.useNoise:
+    noiseFactor = list(np.arange(0, 5, .5))
+    moduleNoiseFactor = list(np.arange(0, 5, .5))
+  else:
+    noiseFactor = moduleNoiseFactor = 0
 
-  noiseFactor = list(np.arange(0, 10, .5))
-  moduleNoiseFactor = list(np.arange(0, 10, .5))
-
+  if "both" in args.method:
+    args.method = ["narrowing", "corners"]
 
 
   run_multiprocess_noise_experiment(args.resultName,
@@ -268,6 +267,10 @@ if __name__ == "__main__":
     use_noise=args.useNoise,
     noise_factor=noiseFactor,
     module_noise_factor=moduleNoiseFactor,
+    method=args.method,
   )
 
 
+# Widths = [5, 10, 20]
+# numFeatures = 5000 for capacity.  For convergence, [10, 100, 5000]
+# numObjects = [ ]
