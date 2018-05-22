@@ -76,6 +76,8 @@ class Superficial2DLocationModule(object):
   - When the sensor senses something, call sensoryCompute.
 
   The "anchor input" is typically a feature-location pair SDR.
+
+  To specify how points are tracked, pass method = "corners" or method = "narrowing"
   """
 
   def __init__(self,
@@ -92,6 +94,7 @@ class Superficial2DLocationModule(object):
                permanenceIncrement=0.1,
                permanenceDecrement=0.0,
                maxSynapsesPerSegment=-1,
+               method = "narrowing",
                seed=42):
     """
     @param cellDimensions (tuple(int, int))
@@ -149,6 +152,8 @@ class Superficial2DLocationModule(object):
     self.permanenceDecrement = permanenceDecrement
     self.activationThreshold = activationThreshold
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
+
+    self.method = method
 
     self.rng = Random(seed)
 
@@ -237,20 +242,28 @@ class Superficial2DLocationModule(object):
 
     activated = np.setdiff1d(sensorySupportedCells, self.activeCells)
 
-    activatedCoordsBase = np.transpose(
-      np.unravel_index(sensorySupportedCells, self.cellDimensions)).astype('float')
+    # Find centers of point clouds
+    if "corners" in self.method:
+      activatedCoordsBase = np.transpose(
+        np.unravel_index(sensorySupportedCells, self.cellDimensions)).astype('float')
+    else:
+      activatedCoordsBase = np.transpose(
+        np.unravel_index(activated, self.cellDimensions)).astype('float')
 
+    # Generate points to add
     activatedCoords = np.concatenate(
       [activatedCoordsBase + [iOffset, jOffset]
        for iOffset in self.cellCoordinateOffsets
        for jOffset in self.cellCoordinateOffsets]
     )
-    #import ipdb; ipdb.set_trace()
-    #print(len(activated), len(self.activeCells))
-    if activatedCoords.size > 0:
-      self.activePhases = np.append(self.activePhases,
-                                    activatedCoords / self.cellDimensions,
-                                    axis=0)
+    if "corners" in self.method:
+      self.activePhases = activatedCoords / self.cellDimensions
+
+    else:
+      if activatedCoords.size > 0:
+        self.activePhases = np.append(self.activePhases,
+                                      activatedCoords / self.cellDimensions,
+                                      axis=0)
 
     self._computeActiveCells()
     self.activeSegments = activeSegments
