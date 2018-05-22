@@ -77,7 +77,7 @@ class Superficial2DLocationModule(object):
 
   The "anchor input" is typically a feature-location pair SDR.
 
-  To specify how points are tracked, pass anchoringMethod = "corners" or method = "narrowing"
+  To specify how points are tracked, pass anchoringMethod = "reanchoring" or method = "narrowing"
   """
 
   def __init__(self,

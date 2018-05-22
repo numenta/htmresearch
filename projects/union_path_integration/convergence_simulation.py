@@ -185,7 +185,7 @@ def experimentWrapper(args):
 def runMultiprocessNoiseExperiment(resultName, **kwargs):
   """
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
-  :return:
+  :return: results, in the format [(arguments, results)].  Also saved to json at resultName, in the same format.
   """
   experiments = [{}]
   for key, values in kwargs.items():
