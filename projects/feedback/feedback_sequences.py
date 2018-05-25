@@ -1,4 +1,4 @@
-
+# ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
 # Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
@@ -223,10 +223,18 @@ def experimentWrapper(pool, noiseProbas, nbSequences, nbSeeds, noiseType, sequen
   }
 
 
-  seeds = [seedx + 1234567 for seedx in range(nbSeeds)]
+  # Random seed has an influence only on the 'randomized stimulus insertion'
+  # experiment (can make non-zero error bars on the red line)
+  seeds = [seedx + 12345 for seedx in range(nbSeeds)]
   print "Using seeds:", seeds
   for noiseProba in noiseProbas:
     for numSequences in nbSequences:
+
+      # These should be initialized for each new noiseProba (but not for each seed)
+      metrics["corrsPredCorrectFBL4"] = []
+      metrics["corrsPredCorrectNoFBL4"]= []
+      metrics["corrsPredCorrectFBL4Next"]= []
+      metrics["corrsPredCorrectNoFBL4Next"] = []
 
       errorsFB=[]; errorsNoFB=[]; errorsNoNoise=[]
       perfsFB = []; perfsNoFB = []
@@ -240,17 +248,14 @@ def experimentWrapper(pool, noiseProbas, nbSequences, nbSeeds, noiseType, sequen
         dictMerge(metrics, metricSet)
 
       # Mean performance / error for this set of parameters (across all seeds and sequences for each seed)
-      metrics["meanPerfsFB"].append(numpy.mean(metrics["perfsFB"]))
-      metrics["meanPerfsNoFB"].append(numpy.mean(metrics["perfsNoFB"]))
-      metrics["stdPerfsFB"].append(numpy.std(metrics["perfsFB"]))
-      metrics["stdPerfsNoFB"].append(numpy.std(metrics["perfsNoFB"]))
-
-      metrics["meanErrsFB"].append(numpy.mean(metrics["errorsFB"]))
-      metrics["meanErrsNoFB"].append(numpy.mean(metrics["errorsNoFB"]))
-      metrics["meanErrsNoNoise"].append(numpy.mean(metrics["errorsNoNoise"]))
-      metrics["stdErrsFB"].append(numpy.std(metrics["errorsFB"]))
-      metrics["stdErrsNoFB"].append(numpy.std(metrics["errorsNoFB"]))
-      metrics["stdErrsNoNoise"].append(numpy.std(metrics["errorsNoNoise"]))
+      #metrics["meanPerfsFB"].append(numpy.mean(metrics["perfsFB"]))
+      #metrics["meanPerfsNoFB"].append(numpy.mean(metrics["perfsNoFB"]))
+      #metrics["stdPerfsFB"].append(numpy.std(metrics["perfsFB"]))
+      #metrics["stdPerfsNoFB"].append(numpy.std(metrics["perfsNoFB"]))
+      metrics["meanPerfsFB"].append(numpy.mean(metrics["corrsPredCorrectFBL4"]))
+      metrics["meanPerfsNoFB"].append(numpy.mean(metrics["corrsPredCorrectNoFBL4"]))
+      metrics["stdPerfsFB"].append(numpy.std(metrics["corrsPredCorrectFBL4"]))
+      metrics["stdPerfsNoFB"].append(numpy.std(metrics["corrsPredCorrectNoFBL4"]))
 
       aFB = numpy.array(metrics["activitiesFB"])[:,:]; aNoFB = numpy.array(metrics["activitiesNoFB"])[:,:]
       oFB = numpy.array(metrics["overlapsFBL2"])[:,:]; oNoFB = numpy.array(metrics["overlapsNoFBL2"])[:,:];
