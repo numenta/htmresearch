@@ -11,3 +11,9 @@ export {pathIntegrationUnionNarrowing};
 export {locationModuleInference};
 export {locationModules};
 export {multiColumnInference};
+
+export {insertSpikeRatesSnapshot, insertSpikeRatesSnapshotFromUrl,
+        insertSpikeRatesTimeline, insertSpikeRatesTimelineFromUrl,
+        insertInputWeights, insertInputWeightsFromUrl,
+        insertOutputWeights, insertOutputWeightsFromUrl}
+  from "./src/continuousAttractor";
