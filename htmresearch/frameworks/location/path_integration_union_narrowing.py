@@ -244,7 +244,7 @@ class PIUNExperiment(object):
       monitor.afterReset()
 
 
-  def learnObject(self, objectDescription):
+  def learnObject(self, objectDescription, randomLocation=False, useNoise = False):
     """
     Train the network to recognize the specified object. Move the sensor to one of
     its features and activate a random location representation in the location
@@ -262,25 +262,33 @@ class PIUNExperiment(object):
     self.reset()
     self.column.activateRandomLocation()
 
-    for iFeature, feature in enumerate(objectDescription["features"]):
-      self._move(feature)
+    if randomLocation or useNoise:
+      numIters = 10
+    else:
+      numIters = 1
+    for i in xrange(numIters):
+      for iFeature, feature in enumerate(objectDescription["features"]):
+        self._move(feature, randomLocation=randomLocation)
 
-      featureSDR = self.features[feature["name"]]
-      # TODO: Change this to single pass learning
-      for _ in xrange(10):
-        self._sense(featureSDR, learn=True, waitForSettle=False)
+        featureSDR = self.features[feature["name"]]
+        # TODO: Change this to single pass learning
+        for _ in xrange(10):
+          self._sense(featureSDR, learn=True, waitForSettle=False)
 
-      self.locationRepresentations[(objectDescription["name"],
-                                    iFeature)] = (
-                                      self.column.getLocationRepresentation())
-      self.inputRepresentations[(objectDescription["name"],
-                                 iFeature, feature["name"])] = (
-                                   self.column.getSensoryRepresentation())
+        if (objectDescription["name"], iFeature) not in self.locationRepresentations:
+          self.locationRepresentations[(objectDescription["name"], iFeature)] = []
+
+        self.locationRepresentations[(objectDescription["name"],
+                                      iFeature)].append(
+                                        self.column.getLocationRepresentation())
+        self.inputRepresentations[(objectDescription["name"],
+                                   iFeature, feature["name"])] = (
+                                     self.column.getSensoryRepresentation())
 
     self.learnedObjects.append(objectDescription)
 
 
-  def inferObjectWithRandomMovements(self, objectDescription):
+  def inferObjectWithRandomMovements(self, objectDescription,randomLocation=False):
     """
     Attempt to recognize the specified object with the network. Randomly move
     the sensor over the object until the object is recognized.
@@ -320,15 +328,15 @@ class PIUNExperiment(object):
       for iFeature in touchSequence:
         currentStep += 1
         feature = objectDescription["features"][iFeature]
-        self._move(feature)
+        self._move(feature, randomLocation=randomLocation)
 
         featureSDR = self.features[feature["name"]]
         self._sense(featureSDR, learn=False, waitForSettle=False)
 
         inferred = (
-          set(self.column.getLocationRepresentation()) ==
-          set(self.locationRepresentations[
-            (objectDescription["name"], iFeature)]))
+          set(self.column.getLocationRepresentation()) in
+          [set(s) for s in self.locationRepresentations[
+            (objectDescription["name"], iFeature)]])
 
         if inferred:
           break
@@ -341,16 +349,23 @@ class PIUNExperiment(object):
     return currentStep if inferred else None
 
 
-  def _move(self, feature):
+  def _move(self, feature, randomLocation = False):
     """
     Move the sensor to the center of the specified feature. If the sensor is
     currently at another location, send the displacement into the cortical
     column so that it can perform path integration.
     """
-    locationOnObject = {
-      "top": feature["top"] + feature["height"]/2.,
-      "left": feature["left"] + feature["width"]/2.
-    }
+
+    if randomLocation:
+      locationOnObject = {
+        "top": feature["top"] + np.random.rand()*feature["height"],
+        "left": feature["left"] + np.random.rand()*feature["width"],
+      }
+    else:
+      locationOnObject = {
+        "top": feature["top"] + feature["height"]/2.,
+        "left": feature["left"] + feature["width"]/2.
+      }
 
     if self.locationOnObject is not None:
       displacement = {"top": locationOnObject["top"] - self.locationOnObject["top"],

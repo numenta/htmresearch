@@ -136,9 +136,9 @@ class PIUNLogger(PIUNExperimentMonitor):
     activeLocationCells = self.exp.column.getLocationRepresentation()
 
     decodings = []
-    for (objectName, iFeature), sdr in self.locationRepresentations.iteritems():
-      amountContained = (np.intersect1d(sdr, activeLocationCells).size /
-                         float(sdr.size))
+    for (objectName, iFeature), sdrs in self.locationRepresentations.iteritems():
+      amountContained = np.amax([(np.intersect1d(sdr, activeLocationCells).size /
+                         float(sdr.size)) for sdr in sdrs])
       decodings.append([objectName, iFeature, amountContained])
 
     print(json.dumps(decodings), file=self.out)
@@ -188,9 +188,9 @@ class PIUNLogger(PIUNExperimentMonitor):
     activeLocationCells = self.exp.column.getLocationRepresentation()
 
     decodings = []
-    for (objectName, iFeature), sdr in self.locationRepresentations.iteritems():
-      amountContained = (np.intersect1d(sdr, activeLocationCells).size /
-                         float(sdr.size))
+    for (objectName, iFeature), sdrs in self.locationRepresentations.iteritems():
+      amountContained = np.amax([(np.intersect1d(sdr, activeLocationCells).size /
+                         float(sdr.size)) for sdr in sdrs])
       decodings.append(
         [objectName, iFeature, amountContained])
     print(json.dumps(decodings), file=self.out)

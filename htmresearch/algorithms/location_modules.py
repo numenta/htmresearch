@@ -77,7 +77,7 @@ class Superficial2DLocationModule(object):
 
   The "anchor input" is typically a feature-location pair SDR.
 
-  To specify how points are tracked, pass anchoringMethod = "reanchoring" or method = "narrowing"
+  To specify how points are tracked, pass anchoringMethod = "reanchoring", "narrowing" or "discrete".
   """
 
   def __init__(self,
@@ -95,6 +95,7 @@ class Superficial2DLocationModule(object):
                permanenceDecrement=0.0,
                maxSynapsesPerSegment=-1,
                anchoringMethod="narrowing",
+               rotationMatrix = None,
                seed=42):
     """
     @param cellDimensions (tuple(int, int))
@@ -117,7 +118,7 @@ class Superficial2DLocationModule(object):
     anchor input, this class adds a "phase" which is shifted in subsequent
     motions. By default, this phase is placed at the center of the cell. This
     parameter allows you to control where the point is placed and whether multiple
-    are placed. For example, With value [0.2, 0.8], when cell [2, 3] is activated
+    are placed. For example, with value [0.2, 0.8], when cell [2, 3] is activated
     it will place 4 phases, corresponding to the following points in cell
     coordinates: [2.2, 3.2], [2.2, 3.8], [2.8, 3.2], [2.8, 3.8]
     """
@@ -126,10 +127,18 @@ class Superficial2DLocationModule(object):
     self.moduleMapDimensions = np.asarray(moduleMapDimensions, dtype="float")
     self.phasesPerUnitDistance = 1.0 / self.moduleMapDimensions
 
-    self.orientation = orientation
-    self.rotationMatrix = np.array(
-      [[math.cos(orientation), -math.sin(orientation)],
-       [math.sin(orientation), math.cos(orientation)]])
+    if rotationMatrix is None:
+      self.orientation = orientation
+      self.rotationMatrix = np.array(
+        [[math.cos(orientation), -math.sin(orientation)],
+         [math.sin(orientation), math.cos(orientation)]])
+      if anchoringMethod == "discrete":
+        # Need to convert matrix to have integer values
+        smallestValue = np.amin(self.rotationMatrix[np.where(np.abs(self.rotationMatrix) > 0)])
+        self.rotationMatrix /= smallestValue
+        self.rotationMatrix = np.ceil(self.rotationMatrix)
+    else:
+      self.rotationMatrix = rotationMatrix
 
     self.cellCoordinateOffsets = cellCoordinateOffsets
 
@@ -571,6 +580,7 @@ class BodyToSpecificObjectModule2D(object):
 
   def getActiveCells(self):
     return self.activeCells
+
 
 
 

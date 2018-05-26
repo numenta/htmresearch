@@ -42,6 +42,14 @@ from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
 from two_layer_tracing import PIUNVisualizer as trace
 
+# Argparse hack, from https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+def str2bool(v):
+  if v.lower() in ('yes', 'true', 't', 'y', '1'):
+    return True
+  elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+    return False
+  else:
+    raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def generateFeatures(numFeatures):
   """Return string features.
@@ -93,7 +101,8 @@ def doExperiment(cellDimensions,
                  useTrace,
                  noiseFactor,
                  moduleNoiseFactor,
-                 anchoringMethod = "narrowing"):
+                 anchoringMethod="narrowing",
+                 randomLocation=False):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -117,6 +126,14 @@ def doExperiment(cellDimensions,
   numModules = 20
   thresholds = 16
   perModRange = float(90.0 / float(numModules))
+
+  scale = 10 * cellDimensions[0]
+  if anchoringMethod == "discrete":
+    cellCoordinateOffsets = (0.5,)
+
+  if anchoringMethod == "reanchoring":
+    cellCoordinateOffsets = (.0001, .5, .9999)
+
   for i in xrange(numModules):
     orientation = float(i) * perModRange
 
@@ -150,25 +167,25 @@ def doExperiment(cellDimensions,
                        moduleNoiseFactor=moduleNoiseFactor)
 
   for objectDescription in objects:
-    exp.learnObject(objectDescription)
+    exp.learnObject(objectDescription, randomLocation=randomLocation)
 
-  filename = "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
-    len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures)
+  filename = "traces/{}-points-{}-cells-{}-objects-{}-feats-{}-random.html".format(
+    len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures, randomLocation)
 
   convergence = collections.defaultdict(int)
   if useTrace:
     with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=True):
+      with trace(fileOut, exp, includeSynapses=False):
         print "Logging to", filename
         for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
+          steps = exp.inferObjectWithRandomMovements(objectDescription, randomLocation=randomLocation)
           convergence[steps] += 1
           if steps is None:
             print 'Failed to infer object "{}"'.format(objectDescription["name"])
   else:
     print "Logging to", filename
     for objectDescription in objects:
-      steps = exp.inferObjectWithRandomMovements(objectDescription)
+      steps = exp.inferObjectWithRandomMovements(objectDescription, randomLocation=randomLocation)
       convergence[steps] += 1
       if steps is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
@@ -182,11 +199,15 @@ def doExperiment(cellDimensions,
 def experimentWrapper(args):
   return doExperiment(**args)
 
-def runMultiprocessNoiseExperiment(resultName, **kwargs):
+def runMultiprocessNoiseExperiment(resultName=None, numWorkers = 0, **kwargs):
   """
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
   :return: results, in the format [(arguments, results)].  Also saved to json at resultName, in the same format.
   """
+
+  if resultName is None:
+    resultName = str(kwargs) + ".json"
+
   experiments = [{}]
   for key, values in kwargs.items():
     if type(values) is list:
@@ -200,7 +221,8 @@ def runMultiprocessNoiseExperiment(resultName, **kwargs):
     else:
       [a.__setitem__(key, values) for a in experiments]
 
-  numWorkers = cpu_count()
+  if numWorkers == 0:
+    numWorkers = cpu_count()
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
     rs = pool.map_async(experimentWrapper, experiments, chunksize=1)
@@ -215,9 +237,9 @@ def runMultiprocessNoiseExperiment(resultName, **kwargs):
   else:
     result = []
     for arg in experiments:
-      result.append(doExperiment(arg))
+      result.append(doExperiment(**arg))
 
-  # Pickle results for later use
+  # Save results for later use
   results = [(arg,res) for arg, res in zip(experiments, result)]
   with open(resultName,"wb") as f:
     json.dump(results,f)
@@ -235,15 +257,17 @@ if __name__ == "__main__":
   parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--useTrace", action="store_true")
   parser.add_argument("--resultName", type = str, default = "results.json")
-  parser.add_argument("--anchoringMethod", type = str, default = "narrowing")
+  parser.add_argument("--anchoringMethod", type = str, nargs = "+", default = "narrowing")
+  parser.add_argument("--randomLocation", type = str2bool, nargs = "+", default = False)
+  parser.add_argument("--numWorkers", type = int, default = 0)
 
   args = parser.parse_args()
 
   numOffsets = args.coordinateOffsetWidth
   cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
-  if "both" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "reanchoring"]
+  if "all" in args.anchoringMethod:
+    args.anchoringMethod = ["narrowing", "reanchoring", "discrete"]
 
 
   runMultiprocessNoiseExperiment(args.resultName,
@@ -257,4 +281,6 @@ if __name__ == "__main__":
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     anchoringMethod=args.anchoringMethod,
+    numWorkers=args.numWorkers,
+    randomLocation=args.randomLocation,
   )

@@ -46,7 +46,7 @@ def plotConvergenceByColumn(results, columnRange, featureRange, numTrials):
   #
   # Accumulate all the results per column in a convergence array.
   #
-  # Convergence[f,c] = how long it took it to  converge with f unique features
+  # Convergence[f,c] = how long it took it to converge with f unique features
   # and c columns.
   convergence = numpy.zeros((max(featureRange), max(columnRange) + 1))
   for r in results:
