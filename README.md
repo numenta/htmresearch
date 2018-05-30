@@ -1,7 +1,7 @@
 INTRODUCTION
 ==============
 
-This repository contains the code for experimental algorithm work done internally at Numenta. A description of that research is [available here](https://www.numenta.com/neuroscience-research/)
+This repository contains the code for experimental algorithm work done internally at Numenta. A description of that research is [available here](https://www.numenta.com/neuroscience-research/).
 
 Open Research?
 ==============
