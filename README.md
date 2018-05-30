@@ -4,7 +4,7 @@ This repository contains the code for experimental algorithm work done internall
 Open Research?
 ==============
 
-We have released all our commercial HTM algorithm code to the open source community within NuPIC. The NuPIC open source community continues to maintain and improve that regularly (see <link to forum> for discussions on that codebase. Internally we continue to evolve our theory towards a full blown cortical framework.
+We have released all our commercial HTM algorithm code to the open source community within NuPIC. The NuPIC open source community continues to maintain and improve that regularly (see * https://discourse.numenta.org for discussions on that codebase. Internally we continue to evolve our theory towards a full blown cortical framework.
 
 We get a lot of questions about it and we wondered whether it is possible to be even more open about that work. Could we release our day to day research code in a public repository? Would people get confused? Would it slow us down?
 
