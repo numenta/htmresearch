@@ -1,30 +1,16 @@
+INTRODUCTION
+This repository contains the code for experimental algorithm work done internally at Numenta. A description of that research is <link: https://www.numenta.com/neuroscience-research/> available here </link>.
+
 Open Research?
 ==============
 
-We have released all our commercial HTM algorithm code to the open source 
-community within NuPIC. We use that code in our product. The NuPIC
-open source community and Numenta continues to maintain and improve that 
-regularly. 
+We have released all our commercial HTM algorithm code to the open source community within NuPIC. The NuPIC open source community continues to maintain and improve that regularly (see <link to forum> for discussions on that codebase. Internally we continue to evolve our theory towards a full blown cortical framework.
 
-Internally though we continue to evolve and expand the ideas towards a 
-full blown cortical framework. Those research ideas are constantly in flux as
-we tweak and experiment. To go along with that we have a separate experimental 
-codebase that sits on top of NuPIC.   
+We get a lot of questions about it and we wondered whether it is possible to be even more open about that work. Could we release our day to day research code in a public repository? Would people get confused? Would it slow us down?
 
-We get a lot of questions about it. As such we wondered whether it is 
-possible to be even more open about that work.  Could we release our day 
-to day research code in a public repository? Would people get confused? Would
-it slow us down? 
+We decided to go ahead and create htmresearch. It contains experimental algorithm code done internally at Numenta. The code includes prototypes and experiments with different algorithm implementations. It sits on top of NuPIC and requires you have NuPIC installed.
 
-We discussed these tradeoffs on the NuPIC mailing list. Based on that 
-discussion, we decided to go ahead and create `nupic.research` It contains 
-the code for experimental algorithm work done internally at Numenta.
-
-The code includes prototypes and experiments with different algorithm 
-implementations. This is all temporary, ever-changing experimental code, 
-which poses some challenges.
-
-Hence the following **DISCLAIMERS**:
+Our research ideas are constantly in flux as we tweak and experiment. This is all temporary, ever-changing experimental code, which poses some challenges. Hence the following DISCLAIMERS:
 
  
 What you should understand about this repository
