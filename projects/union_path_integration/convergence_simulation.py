@@ -93,6 +93,7 @@ def doExperiment(cellDimensions,
                  useTrace,
                  noiseFactor,
                  moduleNoiseFactor,
+                 numModules,
                  anchoringMethod = "narrowing"):
   """
   Learn a set of objects. Then try to recognize each object. Output an
@@ -114,8 +115,7 @@ def doExperiment(cellDimensions,
   locationConfigs = []
   scale = 40.0
 
-  numModules = 20
-  thresholds = 16
+  thresholds = numModules
   perModRange = float(90.0 / float(numModules))
   for i in xrange(numModules):
     orientation = float(i) * perModRange
@@ -182,7 +182,7 @@ def doExperiment(cellDimensions,
 def experimentWrapper(args):
   return doExperiment(**args)
 
-def runMultiprocessNoiseExperiment(resultName, **kwargs):
+def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
   """
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
   :return: results, in the format [(arguments, results)].  Also saved to json at resultName, in the same format.
@@ -199,6 +199,12 @@ def runMultiprocessNoiseExperiment(resultName, **kwargs):
       experiments = newExperiments
     else:
       [a.__setitem__(key, values) for a in experiments]
+
+  newExperiments = []
+  for experiment in experiments:
+    for _ in xrange(repeat):
+      newExperiments.append(copy(experiment))
+  experiments = newExperiments
 
   numWorkers = cpu_count()
   if numWorkers > 1:
@@ -232,10 +238,12 @@ if __name__ == "__main__":
   parser.add_argument("--locationModuleWidth", type=int, required=True)
   parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
   parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
-  parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default = 0)
+  parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
   parser.add_argument("--useTrace", action="store_true")
-  parser.add_argument("--resultName", type = str, default = "results.json")
-  parser.add_argument("--anchoringMethod", type = str, default = "narrowing")
+  parser.add_argument("--numModules", type=int, nargs="+", default=[20])
+  parser.add_argument("--anchoringMethod", type = str, default="narrowing")
+  parser.add_argument("--resultName", type = str, default="results.json")
+  parser.add_argument("--repeat", type=int, default=1)
 
   args = parser.parse_args()
 
@@ -246,7 +254,7 @@ if __name__ == "__main__":
     args.anchoringMethod = ["narrowing", "reanchoring"]
 
 
-  runMultiprocessNoiseExperiment(args.resultName,
+  runMultiprocessNoiseExperiment(args.resultName, args.repeat,
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
@@ -256,5 +264,6 @@ if __name__ == "__main__":
     useTrace=args.useTrace,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
+    numModules=args.numModules,
     anchoringMethod=args.anchoringMethod,
   )
