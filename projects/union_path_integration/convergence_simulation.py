@@ -69,10 +69,10 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, featurePool):
   for x in xrange(objectWidth):
     for y in xrange(objectWidth):
       locations.append((x, y))
-  np.random.shuffle(locations)
 
   objects = []
   for o in xrange(numObjects):
+    np.random.shuffle(locations)
     features = []
     for i in xrange(featuresPerObject):
       x, y = locations[i]
