@@ -1,9 +1,9 @@
-INTRODUCTION
+Introduction
 ==============
 
 This repository contains the code for experimental algorithm work done internally at Numenta. A description of that research is [available here](https://www.numenta.com/neuroscience-research/).
 
-Open Research?
+Open Research
 ==============
 
 We have released all our commercial HTM algorithm code to the open source community within NuPIC. The NuPIC open source community continues to maintain and improve that regularly (see https://discourse.numenta.org for discussions on that codebase. Internally we continue to evolve our theory towards a full blown cortical framework.
@@ -18,18 +18,10 @@ Our research ideas are constantly in flux as we tweak and experiment. This is al
 What you should understand about this repository
 ================================================
 
-- the contents can change without warning or explanation
-- the code will change quickly as experiments are discarded and recreated
-- it might not change at all for a while
-- it could just be plain wrong or buggy for periods of time
-- code will not be production-quality and might be embarrassing
-- comments and questions about this code may be ignored
-- Numenta is under no obligation to properly document or explain this
-codebase or follow any understandable process
-- repository will be read-only to the public
+- the code can change quickly and without warning as experiments are discarded and recreated
+- code will not be production-quality, buggy, or well documented
 - if we do work with external partners, that work will probably NOT be here
-- we might decide at some point to not do our research in the open anymore and 
-instead delete the whole repository
+- we might decide at some point to not do our research in the open anymore and instead delete the whole repository
 
 We want to be as transparent as possible, but we also want to move
 fast with these experiments so the finalized algorithms can be
