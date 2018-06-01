@@ -271,7 +271,6 @@ class PIUNExperiment(object):
     for i in xrange(numIters):
       for iFeature, feature in enumerate(objectDescription["features"]):
         self._move(feature, randomLocation=randomLocation, useNoise=useNoise)
-
         featureSDR = self.features[feature["name"]]
         for _ in xrange(1):
           self._sense(featureSDR, learn=True, waitForSettle=False)
