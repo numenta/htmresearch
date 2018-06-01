@@ -42,15 +42,6 @@ from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
 from two_layer_tracing import PIUNVisualizer as trace
 
-# Argparse hack, from https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
-def str2bool(v):
-  if v.lower() in ('yes', 'true', 't', 'y', '1'):
-    return True
-  elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-    return False
-  else:
-    raise argparse.ArgumentTypeError('Boolean value expected.')
-
 def generateFeatures(numFeatures):
   """Return string features.
 
@@ -126,12 +117,12 @@ def doExperiment(cellDimensions,
   thresholds = numModules
   perModRange = float(90.0 / float(numModules))
 
-  scale = 10 * cellDimensions[0]
-  if anchoringMethod == "discrete":
-    cellCoordinateOffsets = (0.5,)
-
-  if anchoringMethod == "reanchoring":
+  # No need to keep track of extra points for corners and discrete methods.
+  if anchoringMethod == "corners":
     cellCoordinateOffsets = (.0001, .5, .9999)
+  if anchoringMethod == "discrete":
+    cellCoordinateOffsets = (.5,)
+
 
   for i in xrange(numModules):
     orientation = float(i) * perModRange
@@ -272,8 +263,7 @@ if __name__ == "__main__":
   cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
   if "all" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "reanchoring", "discrete"]
-
+    args.anchoringMethod = ["narrowing", "corners", "discrete"]
 
   runMultiprocessNoiseExperiment(args.resultName, args.repeat,
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
