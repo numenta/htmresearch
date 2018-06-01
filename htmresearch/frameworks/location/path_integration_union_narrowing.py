@@ -266,8 +266,7 @@ class PIUNExperiment(object):
       self._move(feature)
 
       featureSDR = self.features[feature["name"]]
-      # TODO: Change this to single pass learning
-      for _ in xrange(10):
+      for _ in xrange(1):
         self._sense(featureSDR, learn=True, waitForSettle=False)
 
       self.locationRepresentations[(objectDescription["name"],
