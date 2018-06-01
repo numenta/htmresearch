@@ -20,7 +20,8 @@
 # ----------------------------------------------------------------------
 
 """
-Convergence simulations for abstract objects.
+Noise simulations for convergence and capacity, using the L4-L6 location
+network.
 """
 
 import argparse
@@ -42,7 +43,8 @@ from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
 from two_layer_tracing import PIUNVisualizer as trace
 
-# Argparse hack, from https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
+# Argparse hack for handling boolean inputs, from
+# https://stackoverflow.com/questions/15008758/parsing-boolean-values-with-argparse
 def str2bool(v):
   if v.lower() in ('yes', 'true', 't', 'y', '1'):
     return True
@@ -102,7 +104,8 @@ def doExperiment(cellDimensions,
                  noiseFactor,
                  moduleNoiseFactor,
                  anchoringMethod="narrowing",
-                 randomLocation=False):
+                 randomLocation=False,
+                 threshold=16):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -124,11 +127,13 @@ def doExperiment(cellDimensions,
   scale = 5*cellDimensions[0] # One cell is about a quarter of a feature
 
   numModules = 20
-  thresholds = 16
   perModRange = float(90.0 / float(numModules))
 
-  if anchoringMethod == "reanchoring":
+  if anchoringMethod == "corners":
     cellCoordinateOffsets = (.0001, .5, .9999)
+
+  if anchoringMethod == "discrete":
+    cellCoordinateOffsets = (.5,)
 
   for i in xrange(numModules):
     orientation = float(i) * perModRange
@@ -142,16 +147,16 @@ def doExperiment(cellDimensions,
       "initialPermanence": 1.0,
       "connectedPermanence": 0.5,
       "learningThreshold": 8,
-      "sampleSize": 10,
+      "sampleSize": 20,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.0,
       "anchoringMethod": anchoringMethod,
     })
   l4Overrides = {
     "initialPermanence": 1.0,
-    "activationThreshold": thresholds,
-    "reducedBasalThreshold": thresholds,
-    "minThreshold": thresholds,
+    "activationThreshold": threshold,
+    "reducedBasalThreshold": threshold,
+    "minThreshold": threshold,
     "sampleSize": numModules,
     "cellsPerColumn": 16,
   }
@@ -163,7 +168,8 @@ def doExperiment(cellDimensions,
                        moduleNoiseFactor=moduleNoiseFactor)
 
   for objectDescription in objects:
-    exp.learnObject(objectDescription, randomLocation=randomLocation, useNoise = (noiseFactor > 0 or moduleNoiseFactor > 0))
+    exp.learnObject(objectDescription, randomLocation=randomLocation, useNoise = False)
+    print 'Learned object {}'.format(objectDescription["name"])
 
   filename = "traces/{}-points-{}-cells-{}-objects-{}-feats-{}-random.html".format(
     len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures, randomLocation)
@@ -178,12 +184,16 @@ def doExperiment(cellDimensions,
           convergence[steps] += 1
           if steps is None:
             print 'Failed to infer object "{}"'.format(objectDescription["name"])
+          else:
+            print 'Inferred object {} after {} steps'.format(objectDescription["name"], steps)
   else:
     for objectDescription in objects:
       steps = exp.inferObjectWithRandomMovements(objectDescription, randomLocation=randomLocation)
       convergence[steps] += 1
       if steps is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
+      else:
+        print 'Inferred object {} after {} steps'.format(objectDescription["name"], steps)
 
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
@@ -224,7 +234,8 @@ def runMultiprocessNoiseExperiment(resultName=None, numWorkers = 0, **kwargs):
     while not rs.ready():
       remaining = rs._number_left
       pctDone = 100.0 - (100.0*remaining) / len(experiments)
-      print "    =>", remaining, "experiments remaining, percent complete=",pctDone
+      print "    => {} experiments remaining, percent complete={}".format(\
+        remaining, pctDone)
       time.sleep(5)
     pool.close()  # No more work
     pool.join()
@@ -255,6 +266,7 @@ if __name__ == "__main__":
   parser.add_argument("--anchoringMethod", type = str, nargs = "+", default = "narrowing")
   parser.add_argument("--randomLocation", type = str2bool, nargs = "+", default = False)
   parser.add_argument("--numWorkers", type = int, default = 0)
+  parser.add_argument("--threshold", nargs="+", type = int, default = 16)
 
   args = parser.parse_args()
 
@@ -262,7 +274,7 @@ if __name__ == "__main__":
   cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
   if "all" in args.anchoringMethod or "both" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "reanchoring"]
+    args.anchoringMethod = ["narrowing", "corners"]
 
 
   runMultiprocessNoiseExperiment(args.resultName,
@@ -278,4 +290,5 @@ if __name__ == "__main__":
     anchoringMethod=args.anchoringMethod,
     numWorkers=args.numWorkers,
     randomLocation=args.randomLocation,
+    threshold=args.threshold,
   )
