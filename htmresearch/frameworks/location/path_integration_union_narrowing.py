@@ -236,6 +236,8 @@ class PIUNExperiment(object):
     self.noiseFactor = noiseFactor
     self.moduleNoiseFactor = moduleNoiseFactor
 
+    self.representationSet = set()
+
   def reset(self):
     self.column.reset()
     self.locationOnObject = None
@@ -263,16 +265,15 @@ class PIUNExperiment(object):
     self.column.activateRandomLocation()
 
     if randomLocation or useNoise:
-      numIters = 10
+      numIters = 5
     else:
       numIters = 1
     for i in xrange(numIters):
       for iFeature, feature in enumerate(objectDescription["features"]):
-        self._move(feature, randomLocation=randomLocation)
+        self._move(feature, randomLocation=randomLocation, useNoise=useNoise)
 
         featureSDR = self.features[feature["name"]]
-        # TODO: Change this to single pass learning
-        for _ in xrange(10):
+        for _ in xrange(1):
           self._sense(featureSDR, learn=True, waitForSettle=False)
 
         if (objectDescription["name"], iFeature) not in self.locationRepresentations:
@@ -287,8 +288,13 @@ class PIUNExperiment(object):
 
     self.learnedObjects.append(objectDescription)
 
+    self.representationSet.add(tuple(self.column.getLocationRepresentation()))
 
-  def inferObjectWithRandomMovements(self, objectDescription,randomLocation=False):
+
+  def inferObjectWithRandomMovements(self,
+                                     objectDescription,
+                                     randomLocation=False,
+                                     checkFalseConvergence=True):
     """
     Attempt to recognize the specified object with the network. Randomly move
     the sensor over the object until the object is recognized.
@@ -333,10 +339,18 @@ class PIUNExperiment(object):
         featureSDR = self.features[feature["name"]]
         self._sense(featureSDR, learn=False, waitForSettle=False)
 
-        inferred = (
-          set(self.column.getLocationRepresentation()) in
-          [set(s) for s in self.locationRepresentations[
-            (objectDescription["name"], iFeature)]])
+        representation = self.column.getLocationRepresentation()
+
+        target_representations = set(np.concatenate(
+          self.locationRepresentations[
+            (objectDescription["name"], iFeature)]))
+        inferred = (set(representation) <=
+          target_representations)
+
+        if not inferred and tuple(representation) in self.representationSet:
+          # We have converged to an incorrect representation - declare failure.
+          print("Converged to an incorrect representation!")
+          return None
 
         if inferred:
           break
@@ -349,7 +363,7 @@ class PIUNExperiment(object):
     return currentStep if inferred else None
 
 
-  def _move(self, feature, randomLocation = False):
+  def _move(self, feature, randomLocation = False, useNoise = True):
     """
     Move the sensor to the center of the specified feature. If the sensor is
     currently at another location, send the displacement into the cortical
@@ -368,11 +382,16 @@ class PIUNExperiment(object):
       }
 
     if self.locationOnObject is not None:
-      displacement = {"top": locationOnObject["top"] - self.locationOnObject["top"],
-                      "left": locationOnObject["left"] - self.locationOnObject["left"]}
-      params = self.column.movementCompute(displacement,
-                                           self.noiseFactor,
-                                           self.moduleNoiseFactor)
+      displacement = {"top": locationOnObject["top"] -
+                             self.locationOnObject["top"],
+                      "left": locationOnObject["left"] -
+                              self.locationOnObject["left"]}
+      if useNoise:
+        params = self.column.movementCompute(displacement,
+                                             self.noiseFactor,
+                                             self.moduleNoiseFactor)
+      else:
+        params = self.column.movementCompute(displacement, 0, 0)
 
       for monitor in self.monitors.values():
         monitor.afterLocationShift(**params)
