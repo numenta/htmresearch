@@ -23,6 +23,7 @@
 
 import math
 import random
+import copy
 
 import numpy as np
 
@@ -77,7 +78,12 @@ class Superficial2DLocationModule(object):
 
   The "anchor input" is typically a feature-location pair SDR.
 
-  To specify how points are tracked, pass anchoringMethod = "reanchoring" or method = "narrowing"
+  To specify how points are tracked, pass anchoringMethod = "corners",
+  "narrowing" or "discrete".  "discrete" will cause the network to operate in a
+  fully discrete space, where uncertainty is impossible as long as movements are
+  integers.  "narrowing" is designed to narrow down uncertainty of initial
+  locations of sensory stimuli.  "corners" is designed for noise-tolerance, and
+  will activate all cells that are possible outcomes of path integration.
   """
 
   def __init__(self,
@@ -95,6 +101,7 @@ class Superficial2DLocationModule(object):
                permanenceDecrement=0.0,
                maxSynapsesPerSegment=-1,
                anchoringMethod="narrowing",
+               rotationMatrix = None,
                seed=42):
     """
     @param cellDimensions (tuple(int, int))
@@ -117,7 +124,7 @@ class Superficial2DLocationModule(object):
     anchor input, this class adds a "phase" which is shifted in subsequent
     motions. By default, this phase is placed at the center of the cell. This
     parameter allows you to control where the point is placed and whether multiple
-    are placed. For example, With value [0.2, 0.8], when cell [2, 3] is activated
+    are placed. For example, with value [0.2, 0.8], when cell [2, 3] is activated
     it will place 4 phases, corresponding to the following points in cell
     coordinates: [2.2, 3.2], [2.2, 3.8], [2.8, 3.2], [2.8, 3.8]
     """
@@ -126,10 +133,19 @@ class Superficial2DLocationModule(object):
     self.moduleMapDimensions = np.asarray(moduleMapDimensions, dtype="float")
     self.phasesPerUnitDistance = 1.0 / self.moduleMapDimensions
 
-    self.orientation = orientation
-    self.rotationMatrix = np.array(
-      [[math.cos(orientation), -math.sin(orientation)],
-       [math.sin(orientation), math.cos(orientation)]])
+    if rotationMatrix is None:
+      self.orientation = orientation
+      self.rotationMatrix = np.array(
+        [[math.cos(orientation), -math.sin(orientation)],
+         [math.sin(orientation), math.cos(orientation)]])
+      if anchoringMethod == "discrete":
+        # Need to convert matrix to have integer values
+        nonzeros = self.rotationMatrix[np.where(np.abs(self.rotationMatrix)>0)]
+        smallestValue = np.amin(nonzeros)
+        self.rotationMatrix /= smallestValue
+        self.rotationMatrix = np.ceil(self.rotationMatrix)
+    else:
+      self.rotationMatrix = rotationMatrix
 
     self.cellCoordinateOffsets = cellCoordinateOffsets
 
@@ -184,6 +200,10 @@ class Superficial2DLocationModule(object):
     Set the location to a random point.
     """
     self.activePhases = np.array([np.random.random(2)])
+    if self.anchoringMethod == "discrete":
+      # Need to place the phase in the middle of a cell
+      self.activePhases = np.floor(
+        self.activePhases * self.cellDimensions)/self.cellDimensions
     self._computeActiveCells()
 
 
@@ -194,9 +214,14 @@ class Superficial2DLocationModule(object):
     @param displacement (pair of floats)
     A translation vector [di, dj].
     """
+
     if noiseFactor != 0:
-      noise = np.random.multivariate_normal((0, 0), [[noiseFactor, 0], [0, noiseFactor]])
-      displacement += noise
+      displacement = copy.deepcopy(displacement)
+      xnoise = np.random.normal(0, noiseFactor)
+      ynoise = np.random.normal(0, noiseFactor)
+      displacement[0] += xnoise
+      displacement[1] += ynoise
+
 
     # Calculate delta in the module's coordinates.
     phaseDisplacement = (np.matmul(self.rotationMatrix, displacement) *
@@ -243,9 +268,10 @@ class Superficial2DLocationModule(object):
     activated = np.setdiff1d(sensorySupportedCells, self.activeCells)
 
     # Find centers of point clouds
-    if "reanchoring" in self.anchoringMethod:
+    if "corners" in self.anchoringMethod:
       activatedCoordsBase = np.transpose(
-        np.unravel_index(sensorySupportedCells, self.cellDimensions)).astype('float')
+        np.unravel_index(sensorySupportedCells,
+                         self.cellDimensions)).astype('float')
     else:
       activatedCoordsBase = np.transpose(
         np.unravel_index(activated, self.cellDimensions)).astype('float')
@@ -256,7 +282,7 @@ class Superficial2DLocationModule(object):
        for iOffset in self.cellCoordinateOffsets
        for jOffset in self.cellCoordinateOffsets]
     )
-    if "reanchoring" in self.anchoringMethod:
+    if "corners" in self.anchoringMethod:
       self.activePhases = activatedCoords / self.cellDimensions
 
     else:
@@ -571,6 +597,7 @@ class BodyToSpecificObjectModule2D(object):
 
   def getActiveCells(self):
     return self.activeCells
+
 
 
 
