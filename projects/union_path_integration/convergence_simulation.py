@@ -42,6 +42,7 @@ from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
 from two_layer_tracing import PIUNVisualizer as trace
 
+
 def generateFeatures(numFeatures):
   """Return string features.
 
@@ -116,14 +117,6 @@ def doExperiment(cellDimensions,
 
   thresholds = numModules
   perModRange = float(90.0 / float(numModules))
-
-  # No need to keep track of extra points for corners and discrete methods.
-  if anchoringMethod == "corners":
-    cellCoordinateOffsets = (.0001, .5, .9999)
-  if anchoringMethod == "discrete":
-    cellCoordinateOffsets = (.5,)
-
-
   for i in xrange(numModules):
     orientation = float(i) * perModRange
 
@@ -157,25 +150,25 @@ def doExperiment(cellDimensions,
                        moduleNoiseFactor=moduleNoiseFactor)
 
   for objectDescription in objects:
-    exp.learnObject(objectDescription, randomLocation=randomLocation)
+    exp.learnObject(objectDescription)
 
-  filename = "traces/{}-points-{}-cells-{}-objects-{}-feats-{}-random.html".format(
-    len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures, randomLocation)
+  filename = "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
+    len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures)
 
   convergence = collections.defaultdict(int)
   if useTrace:
     with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=False):
+      with trace(fileOut, exp, includeSynapses=True):
         print "Logging to", filename
         for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription, randomLocation=randomLocation)
+          steps = exp.inferObjectWithRandomMovements(objectDescription)
           convergence[steps] += 1
           if steps is None:
             print 'Failed to infer object "{}"'.format(objectDescription["name"])
   else:
     print "Logging to", filename
     for objectDescription in objects:
-      steps = exp.inferObjectWithRandomMovements(objectDescription, randomLocation=randomLocation)
+      steps = exp.inferObjectWithRandomMovements(objectDescription)
       convergence[steps] += 1
       if steps is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
@@ -194,10 +187,6 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
   :return: results, in the format [(arguments, results)].  Also saved to json at resultName, in the same format.
   """
-
-  if resultName is None:
-    resultName = str(kwargs) + ".json"
-
   experiments = [{}]
   for key, values in kwargs.items():
     if type(values) is list:
@@ -217,8 +206,7 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
       newExperiments.append(copy(experiment))
   experiments = newExperiments
 
-  if numWorkers == 0:
-    numWorkers = cpu_count()
+  numWorkers = cpu_count()
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
     rs = pool.map_async(experimentWrapper, experiments, chunksize=1)
@@ -233,9 +221,9 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
   else:
     result = []
     for arg in experiments:
-      result.append(doExperiment(**arg))
+      result.append(doExperiment(arg))
 
-  # Save results for later use
+  # Pickle results for later use
   results = [(arg,res) for arg, res in zip(experiments, result)]
   with open(resultName,"wb") as f:
     json.dump(results,f)
@@ -262,8 +250,9 @@ if __name__ == "__main__":
   numOffsets = args.coordinateOffsetWidth
   cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
-  if "all" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "corners", "discrete"]
+  if "both" in args.anchoringMethod:
+    args.anchoringMethod = ["narrowing", "reanchoring"]
+
 
   runMultiprocessNoiseExperiment(args.resultName, args.repeat,
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
@@ -277,6 +266,4 @@ if __name__ == "__main__":
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
     anchoringMethod=args.anchoringMethod,
-    numWorkers=args.numWorkers,
-    randomLocation=args.randomLocation,
   )
