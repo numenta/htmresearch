@@ -246,7 +246,11 @@ class PIUNExperiment(object):
       monitor.afterReset()
 
 
-  def learnObject(self, objectDescription, randomLocation=False, useNoise = False):
+  def learnObject(self,
+                  objectDescription,
+                  randomLocation=False,
+                  useNoise=False,
+                  noisyTrainingTime=1):
     """
     Train the network to recognize the specified object. Move the sensor to one of
     its features and activate a random location representation in the location
@@ -265,7 +269,7 @@ class PIUNExperiment(object):
     self.column.activateRandomLocation()
 
     if randomLocation or useNoise:
-      numIters = 5
+      numIters = noisyTrainingTime
     else:
       numIters = 1
     for i in xrange(numIters):
