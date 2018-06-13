@@ -14,8 +14,8 @@ function layerOfCellsChart() {
   let width,
       height,
       color = d3.scaleOrdinal()
-        .domain(['active', 'predicted', 'predicted-active'])
-        .range(['black', 'rgba(0, 127, 255, 0.498)', 'black']),
+        .domain(['active', 'predicted', 'predicted-active', 'inhibited'])
+        .range(['black', 'rgba(0, 127, 255, 0.498)', 'black', 'darkseagreen']),
       stroke = "black",
       onCellSelected = (selectedCell, id) => {},
       columnMajorIndexing = false;

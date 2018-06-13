@@ -25,7 +25,7 @@ import collections
 
 import numpy as np
 
-from htmresearch.algorithms.column_pooler import ColumnPooler
+from htmresearch.algorithms.union_temporal_pooler import UnionTemporalPooler
 from nupic.algorithms.knn_classifier import KNNClassifier
 
 
@@ -36,12 +36,13 @@ def train(pooler, classifier, objs, numPasses):
     for _ in xrange(numPasses):
       np.random.shuffle(obj)
       for feature in obj:
-        sortedFeature = sorted(set(feature))
-        pooler.compute(feedforwardInput=sortedFeature,
-                       learn=True,
-                       predictedInput=sortedFeature)
-        poolerOutput = pooler.getActiveCells()
-        classifierInput = np.zeros(4096, dtype=np.uint32)
+        denseFeature = np.zeros((1024,), dtype=np.uint32)
+        denseFeature[feature] = 1
+        poolerOutput = pooler.compute(denseFeature,
+                                      denseFeature,
+                                      learn=True)
+
+        classifierInput = np.zeros((1024,), dtype=np.uint32)
         classifierInput[poolerOutput] = 1
         classifier.learn(classifierInput, label)
 
@@ -55,13 +56,13 @@ def test(pooler, classifier, objs):
     np.random.shuffle(obj)
     classifierGuesses = collections.defaultdict(int)
     for feature in obj:
-      sortedFeature = sorted(set(feature))
-      pooler.compute(feedforwardInput=sortedFeature,
-                     learn=False,
-                     predictedInput=sortedFeature)
-      poolerOutput = pooler.getActiveCells()
+      denseFeature = np.zeros((1024,), dtype=np.uint32)
+      denseFeature[feature] = 1
+      poolerOutput = pooler.compute(denseFeature,
+                                    denseFeature,
+                                    learn=False)
 
-      classifierInput = np.zeros(4096, dtype=np.uint32)
+      classifierInput = np.zeros((1024,), dtype=np.uint32)
       classifierInput[poolerOutput] = 1
       classifierResult = classifier.infer(classifierInput)
 
@@ -89,8 +90,15 @@ def run():
       for label in xrange(numObjects)
   ]
 
-  pooler = ColumnPooler(
-    inputWidth=1024,
+  pooler = UnionTemporalPooler(
+    inputDimensions=(1024,),
+    columnDimensions=(1024,),
+    potentialRadius=1024,
+    potentialPct=0.8,
+    globalInhibition=True,
+    numActiveColumnsPerInhArea=20.0,
+    #boostStrength=10.0,
+    #dutyCyclePeriod=50,
   )
   classifier = KNNClassifier(k=1, distanceMethod="rawOverlap")
 

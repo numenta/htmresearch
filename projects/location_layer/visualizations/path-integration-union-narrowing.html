@@ -1,0 +1,144 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Narrowing through path integration of unions</title>
+    <script src="build/htmresearchviz0-bundle.js"></script>
+    <style>
+      body {
+          text-align:center;
+      }
+
+      .noselect {
+          -webkit-touch-callout: none;
+          -webkit-user-select: none;
+          -moz-user-select: none;
+          -ms-user-select: none;
+          user-select: none;
+      }
+
+      .clickable {
+          cursor: pointer;
+      }
+
+      .fileDrop {
+          width: 300px;
+          height: 300px;
+          display: inline-block;
+          position: relative;
+          border: 1px solid black;
+          border-radius:10px;
+      }
+
+      .fileDropText {
+          display:block;
+          width: 100%;
+          text-align: center;
+          position:absolute;
+          top: 27%;
+          color: #111;
+          font-family: Helvetica, Arial, clean, sans-serif;
+          font-size: 14.5px;
+          line-height: 1.5;
+      }
+
+      .bigPlus {
+          font-size:64px;
+          margin-bottom:8px;
+      }
+
+      .exportArea {
+          font: 10px Verdana;
+      }
+
+      .singleVisualization {
+          max-width: 830px;
+          margin-left: auto;
+          margin-right: auto;
+          margin-bottom: 200px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="graphics"></div>
+
+    <script>
+      function handleFileContents(text) {
+        var div = document.createElement('div');
+
+        div.setAttribute('class', 'singleVisualization noselect');
+
+        document.getElementById('graphics').appendChild(div);
+        htmresearchviz0.pathIntegrationUnionNarrowing.printRecording(div, text);
+      }
+
+      function handleFile(file) {
+        var fileReader = new FileReader();
+
+        fileReader.onload = function (e) {
+          handleFileContents(fileReader.result);
+        };
+        fileReader.onerror = function (e) {
+          throw 'Error reading log file';
+        };
+
+        fileReader.readAsText(file);
+      }
+
+      function handleFiles(files) {
+        for (let i = 0; i < files.length; i++) {
+          handleFile(files[i]);
+        }
+      }
+
+      document.addEventListener("dragover", evt => {
+        evt.preventDefault();
+      });
+
+      document.addEventListener("drop", evt => {
+        evt.preventDefault();
+        handleFiles(evt.dataTransfer.files);
+      });
+    </script>
+
+    <input id="fileInput"
+           type="file"
+           onchange="handleFiles(this.files)"
+           accept="application/log"
+           style="display:none;"
+           multiple="true"></input>
+
+    <label for="fileInput">
+      <div class="fileDrop clickable">
+        <div class="fileDropText noselect">
+          <span>Drop a log file here</span>
+          <br />
+          <div class="bigPlus">+</div>
+          <span>(or just click)</span>
+        </div>
+      </div>
+    </label>
+
+    <script>
+      function getParameterByName(name, url) {
+        url = url || window.location.href;
+        name = name.replace(/[\[\]]/g, "\\$&");
+        var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+            results = regex.exec(url);
+        if (!results) return null;
+        if (!results[2]) return '';
+        return decodeURIComponent(results[2].replace(/\+/g, " "));
+      }
+
+      var dataPath = getParameterByName("data");
+      if (dataPath) {
+        let xhr = new XMLHttpRequest();
+        xhr.addEventListener("load", e => {
+          handleFileContents(xhr.responseText);
+        });
+        xhr.open("GET", dataPath);
+        xhr.send();
+      }
+    </script>
+  </body>
+</html>

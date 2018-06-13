@@ -109,3 +109,78 @@ def printMultiColumnInferenceRecording(logText):
            logText.replace("\r", "\\r").replace("\n", "\\n"))
 
     display(HTML(addChart))
+
+
+def printPathIntegrationUnionNarrowingRecording(logText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.pathIntegrationUnionNarrowing.printRecording(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           logText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
+
+
+def printSpikeRatesSnapshot(jsonText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.insertSpikeRatesSnapshot(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           jsonText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
+
+
+def printSpikeRatesTimeline(jsonText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.insertSpikeRatesTimeline(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           jsonText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
+
+
+def printInputWeights(jsonText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.insertInputWeights(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           jsonText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
+
+
+def printOutputWeights(jsonText):
+    elementId = str(uuid.uuid1())
+    addChart = """
+    <div class="htmresearchviz-output" id="%s"></div>
+    <script>
+    require(['htmresearchviz0'], function(htmresearchviz0) {
+      htmresearchviz0.insertOutputWeights(document.getElementById('%s'), '%s');
+    });
+    </script>
+    """ % (elementId, elementId,
+           jsonText.replace("\r", "\\r").replace("\n", "\\n"))
+
+    display(HTML(addChart))
