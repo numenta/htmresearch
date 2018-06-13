@@ -33,7 +33,6 @@ PLEASE READ THROUGH THE CODE COMMENTS - THEY EXPLAIN THE OUTPUT IN DETAIL
 
 """
 
-# Can't live without numpy
 import numpy
 from itertools import izip as zip, count
 
