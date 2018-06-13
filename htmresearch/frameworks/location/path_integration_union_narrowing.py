@@ -236,6 +236,8 @@ class PIUNExperiment(object):
     self.noiseFactor = noiseFactor
     self.moduleNoiseFactor = moduleNoiseFactor
 
+    self.representationSet = set()
+
   def reset(self):
     self.column.reset()
     self.locationOnObject = None
@@ -244,7 +246,11 @@ class PIUNExperiment(object):
       monitor.afterReset()
 
 
-  def learnObject(self, objectDescription):
+  def learnObject(self,
+                  objectDescription,
+                  randomLocation=False,
+                  useNoise=False,
+                  noisyTrainingTime=1):
     """
     Train the network to recognize the specified object. Move the sensor to one of
     its features and activate a random location representation in the location
@@ -262,25 +268,36 @@ class PIUNExperiment(object):
     self.reset()
     self.column.activateRandomLocation()
 
-    for iFeature, feature in enumerate(objectDescription["features"]):
-      self._move(feature)
+    if randomLocation or useNoise:
+      numIters = noisyTrainingTime
+    else:
+      numIters = 1
+    for i in xrange(numIters):
+      for iFeature, feature in enumerate(objectDescription["features"]):
+        self._move(feature, randomLocation=randomLocation, useNoise=useNoise)
+        featureSDR = self.features[feature["name"]]
+        for _ in xrange(1):
+          self._sense(featureSDR, learn=True, waitForSettle=False)
 
-      featureSDR = self.features[feature["name"]]
-      # TODO: Change this to single pass learning
-      for _ in xrange(10):
-        self._sense(featureSDR, learn=True, waitForSettle=False)
+        if (objectDescription["name"], iFeature) not in self.locationRepresentations:
+          self.locationRepresentations[(objectDescription["name"], iFeature)] = []
 
-      self.locationRepresentations[(objectDescription["name"],
-                                    iFeature)] = (
-                                      self.column.getLocationRepresentation())
-      self.inputRepresentations[(objectDescription["name"],
-                                 iFeature, feature["name"])] = (
-                                   self.column.getSensoryRepresentation())
+        self.locationRepresentations[(objectDescription["name"],
+                                      iFeature)].append(
+                                        self.column.getLocationRepresentation())
+        self.inputRepresentations[(objectDescription["name"],
+                                   iFeature, feature["name"])] = (
+                                     self.column.getSensoryRepresentation())
 
     self.learnedObjects.append(objectDescription)
 
+    self.representationSet.add(tuple(self.column.getLocationRepresentation()))
 
-  def inferObjectWithRandomMovements(self, objectDescription):
+
+  def inferObjectWithRandomMovements(self,
+                                     objectDescription,
+                                     randomLocation=False,
+                                     checkFalseConvergence=True):
     """
     Attempt to recognize the specified object with the network. Randomly move
     the sensor over the object until the object is recognized.
@@ -320,15 +337,23 @@ class PIUNExperiment(object):
       for iFeature in touchSequence:
         currentStep += 1
         feature = objectDescription["features"][iFeature]
-        self._move(feature)
+        self._move(feature, randomLocation=randomLocation)
 
         featureSDR = self.features[feature["name"]]
         self._sense(featureSDR, learn=False, waitForSettle=False)
 
-        inferred = (
-          set(self.column.getLocationRepresentation()) ==
-          set(self.locationRepresentations[
+        representation = self.column.getLocationRepresentation()
+
+        target_representations = set(np.concatenate(
+          self.locationRepresentations[
             (objectDescription["name"], iFeature)]))
+        inferred = (set(representation) <=
+          target_representations)
+
+        if not inferred and tuple(representation) in self.representationSet:
+          # We have converged to an incorrect representation - declare failure.
+          print("Converged to an incorrect representation!")
+          return None
 
         if inferred:
           break
@@ -341,23 +366,35 @@ class PIUNExperiment(object):
     return currentStep if inferred else None
 
 
-  def _move(self, feature):
+  def _move(self, feature, randomLocation = False, useNoise = True):
     """
     Move the sensor to the center of the specified feature. If the sensor is
     currently at another location, send the displacement into the cortical
     column so that it can perform path integration.
     """
-    locationOnObject = {
-      "top": feature["top"] + feature["height"]/2.,
-      "left": feature["left"] + feature["width"]/2.
-    }
+
+    if randomLocation:
+      locationOnObject = {
+        "top": feature["top"] + np.random.rand()*feature["height"],
+        "left": feature["left"] + np.random.rand()*feature["width"],
+      }
+    else:
+      locationOnObject = {
+        "top": feature["top"] + feature["height"]/2.,
+        "left": feature["left"] + feature["width"]/2.
+      }
 
     if self.locationOnObject is not None:
-      displacement = {"top": locationOnObject["top"] - self.locationOnObject["top"],
-                      "left": locationOnObject["left"] - self.locationOnObject["left"]}
-      params = self.column.movementCompute(displacement,
-                                           self.noiseFactor,
-                                           self.moduleNoiseFactor)
+      displacement = {"top": locationOnObject["top"] -
+                             self.locationOnObject["top"],
+                      "left": locationOnObject["left"] -
+                              self.locationOnObject["left"]}
+      if useNoise:
+        params = self.column.movementCompute(displacement,
+                                             self.noiseFactor,
+                                             self.moduleNoiseFactor)
+      else:
+        params = self.column.movementCompute(displacement, 0, 0)
 
       for monitor in self.monitors.values():
         monitor.afterLocationShift(**params)
