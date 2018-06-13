@@ -1,7 +1,7 @@
 
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2013, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2018, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -129,16 +129,16 @@ for j in range(5):
   print("# of active segments " + str(numpy.shape(tm.getActiveBasalSegments())[0]))
 
   cells_per_column = tm.getCellsPerColumn()
-  activeColumnsIndeces = [int(i / cells_per_column) for i in tm.getActiveCells()]
-  predictedColumnIndeces = [int(i / cells_per_column) for i in tm.getNextPredictedCells()]
+  activeColumnsIndices = [int(i / cells_per_column) for i in tm.getActiveCells()]
+  predictedColumnIndices = [int(i / cells_per_column) for i in tm.getNextPredictedCells()]
 
 
   # Reconstructing the active and inactive columns with 1 as active and 0 as
   # inactive representation.
 
-  actColState = ['1' if i in activeColumnsIndeces else '0' for i in range(tm.numberOfColumns())]
+  actColState = ['1' if i in activeColumnsIndices else '0' for i in range(tm.numberOfColumns())]
   actColStr = ("".join(actColState))
-  predColState = ['1' if i in predictedColumnIndeces else '0' for i in range(tm.numberOfColumns())]
+  predColState = ['1' if i in predictedColumnIndices else '0' for i in range(tm.numberOfColumns())]
   predColStr = ("".join(predColState))
 
   # For convenience the cells are grouped
