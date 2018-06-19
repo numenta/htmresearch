@@ -48,7 +48,8 @@ class ApicalTMSequenceRegion(PyRegion):
         "activeColumns": {
           "description": ("An array of 0's and 1's representing the active "
                           "minicolumns, i.e. the input to the TemporalMemory"),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": True,
           "regionLevel": True,
@@ -70,7 +71,8 @@ class ApicalTMSequenceRegion(PyRegion):
         "apicalInput": {
           "description": "An array of 0's and 1's representing top down input."
           " The input will be provided to apical dendrites.",
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": False,
           "regionLevel": True,
@@ -82,7 +84,8 @@ class ApicalTMSequenceRegion(PyRegion):
                           "that can be learned on new synapses on apical "
                           "segments. If this input is a length-0 array, the "
                           "whole apicalInput is used."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": False,
           "regionLevel": True,
@@ -94,7 +97,8 @@ class ApicalTMSequenceRegion(PyRegion):
         "nextPredictedCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that is predicted for the next timestep."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": False
@@ -103,7 +107,8 @@ class ApicalTMSequenceRegion(PyRegion):
         "predictedActiveCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that transitioned from predicted to active."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": False
@@ -112,7 +117,8 @@ class ApicalTMSequenceRegion(PyRegion):
         "activeCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that is currently active."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": True
@@ -121,7 +127,8 @@ class ApicalTMSequenceRegion(PyRegion):
         "winnerCells": {
           "description": ("A binary output containing a 1 for every "
                           "'winner' cell in the TM."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": False
@@ -397,21 +404,21 @@ class ApicalTMSequenceRegion(PyRegion):
       if inputs["resetIn"][0] != 0:
         # send empty output
         self._tm.reset()
-        outputs["activeCells"][:] = 0
-        outputs["nextPredictedCells"][:] = 0
-        outputs["predictedActiveCells"][:] = 0
-        outputs["winnerCells"][:] = 0
+        self.setSparseOutput(outputs, "activeCells", [])
+        self.setSparseOutput(outputs, "nextPredictedCells", [])
+        self.setSparseOutput(outputs, "predictedActiveCells", [])
+        self.setSparseOutput(outputs, "winnerCells", [])
         return
 
-    activeColumns = inputs["activeColumns"].nonzero()[0]
+    activeColumns = inputs["activeColumns"]
 
     if "apicalInput" in inputs:
-      apicalInput = inputs["apicalInput"].nonzero()[0]
+      apicalInput = inputs["apicalInput"]
     else:
       apicalInput = np.empty(0, dtype="uint32")
 
     if "apicalGrowthCandidates" in inputs:
-      apicalGrowthCandidates = inputs["apicalGrowthCandidates"].nonzero()[0]
+      apicalGrowthCandidates = inputs["apicalGrowthCandidates"]
     else:
       apicalGrowthCandidates = apicalInput
 
@@ -419,16 +426,12 @@ class ApicalTMSequenceRegion(PyRegion):
                      self.learn)
 
     # Extract the active / predicted cells and put them into binary arrays.
-    outputs["activeCells"][:] = 0
-    outputs["activeCells"][self._tm.getActiveCells()] = 1
-    outputs["nextPredictedCells"][:] = 0
-    outputs["nextPredictedCells"][
-      self._tm.getNextPredictedCells()] = 1
-    outputs["predictedActiveCells"][:] = 0
-    outputs["predictedActiveCells"][
-      self._tm.getPredictedActiveCells()] = 1
-    outputs["winnerCells"][:] = 0
-    outputs["winnerCells"][self._tm.getWinnerCells()] = 1
+    self.setSparseOutput(outputs, "activeCells", self._tm.getActiveCells())
+    self.setSparseOutput(outputs, "nextPredictedCells", 
+      self._tm.getNextPredictedCells())
+    self.setSparseOutput(outputs, "predictedActiveCells", 
+      self._tm.getPredictedActiveCells())
+    self.setSparseOutput(outputs, "winnerCells", self._tm.getWinnerCells()) 
 
 
   def reset(self):
