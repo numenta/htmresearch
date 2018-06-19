@@ -53,10 +53,11 @@ class RawSensor(PyRegion):
       "outputs":{
         "dataOut":{
           "description":"Encoded text",
-          "dataType":"Real32",
+          "dataType":"UInt32",
           "count":0,
           "regionLevel":True,
           "isDefaultOutput":True,
+          "sparse": True,
           },
         "resetOut":{
           "description":"Boolean reset output.",
@@ -116,14 +117,13 @@ class RawSensor(PyRegion):
     # Copy data into output vectors
     outputs["resetOut"][0] = data["reset"]
     outputs["sequenceIdOut"][0] = data["sequenceId"]
-    outputs["dataOut"][:] = 0
-    outputs["dataOut"][data["nonZeros"]] = 1
+    self.setSparseOutput(outputs, "dataOut", data["nonZeros"])
 
     if self.verbosity > 1:
       print "RawSensor outputs:"
       print "sequenceIdOut: ", outputs["sequenceIdOut"]
       print "resetOut: ", outputs["resetOut"]
-      print "dataOut: ", outputs["dataOut"].nonzero()[0]
+      print "dataOut: ", outputs["dataOut"]
 
 
   def addDataToQueue(self, nonZeros, reset, sequenceId):
@@ -150,7 +150,7 @@ class RawSensor(PyRegion):
     self.queue.appendleft({
       "sequenceId": int(sequenceId),
       "reset": int(reset),
-      "nonZeros": nonZeroList,
+      "nonZeros": sorted(nonZeroList),
     })
 
 
