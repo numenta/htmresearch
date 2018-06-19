@@ -59,46 +59,50 @@ class ColumnPoolerRegion(PyRegion):
         feedforwardInput=dict(
           description="The primary feed-forward input to the layer, this is a"
                       " binary array containing 0's and 1's",
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           required=True,
           regionLevel=True,
           isDefaultInput=True,
-          requireSplitterMap=False),
+          requireSplitterMap=False,
+          sparse=True),
 
         feedforwardGrowthCandidates=dict(
           description=("An array of 0's and 1's representing feedforward input " +
                        "that can be learned on new proximal synapses. If this " +
                        "input isn't provided, the whole feedforwardInput is "
                        "used."),
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           required=False,
           regionLevel=True,
           isDefaultInput=False,
-          requireSplitterMap=False),
+          requireSplitterMap=False,
+          sparse=True),
 
         predictedInput=dict(
           description=("An array of 0s and 1s representing input cells that " +
                        "are predicted to become active in the next time step. " +
                        "If this input is not provided, some features related " +
                        "to online learning may not function properly."),
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           required=False,
           regionLevel=True,
           isDefaultInput=False,
-          requireSplitterMap=False),
+          requireSplitterMap=False,
+          sparse=True),
 
         lateralInput=dict(
           description="Lateral binary input into this column, presumably from"
                       " other neighboring columns.",
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           required=False,
           regionLevel=True,
           isDefaultInput=False,
-          requireSplitterMap=False),
+          requireSplitterMap=False,
+          sparse=True),
 
         resetIn=dict(
           description="A boolean flag that indicates whether"
@@ -118,18 +122,20 @@ class ColumnPoolerRegion(PyRegion):
           description="The default output of ColumnPoolerRegion. By default this"
                       " outputs the active cells. You can change this "
                       " dynamically using the defaultOutputType parameter.",
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           regionLevel=True,
-          isDefaultOutput=True),
+          isDefaultOutput=True,
+          sparse=True),
 
         activeCells=dict(
           description="A binary output containing a 1 for every"
                       " cell that is currently active.",
-          dataType="Real32",
+          dataType="UInt32",
           count=0,
           regionLevel=True,
-          isDefaultOutput=False),
+          isDefaultOutput=False,
+          sparse=True),
 
       ),
       parameters=dict(
@@ -433,31 +439,34 @@ class ColumnPoolerRegion(PyRegion):
       if inputs["resetIn"][0] != 0:
         # send empty output
         self.reset()
-        outputs["feedForwardOutput"][:] = 0
-        outputs["activeCells"][:] = 0
+        self.setSparseOutput(outputs, "feedForwardOutput", [])
+        self.setSparseOutput(outputs, "activeCells", [])
         return
 
-    feedforwardInput = numpy.asarray(inputs["feedforwardInput"].nonzero()[0],
-                                     dtype="uint32")
+    feedforwardInput = inputs["feedforwardInput"]
 
     if "feedforwardGrowthCandidates" in inputs:
-      feedforwardGrowthCandidates = numpy.asarray(
-        inputs["feedforwardGrowthCandidates"].nonzero()[0], dtype="uint32")
+      feedforwardGrowthCandidates = inputs["feedforwardGrowthCandidates"]
     else:
       feedforwardGrowthCandidates = feedforwardInput
 
     if "lateralInput" in inputs:
-      lateralInputs = tuple(numpy.asarray(singleInput.nonzero()[0],
-                                          dtype="uint32")
-                            for singleInput
-                            in numpy.split(inputs["lateralInput"],
-                                           self.numOtherCorticalColumns))
+      # Split "lateralInput" into sections evenly among other cortical columns
+      # This is equivalent to 'numpy.split' on sparse input
+      lateralInputs = tuple([] for x in xrange(self.numOtherCorticalColumns))
+      if len(inputs["lateralInput"]) > 0 and self.numOtherCorticalColumns > 1:
+        sections = numpy.digitize(inputs["lateralInput"],
+          numpy.arange(self.cellCount,
+            self.cellCount * self.numOtherCorticalColumns, self.cellCount),
+            right=True)
+
+        for idx, el in enumerate(inputs["lateralInput"]):
+          lateralInputs[sections[idx]].append(el % self.cellCount)
     else:
       lateralInputs = ()
 
     if "predictedInput" in inputs:
-      predictedInput = numpy.asarray(
-        inputs["predictedInput"].nonzero()[0], dtype="uint32")
+      predictedInput = inputs["predictedInput"]
     else:
       predictedInput = None
 
@@ -467,12 +476,12 @@ class ColumnPoolerRegion(PyRegion):
                          predictedInput = predictedInput)
 
     # Extract the active / predicted cells and put them into binary arrays.
-    outputs["activeCells"][:] = 0
-    outputs["activeCells"][self._pooler.getActiveCells()] = 1
+    activeCells = self._pooler.getActiveCells()
+    self.setSparseOutput(outputs, "activeCells", activeCells)
 
     # Send appropriate output to feedForwardOutput.
     if self.defaultOutputType == "active":
-      outputs["feedForwardOutput"][:] = outputs["activeCells"]
+      self.setSparseOutput(outputs, "feedForwardOutput", activeCells)
     else:
       raise Exception("Unknown outputType: " + self.defaultOutputType)
 
