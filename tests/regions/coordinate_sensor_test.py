@@ -21,6 +21,7 @@
 
 import json
 import numpy
+from numpy.testing import assert_array_equal
 import os
 import shutil
 import tempfile
@@ -57,8 +58,8 @@ class CoordinateSensorRegionTest(unittest.TestCase):
     region = net.addRegion("coordinate", "py.CoordinateSensorRegion",
                            json.dumps(params))
     vfe = net.addRegion("output", "VectorFileEffector", "")
-    net.link("coordinate", "output", "UniformLink", "")
-
+    net.link("coordinate", "output", "UniformLink", "", 
+              destInput="sparseDataIn")
     self.assertEqual(region.getParameter("outputWidth"),
                      self.encoder.n, "Incorrect outputWidth parameter")
 
@@ -74,9 +75,10 @@ class CoordinateSensorRegionTest(unittest.TestCase):
 
     # Run the network and check outputs are as expected
     net.run(1)
-    expected = self.encoder.encode((numpy.array([2, 4, 6]), params["radius"]))
+    expected = self.encoder.encode(
+      (numpy.array([2, 4, 6]), params["radius"])).nonzero()[0]
     actual = region.getOutputData("dataOut")
-    self.assertEqual(actual.sum(), expected.sum(), "Value of dataOut incorrect")
+    assert_array_equal(actual, expected, "Value of dataOut incorrect")
     self.assertEqual(region.getOutputData("resetOut"), 0,
                      "Value of resetOut incorrect")
     self.assertEqual(region.getOutputData("sequenceIdOut"), 42,
@@ -84,9 +86,9 @@ class CoordinateSensorRegionTest(unittest.TestCase):
 
     net.run(1)
     expected = self.encoder.encode((numpy.array([2, 42, 1023]),
-                                    params["radius"]))
+                                    params["radius"])).nonzero()[0]
     actual = region.getOutputData("dataOut")
-    self.assertEqual(actual.sum(), expected.sum(), "Value of dataOut incorrect")
+    assert_array_equal(actual, expected, "Value of dataOut incorrect")
     self.assertEqual(region.getOutputData("resetOut"), 1,
                      "Value of resetOut incorrect")
     self.assertEqual(region.getOutputData("sequenceIdOut"), 43,
@@ -106,9 +108,9 @@ class CoordinateSensorRegionTest(unittest.TestCase):
     vfe2.setParameter("outputFile", os.path.join(self.tmpDir, "temp.csv"))
     net2.run(1)
     expected = self.encoder.encode((numpy.array([18, 19, 20]),
-                                    params["radius"]))
+                                    params["radius"])).nonzero()[0]
     actual = region2.getOutputData("dataOut")
-    self.assertEqual(actual.sum(), expected.sum(), "Value of dataOut incorrect")
+    assert_array_equal(actual, expected, "Value of dataOut incorrect")
     self.assertEqual(region2.getOutputData("resetOut"), 0,
                      "Value of resetOut incorrect")
 
