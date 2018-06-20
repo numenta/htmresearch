@@ -22,17 +22,23 @@
 import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
-import seaborn as sns
-from matlab_code.synaptic_computations import compute_hardwired_weights
+import copy
+from compute_hardwired_weights import compute_hardwired_weights
 
-# STDP kernel time constant in seconds.
+# STDP kernel time constant in seconds.  Used for the default kernel.
 SDTP_TIME_CONSTANT = 0.012
 
+# How often to update plots
+PLOT_INTERVAL = 0.1
+
+# How often path integration estimates are collected.  This needs to be tuned,
+# as values that are too small will lead to constant estimates of zero movement.
+ESTIMATION_INTERVAL = 0.5
 
 def defaultSTDPKernel(preSynActivation,
                       postSynActivation,
                       dt,
-                      inhibitory = False,):
+                      inhibitoryPresyn=False,):
   """
   This function implements a modified version of the STDP kernel from
   Widloski & Fiete, 2014.
@@ -43,27 +49,33 @@ def defaultSTDPKernel(preSynActivation,
   :return: A matrix of synapse weight changes.
   """
 
-  stdpTimeScaler = 1
   stdpScaler = 1
-  if dt < 0 and not inhibitory:
-    stdpTimeScaler = 1.5
-  elif dt > 0 and inhibitory:
-    stdpTimeScaler = 2.
-    stdpScaler = 0.5
-  elif dt > 0 and not inhibitory:
-    stdpTimeScaler = 2.
-    stdpScaler = 1.2
+  stdpTimeScaler = 1.
+
+  if dt < 0 and not inhibitoryPresyn:
+    stdpScaler *= 1
+    stdpTimeScaler *= 3
+  elif dt > 0 and not inhibitoryPresyn:
+    stdpTimeScaler *= 4
+    stdpScaler *= 1.2
+
+  # Inhibitory cell responses are flipped from those of other cells.
+  elif dt > 0 and inhibitoryPresyn:
+    stdpScaler *= -.5
+    stdpTimeScaler *= 4
+  elif dt < 0 and inhibitoryPresyn:
+    stdpScaler *= -1
+    stdpTimeScaler *= 2
 
 
   preSynActivation = np.reshape(preSynActivation, (-1, 1))
   postSynActivation = np.reshape(postSynActivation, (1, -1))
   intermediate = np.matmul(preSynActivation, postSynActivation)
-  intermediate *= np.exp(dt/(SDTP_TIME_CONSTANT*-1.*stdpTimeScaler))*np.sign(dt)
+  timeFactor = np.exp(-1*np.abs(dt)/(SDTP_TIME_CONSTANT*stdpTimeScaler))
+  intermediate *= timeFactor*np.sign(dt)
   intermediate *= stdpScaler
 
   return intermediate
-
-
 
 
 """
@@ -79,27 +91,30 @@ It lacks connections between excitatory neurons; all CAN dynamics are based on
 inhibition.
 """
 
+
 class CAN1DNetwork(object):
   def __init__(self,
                numExcitatory,
                numInhibitory,
                learningRate,
                dt,
-               stdpWindow = 10,
-               decayConstant = 0.03,
-               velocityGain = 0.9,
-               placeGainE = 10,
-               placeGainI = 50,
-               sigmaLoc = 0.01,
-               stdpKernel = defaultSTDPKernel,
-               globalTonicMagnitude = 1,
-               constantTonicMagnitude = 1,
-               learnFactorII = 7,
-               learnFactorEI = 2,
-               learnFactorIE = 1,
-               envelopeWidth = 0.72,
-               envelopeFactor = 60,
-               initialWeightScale = 0.001):
+               stdpWindow=10,
+               decayConstant=0.03,
+               velocityGain=0.9,
+               placeGainE=10,
+               placeGainI=50,
+               sigmaLoc=0.01,
+               stdpKernel=defaultSTDPKernel,
+               globalTonicMagnitude=1,
+               constantTonicMagnitude=1,
+               learnFactorII=7,
+               learnFactorEI=2,
+               learnFactorIE=1,
+               envelopeWidth=0.8,
+               envelopeFactor=25,
+               initialWeightScale=0.003,
+               clip=10,
+               plotting=True):
     """
 
     :param numExcitatory: Size of each excitatory population.  Note that there
@@ -128,6 +143,8 @@ class CAN1DNetwork(object):
              the suppressive envelope is first applied.
     :param envelopeFactor: The steepness of the suppressive envelope.
     :param initialWeightScale: The maximum initial weight value.
+    :param clip: The maximum possible activation.
+    :param plotting: Whether or not to generate plots.  False speeds training.
 
     """
     # Synapse weights.  We assume dense connections.
@@ -169,7 +186,7 @@ class CAN1DNetwork(object):
     self.stdpWindow = stdpWindow
     self.stdpKernel = stdpKernel
 
-    self.activationBuffer = deque(maxlen=self.stdpWindow + 1)
+    self.activationBuffer = deque(maxlen=int(self.stdpWindow))
 
     self.globalTonicMagnitude = globalTonicMagnitude
     self.constantTonicMagnitude = constantTonicMagnitude
@@ -184,6 +201,132 @@ class CAN1DNetwork(object):
     self.envelopeI = self.computeEnvelope(self.placeCodeI)
     self.envelopeE = self.computeEnvelope(self.placeCodeE)
 
+    self.clip = clip
+    self.plotting = plotting
+
+
+  def calculatePathIntegrationError(self, time, dt=None, trajectory=None,
+                                    envelope=True, inputNoise=None):
+    """
+    Calculate the error of our path integration, relative to an ideal module.
+    To do this, we track the movement of an individual bump
+
+    Note that the network must be trained before this is done.
+    :param time: How long to simulate for in seconds.  We recommend using a
+            small value, e.g. ~10s.
+    :param trajectory: An optional trajectory that specifies how the network moves.
+    :param inputNoise: Whether or not to apply noise, and how much.
+    :return: A tuple of the true trajectory and the inferred trajectory.
+    """
+    # Set up plotting
+    if self.plotting:
+      self.fig = plt.figure()
+      self.ax1 = self.fig.add_subplot(411)
+      self.ax2 = self.fig.add_subplot(312)
+      self.ax3 = self.fig.add_subplot(414)
+      plt.ion()
+      self.fig.show()
+      self.fig.canvas.draw()
+
+    self.activationsI = np.random.random_sample(self.activationsI.shape)
+    self.activationsEL = np.random.random_sample(self.activationsEL.shape)
+    self.activationsER = np.random.random_sample(self.activationsER.shape)
+
+
+    if dt is None:
+      oldDt = self.dt
+    else:
+      oldDt = self.dt
+      self.dt = dt
+
+    estimatedVelocities = []
+    trueVelocities = []
+
+    times = np.arange(0, time, self.dt)
+    if trajectory is None:
+      # Sum together two different sinusoidals for a more interesting path.
+      trajectory = (np.sin((-times*np.pi/10 - np.pi/2.))+1)*2.5
+      trajectory += (np.cos((-times*np.pi/3 - np.pi/2.))+1)*.75
+      velocities = np.diff(trajectory)/self.dt
+
+    oldActivations = copy.copy(self.activationsI)
+    oldX = trajectory[0]
+    for i, t in enumerate(times[:-1]):
+      v = velocities[i]
+      x = trajectory[i]
+
+      feedforwardInputI = np.ones(self.activationsI.shape)
+      feedforwardInputE = np.ones(self.activationsEL.shape)
+
+      if inputNoise is not None:
+        noisesI = np.random.random_sample(feedforwardInputI.shape)*inputNoise
+        noisesE = np.random.random_sample(feedforwardInputE.shape)*inputNoise
+      else:
+        noisesE = 1.
+        noisesI = 1.
+
+      self.update(feedforwardInputI*noisesI, feedforwardInputE*noisesE,
+                  v, True, envelope=envelope)
+
+      estimationTime = np.abs(np.mod(t, ESTIMATION_INTERVAL))
+      if estimationTime <= 0.00001 or \
+          np.abs(estimationTime - ESTIMATION_INTERVAL) <= 0.00001:
+
+          rotations = [np.sum(np.abs(np.roll(oldActivations, i) -
+                                     self.activationsI))
+                       for i in range(-20, 21, 1)]
+
+          shift = np.argmin(rotations) - 20
+
+          trueVelocities.append(x - oldX)
+          oldX = x
+          oldActivations = copy.copy(self.activationsI)
+          estimatedVelocities.append(shift)
+
+      if self.plotting:
+        plotTime = np.abs(np.mod(t, PLOT_INTERVAL))
+        if plotTime <= 0.00001 or np.abs(plotTime - PLOT_INTERVAL) <= 0.00001:
+          self.ax3.clear()
+          self.ax3.plot(np.arange(-len(rotations)/2 + 1, len(rotations)/2 + 1, 1),
+                                  rotations,
+                                  color="g",
+                                  label="Shift")
+          self.ax3.legend(loc="best")
+          self.ax3.axvline(x=shift)
+          self.fig.canvas.draw()
+
+          self.plotActivation(time=t, velocity=v)
+
+    self.dt = oldDt
+    return(np.asarray(trueVelocities), np.asarray(estimatedVelocities))
+
+
+  def hardwireWeights(self, flip=False):
+    (G_I_EL, G_I_ER, G_EL_I, G_ER_I, G_I_I) = \
+      compute_hardwired_weights(2.2,
+                                self.activationsEL.shape[0],
+                                self.activationsI.shape[0],
+                                True)
+
+    # We need to flip the signs for the inhibitory weights;
+    # in our convention, inhibitory weights are always negative,
+    # but in theirs, they are positive and the sign flip is applied
+    # during activation.
+    self.weightsII = -1.*G_I_I
+
+    # If we want the network to path integrate in the right direction,
+    # flip ELI and ERI.
+    if flip:
+      self.weightsELI = G_ER_I
+      self.weightsERI = G_EL_I
+      self.weightsIEL = -1.*G_I_ER
+      self.weightsIER = -1.*G_I_EL
+
+    else:
+      self.weightsELI = G_EL_I
+      self.weightsERI = G_ER_I
+      self.weightsIEL = -1. * G_I_EL
+      self.weightsIER = -1. * G_I_ER
 
 
   def simulate(self, time,
@@ -191,7 +334,9 @@ class CAN1DNetwork(object):
                feedforwardInputE,
                v,
                recurrent=True,
-               dt = None):
+               dt=None,
+               envelope=True,
+               inputNoise=None):
     """
     :param time: Amount of time to simulate.
            Divided into chunks of len dt.
@@ -208,16 +353,17 @@ class CAN1DNetwork(object):
     """
 
     # Set up plotting
-    self.fig = plt.figure()
-    self.ax1 = self.fig.add_subplot(211)
-    self.ax2 = self.fig.add_subplot(212)
-    plt.ion()
-    self.fig.show()
-    self.fig.canvas.draw()
+    if self.plotting:
+      self.fig = plt.figure()
+      self.ax1 = self.fig.add_subplot(211)
+      self.ax2 = self.fig.add_subplot(212)
+      plt.ion()
+      self.fig.show()
+      self.fig.canvas.draw()
 
-    self.activationsI = np.random.random_sample(self.activationsI.shape)*20
-    self.activationsEL = np.random.random_sample(self.activationsEL.shape)*20
-    self.activationsER = np.random.random_sample(self.activationsER.shape)*20
+    self.activationsI = np.random.random_sample(self.activationsI.shape)
+    self.activationsEL = np.random.random_sample(self.activationsEL.shape)
+    self.activationsER = np.random.random_sample(self.activationsER.shape)
 
     if dt is None:
       oldDt = self.dt
@@ -226,16 +372,34 @@ class CAN1DNetwork(object):
       self.dt = dt
     times = np.arange(0, time, self.dt)
     for i, t in enumerate(times):
-      self.update(feedforwardInputI, feedforwardInputE, v, recurrent, True)
-      if i % 10 == 0:
-        self.plotActivation()
+      if inputNoise is not None:
+        noisesI = np.random.random_sample(feedforwardInputI.shape)*inputNoise
+        noisesE = np.random.random_sample(feedforwardInputE.shape)*inputNoise
+      else:
+        noisesE = 1.; noisesI = 1.
+
+      self.update(feedforwardInputI*noisesI, feedforwardInputE*noisesE,
+                  v, recurrent, envelope=envelope)
+      if self.plotting:
+        plotTime = np.abs(np.mod(t, PLOT_INTERVAL))
+        if plotTime <= 0.00001 or np.abs(plotTime - PLOT_INTERVAL) <= 0.00001:
+          self.plotActivation(time=t, velocity=v)
 
     self.dt = oldDt
 
-  def update(self, feedforwardInputI, feedforwardInputE, v, recurrent = True,
-             withEnvelope = False):
+  def update(self, feedforwardInputI, feedforwardInputE, v, recurrent=True,
+             envelope=False, iSpeedTuning=False):
     """
     Do one update of the CAN network, of length self.dt.
+    :param feedforwardInputI: The feedforward input to inhibitory cells.
+    :param feedforwardInputR: The feedforward input to excitatory cells.
+    :param v: The current velocity.
+    :param recurrent: Whether or not recurrent connections should be used.
+    :param envelope: Whether or not an envelope should be applied.
+    :param iSpeedTuning: Whether or not inhibitory cells should also have their
+             activations partially depend on current movement speed.  This is
+             necessary for periodic training, serving a role similar to that of
+             the envelope.
     """
 
     deltaI = np.zeros(self.activationsI.shape)
@@ -249,19 +413,21 @@ class CAN1DNetwork(object):
     if recurrent:
       deltaI += (np.matmul(self.activationsEL, self.weightsELI) +\
                 np.matmul(self.activationsER, self.weightsERI) +\
-                np.matmul(self.activationsI, self.weightsII))*self.dt
+                np.matmul(self.activationsI, self.weightsII))
 
-      deltaEL += np.matmul(self.activationsI, self.weightsIER)*self.dt
-      deltaER += np.matmul(self.activationsI, self.weightsIER)*self.dt
+      deltaEL += np.matmul(self.activationsI, self.weightsIEL)
+      deltaER += np.matmul(self.activationsI, self.weightsIER)
 
-    deltaEL = (1 - self.velocityGain*v)*deltaEL
-    deltaER = (1 + self.velocityGain*v)*deltaER
+    deltaEL *= max((1 - self.velocityGain*v), 0)
+    deltaER *= max((1 + self.velocityGain*v), 0)
+    if iSpeedTuning:
+      deltaI *= min(self.velocityGain*np.abs(v), 1)
 
     deltaI += self.constantTonicMagnitude
     deltaEL += self.constantTonicMagnitude
     deltaER += self.constantTonicMagnitude
 
-    if withEnvelope:
+    if envelope:
       deltaI *= self.envelopeI
       deltaER *= self.envelopeE
       deltaEL *= self.envelopeE
@@ -278,11 +444,25 @@ class CAN1DNetwork(object):
     self.activationsEL += deltaEL
     self.activationsER += deltaER
 
-    self.activationsI = np.maximum(self.activationsI, 0., self.activationsI)
-    self.activationsEL = np.maximum(self.activationsEL, 0., self.activationsEL)
-    self.activationsER = np.maximum(self.activationsER, 0., self.activationsER)
+    # Activations by definition must be positive
+    np.maximum(self.activationsI, 0., self.activationsI)
+    np.maximum(self.activationsEL, 0., self.activationsEL)
+    np.maximum(self.activationsER, 0., self.activationsER)
 
-  def decayWeights(self, decayConst = 60):
+    # Clip activations for stability
+    np.minimum(self.activationsI, self.clip, self.activationsI)
+    np.minimum(self.activationsEL, self.clip, self.activationsEL)
+    np.minimum(self.activationsER, self.clip, self.activationsER)
+
+
+  def decayWeights(self, decayConst=60):
+    """
+    Decay the network's weights.
+
+    :param decayConst: The time constant (in seconds) to use for decay.
+            Note: If applied, decay must be used extremely carefully, as
+            it has a tendency to cause asymmetries in the network weights.
+    """
     self.weightsII -= self.weightsII*self.dt/decayConst
     self.weightsELI -= self.weightsELI*self.dt/decayConst
     self.weightsERI -= self.weightsERI*self.dt/decayConst
@@ -290,70 +470,120 @@ class CAN1DNetwork(object):
     self.weightsIER -= self.weightsIER*self.dt/decayConst
 
 
-  def learn(self, time):
+  def learn(self,
+            runs,
+            dir=1,
+            periodic=False,
+            recurrent=True):
     """
     Traverses a sinusoidal trajectory across the environment, learning during
-    the process.
-    :param time: Amount of time, in seconds, to spend learning.
-    :return: Nothing, weights updated internally.
+    the process.  A pair of runs across the environment (one in each direction)
+    takes 10 seconds if in a periodic larger environment, and 4 seconds in a 
+    smaller nonperiodic environment.
+    :param runs: How many runs across the environment to do.  Each "run" is
+            defined as a full sweep across the environment in each direction.
+    :param dir: Which direction to move in first.  Valid values are 1 and -1.
+    :param periodic: Whether or not the learning environment should be
+            periodic (toroidal).
+    :param recurrent: Whether or not recurrent connections should be active
+            during learning.  Warning: True leads to instability.
     """
-
     # Set up plotting
-    self.fig, (self.ax1, self.ax2, self.ax3) = plt.subplots(3, 1,
-                                                            gridspec_kw = {'height_ratios':[1, 1, 8],})
-    plt.ion()
-    self.fig.show()
-    self.fig.canvas.draw()
+    if self.plotting:
+      self.fig,\
+      (self.ax1,
+       self.ax2,
+       self.ax3) = plt.subplots(3, 1,
+                                gridspec_kw = {'height_ratios':[1, 1, 8],})
+      plt.ion()
+      self.fig.show()
+      self.fig.canvas.draw()
 
-    # Things can break if time is an int, apparently.
-    time += 0.
-    times = np.arange(0, time, self.dt)
-    trajectory = (np.sin(times/(2) - np.pi/4)+1)/2
+    # Set up the trajectories and running times.
+    if not periodic:
+      time = 4.*runs
+      times = np.arange(0, time, self.dt)
+      trajectory = (np.sin(dir*(times*np.pi/2 - np.pi/2.))+1)/2
+    else:
+      # Space the starting points of the runs out.  This tends to improve the
+      # translation-invariance of the weight profiles, and thus gives better
+      # overall path integration.
+      time = 10.*runs
+      startingPoint = 0
+      trajectories = []
+      for run in xrange(runs):
+        runTimes = np.arange(run*10., run*10. + 10, self.dt)
+        trajectory = (np.sin(dir*(runTimes*np.pi/5 - np.pi/2.)) + 1)*2.5 +\
+                      startingPoint
+        trajectories.append(trajectory)
+
+        startingPoint += 1./(runs + 1)
+
+      trajectory = np.concatenate(trajectories)
+      times = np.arange(0, time, self.dt)
+
+
     velocities = np.diff(trajectory)/self.dt
 
+
     for i, t in enumerate(times[:-1]):
-      x = trajectory[i]
+      x = trajectory[i] % 1
       v = velocities[i]
-      feedForwardInputI = np.exp(-1.*(self.placeCodeI - x)**2 /
+      feedforwardInputI = np.exp(-1.*(self.placeCodeI - x)**2 /
                           (2*self.sigmaLoc**2))
-      feedForwardInputI *= self.placeGainI
-      feedForwardInputI += self.globalTonicMagnitude
-      feedForwardInputE = np.exp(-1.*(self.placeCodeE - x)**2 /
+      feedforwardInputI *= self.placeGainI
+      feedforwardInputI += self.globalTonicMagnitude
+      feedforwardInputE = np.exp(-1.*(self.placeCodeE - x)**2 /
                           (2*self.sigmaLoc**2))
-      feedForwardInputE *= self.placeGainE
-      feedForwardInputE += self.globalTonicMagnitude
+      feedforwardInputE *= self.placeGainE
+      feedforwardInputE += self.globalTonicMagnitude
 
-      self.update(feedForwardInputI, feedForwardInputE, v, recurrent=False,
-                  withEnvelope = True)
-      self.stdpUpdate()
-      self.decayWeights()
+      self.update(feedforwardInputI, feedforwardInputE, v, recurrent=recurrent,
+                  envelope=(not periodic), iSpeedTuning=periodic)
+      self.stdpUpdate(time=i)
 
-      if i % 10 == 0:
-        self.ax3.matshow(self.weightsII)
-        self.plotActivation(position = x)
+      if self.plotting:
+        plotTime = np.abs(np.mod(t, PLOT_INTERVAL))
+        if plotTime <= 0.00001 or np.abs(plotTime - PLOT_INTERVAL) <= 0.00001:
+          self.ax3.matshow(self.weightsII, cmap=plt.cm.coolwarm)
+          self.plotActivation(position = x, time = t)
 
     # Carry out any hanging STDP updates.
-    self.stdpUpdate(clearBuffer=True)
+    self.stdpUpdate(time = i, clearBuffer=True)
+
+    # Finally, enforce Dale's law.  Inhibitory neurons must be inhibitory,
+    # excitatory neurons must be excitatory.
+    np.minimum(self.weightsII, 0, self.weightsII)
+    np.minimum(self.weightsIER, 0, self.weightsIER)
+    np.minimum(self.weightsIEL, 0, self.weightsIEL)
+    np.maximum(self.weightsELI, 0, self.weightsELI)
+    np.maximum(self.weightsERI, 0, self.weightsERI)
 
 
-  def normalize_weights(self, IINorm, IENorm, EINorm):
+  def normalize_weights(self, IIMax, IEMax, EIMax):
     """
-    Use the L2 norm to rescale our weight matrices.
-    :param IINorm: The target weight for the II weights
-    :param IENorm: The target norm for both IE weight matrices
-    :param EINorm: The target norm for both EI weight matrices
-    :return: Nothing.  Updates done in-place
+    Rescale our weight matrices to have a certain maximum absolute value.
+    :param IINorm: The target maximum for the II weights
+    :param IENorm: The target maximum for both IE weight matrices
+    :param EINorm: The target maximum for both EI weight matrices
     """
-
     weights = [self.weightsII, self.weightsIEL, self.weightsIER,
                self.weightsELI, self.weightsERI]
-    norms = [IINorm, IENorm, IENorm, EINorm, EINorm]
+    norms = [IIMax, IEMax, IEMax, EIMax, EIMax]
     for w, n in zip(weights, norms):
-      norm = np.linalg.norm(w, ord = np.inf)
-      w /= (norm/n)
+      maximum = np.amax(np.abs(w))
+      w /= maximum
+      w *= n
 
 
   def computeEnvelope(self, placeCode):
+    """
+    Compute an envelope for use in suppressing border cells.
+    :param placeCode: The place code representing the population the envelope
+            will be used for.
+    :return: A numpy array that can be elementwise-multiplied with activations
+             for the given cell population to apply the envelope.
+    """
     places = np.abs(placeCode - 0.5)
     envelope = [1 if p < 1 - self.envelopeWidth else
                       np.exp(-1.*self.envelopeFactor *
@@ -363,7 +593,15 @@ class CAN1DNetwork(object):
     return np.asarray(envelope)
 
 
-  def plotActivation(self, position = None):
+  def plotActivation(self, position=None, time=None, velocity=None):
+    """
+    Plot the activation of the current cell populations.  Assumes that
+    two axes have already been created, ax1 and ax2.  If done in a Jupyter
+    notebook, this plotting will overwrite the old plot.
+    :param position: The current location of the animal
+    :param time: The current time in the simulation
+    :param velocity: The current velocity of the animal
+    """
     self.ax1.clear()
     x = np.arange(0, len(self.activationsER), 1)
     self.ax1.plot(x, self.activationsEL, color = "b", label = "EL Activation")
@@ -379,74 +617,95 @@ class CAN1DNetwork(object):
       self.ax2.axvline(x=position*len(self.activationsI))
     self.ax2.legend(loc = "best")
 
+    titleString = ""
+    if time is not None:
+      titleString += "Time = {}".format(str(time))
+    if velocity is not None:
+      titleString += "  Velocity = {}".format(str(velocity)[:4])
+    if position is not None:
+      titleString += "  Position = {}".format(str(position)[:4])
+    self.ax1.set_title(titleString)
+
     self.fig.canvas.draw()
 
-  def stdpUpdate(self, clearBuffer=False):
+  def stdpUpdate(self, time, clearBuffer=False):
     """
     Adds the current activations to the tracking queue, and then performs an
     STDP update if possible.
-    :return: Nothing.  All changes made in-place.
+    :param time: The current time.  Must be provided.
+    :param clearBuffer: Set as True to clear the activation buffer.
+            This should be done at the end of training.
     """
     if clearBuffer:
       while len(self.activationBuffer) > 1:
-        baseI, baseEL, baseER = self.activationBuffer.popleft()
-        for dt, (I, EL, ER) in enumerate(self.activationBuffer):
-          t = 1. * (dt + 1) * self.dt
-          self.weightsII += self.learningRate * self.stdpKernel(baseI, I, t, True)
-          self.weightsIEL += self.learningRate * self.stdpKernel(baseI, EL, t, True)
-          self.weightsIER += self.learningRate * self.stdpKernel(baseI, ER, t, True)
-          self.weightsERI += self.learningRate * self.stdpKernel(baseER, I, t)
-          self.weightsELI += self.learningRate * self.stdpKernel(baseEL, I, t)
+        baseI, baseEL, baseER, t = self.activationBuffer.popleft()
+        for (I, EL, ER, i) in self.activationBuffer:
+          t = 1. * (i - t) * self.dt
+          self.weightsII += self.learningRate * \
+                            self.stdpKernel(self.activationsI, I, t, True) * \
+                            self.learnFactorII * self.dt
 
+          self.weightsIEL += self.learningRate * \
+                             self.stdpKernel(self.activationsI, EL, t, True) * \
+                             self.learnFactorIE * self.dt
+
+          self.weightsIER += self.learningRate * \
+                             self.stdpKernel(self.activationsI, ER, t, True) * \
+                             self.learnFactorIE * self.dt
+
+          self.weightsELI += self.learningRate * \
+                             self.stdpKernel(self.activationsEL, I, t, False) * \
+                             self.learnFactorEI * self.dt
+
+          self.weightsERI += self.learningRate * \
+                             self.stdpKernel(self.activationsER, I, t, False) * \
+                             self.learnFactorEI * self.dt
 
     else:
-      for dt, (I, EL, ER) in enumerate(reversed(self.activationBuffer)):
-        t = -1. * (dt + 1) * self.dt
+      for I, EL, ER, i in reversed(self.activationBuffer):
+        t = (i - time) * self.dt
         self.weightsII +=  self.learningRate * \
                            self.stdpKernel(self.activationsI, I, t, True) * \
                            self.learnFactorII * self.dt
+
         self.weightsIEL += self.learningRate * \
                            self.stdpKernel(self.activationsI, EL, t, True) * \
                            self.learnFactorIE * self.dt
+
         self.weightsIER += self.learningRate * \
                            self.stdpKernel(self.activationsI, ER, t, True) * \
                            self.learnFactorIE * self.dt
-        self.weightsERI += self.learningRate * \
-                           self.stdpKernel(self.activationsEL, I, t) * \
-                           self.learnFactorEI * self.dt
+
         self.weightsELI += self.learningRate * \
-                           self.stdpKernel(self.activationsER, I, t) * \
+                           self.stdpKernel(self.activationsEL, I, t, False) * \
                            self.learnFactorEI * self.dt
 
-      for dt, (baseI, baseEL, baseER) in enumerate(self.activationBuffer):
-        t = 1. * (dt + 1) * self.dt
-        self.weightsII +=  self.learningRate * \
-                           self.stdpKernel(baseI, self.activationsI, t, True) * \
-                           self.learnFactorII * self.dt
-        self.weightsIEL += self.learningRate * \
-                           self.stdpKernel(baseI, self.activationsEL, t, True) * \
-                           self.learnFactorIE * self.dt
-        self.weightsIER += self.learningRate * \
-                           self.stdpKernel(baseI, self.activationsEL, t, True) * \
-                           self.learnFactorIE * self.dt
         self.weightsERI += self.learningRate * \
-                           self.stdpKernel(baseER, self.activationsI, t) * \
+                           self.stdpKernel(self.activationsER, I, t, False) * \
                            self.learnFactorEI * self.dt
+
+      for I, EL, ER, i in self.activationBuffer:
+        t = (time - i) * self.dt
+        self.weightsII +=  self.learningRate * \
+                           self.stdpKernel(I, self.activationsI, t, True) * \
+                           self.learnFactorII * self.dt
+
+        self.weightsIEL += self.learningRate * \
+                           self.stdpKernel(I, self.activationsEL, t, True) * \
+                           self.learnFactorIE * self.dt
+
+        self.weightsIER += self.learningRate * \
+                           self.stdpKernel(I, self.activationsER, t, True) * \
+                           self.learnFactorIE * self.dt
+
         self.weightsELI += self.learningRate * \
-                           self.stdpKernel(baseEL, self.activationsI, t) * \
+                           self.stdpKernel(EL, self.activationsI, t, False) * \
+                           self.learnFactorEI * self.dt
+
+        self.weightsERI += self.learningRate * \
+                           self.stdpKernel(ER, self.activationsI, t, False) * \
                            self.learnFactorEI * self.dt
 
       self.activationBuffer.append((np.copy(self.activationsI),
                                     np.copy(self.activationsEL),
-                                    np.copy(self.activationsER)))
-
-if __name__ == "__main__":
-  network = CAN1DNetwork(200, 80, .015, .001, decayConstant=0.1)
-  network.learn(1)
-  import ipdb; ipdb.set_trace()
-  sns.distplot(network.activationsI)
-  plt.show()
-
-
-
-
+                                    np.copy(self.activationsER), time))
