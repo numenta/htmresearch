@@ -154,17 +154,22 @@ def chart():
     os.makedirs(CHART_DIR)
 
   # Capacity vs num objects for 100 unique features
+  #
+  # Generated with:
+  #   python convergence_simulation.py --numObjects 200 400 600 800 1000 1200 1400 1600 1800 2000 2200 2400 2600 --numUniqueFeatures 100 --locationModuleWidth 5 --resultName results/capacity_100_feats_25_cpm.json
+  #   python convergence_simulation.py --numObjects 200 400 600 800 1000 1200 1400 1600 1800 2000 2200 2400 2600 --numUniqueFeatures 100 --locationModuleWidth 10 --resultName results/capacity_100_feats_100_cpm.json
+  #   python convergence_simulation.py --numObjects 200 400 600 800 1000 1200 1400 1600 1800 2000 2200 2400 2600 --numUniqueFeatures 100 --locationModuleWidth 20 --resultName results/capacity_100_feats_400_cpm.json
 
-  plt.style.use("ggplot")
+  #plt.style.use("ggplot")
 
   plt.plot(
-      X, Y25, "-", label="25 cells per module",
+      X, Y25, "o-", label="25 cells per module",
   )
   plt.plot(
-      X, Y100, "-", label="100 cells per module",
+      X, Y100, "o-", label="100 cells per module",
   )
   plt.plot(
-      X, Y400, "-", label="400 cells per module",
+      X, Y400, "o-", label="400 cells per module",
   )
 
   plt.xlabel("Number of Objects")
@@ -176,25 +181,25 @@ def chart():
   plt.clf()
 
   # Capacity vs num objects with different # of unique features
+  #
+  # Generated with:
+  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 50 --locationModuleWidth 20 --resultName results/capacity_50_feats_400_cpm.json
+  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 100 --locationModuleWidth 20 --resultName results/capacity_100_feats_400_cpm.json
+  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 500 --locationModuleWidth 20 --resultName results/capacity_500_feats_400_cpm.json
 
-  plt.style.use("ggplot")
+  #plt.style.use("ggplot")
 
-  plt.plot(
-      X5k, Y5k25, "-", label="25 cells per module",
-  )
-  plt.plot(
-      X5k, Y5k100, "-", label="100 cells per module",
-  )
-  plt.plot(
-      X5k, Y5k400, "-", label="400 cells per module",
-  )
+  # TODO
+  #plt.plot(
+  #    X5k, Y5k25, "-", label="25 cells per module",
+  #)
 
   plt.xlabel("Number of Objects")
   plt.ylabel("Accuracy")
   plt.legend(loc="lower left")
   plt.ylim(-0.01, 1.01)
 
-  plt.savefig(os.path.join(CHART_DIR, "capacity5000.pdf"))
+  plt.savefig(os.path.join(CHART_DIR, "capacity_with_features.pdf"))
 
   plt.clf()
 
