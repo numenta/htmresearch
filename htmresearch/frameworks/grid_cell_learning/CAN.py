@@ -23,6 +23,7 @@ import numpy as np
 from collections import deque
 import matplotlib.pyplot as plt
 import copy
+import os
 from compute_hardwired_weights import compute_hardwired_weights
 
 # STDP kernel time constant in seconds.  Used for the default kernel.
@@ -205,6 +206,7 @@ class CAN1DNetwork(object):
     self.plotting = plotting
 
 
+
   def calculatePathIntegrationError(self, time, dt=None, trajectory=None,
                                     envelope=True, inputNoise=None):
     """
@@ -222,11 +224,23 @@ class CAN1DNetwork(object):
     if self.plotting:
       self.fig = plt.figure()
       self.ax1 = self.fig.add_subplot(411)
-      self.ax2 = self.fig.add_subplot(312)
-      self.ax3 = self.fig.add_subplot(414)
+      self.ax2 = self.fig.add_subplot(412)
+      self.ax3 = self.fig.add_subplot(413)
+      self.ax4 = self.fig.add_subplot(414)
+      plt.tight_layout()
       plt.ion()
       self.fig.show()
       self.fig.canvas.draw()
+      mouse = plt.imread(os.path.dirname(os.path.realpath(__file__))
+                         + "/mouse_graphic.png")
+
+      self.ax1.set_xlabel("Excitatory population activity")
+      self.ax2.set_xlabel("Inhibitory population activity")
+      self.ax3.set_xlabel("Movement in cells")
+      self.ax3.set_ylabel("Cost")
+      self.ax4.set_xlabel("Location")
+
+      plt.tight_layout()
 
     self.activationsI = np.random.random_sample(self.activationsI.shape)
     self.activationsEL = np.random.random_sample(self.activationsEL.shape)
@@ -292,7 +306,21 @@ class CAN1DNetwork(object):
                                   color="g",
                                   label="Shift")
           self.ax3.legend(loc="best")
+          self.ax3.set_xlabel("Movement in cells")
+          self.ax3.set_ylabel("Cost")
           self.ax3.axvline(x=shift)
+
+          self.ax4.clear()
+          self.ax4.set_xlim(np.amin(trajectory), np.amax(trajectory))
+          self.ax4.set_ylim(0, 1)
+          mouse_bound = (x - 0.25*np.sign(v), x + 0.25*np.sign(v), .05, .55)
+          self.ax4.imshow(mouse,
+                          aspect='auto',
+                          extent=mouse_bound,
+                          zorder=-1)
+          self.ax4.set_xlabel("Location")
+          self.ax4.axes.get_yaxis().set_visible(False)
+
           self.fig.canvas.draw()
 
           self.plotActivation(time=t, velocity=v)
@@ -358,6 +386,11 @@ class CAN1DNetwork(object):
       self.ax1 = self.fig.add_subplot(211)
       self.ax2 = self.fig.add_subplot(212)
       plt.ion()
+
+      self.ax1.set_xlabel("Excitatory population activity")
+      self.ax2.set_xlabel("Inhibitory population activity")
+
+      plt.tight_layout()
       self.fig.show()
       self.fig.canvas.draw()
 
@@ -490,12 +523,21 @@ class CAN1DNetwork(object):
     """
     # Set up plotting
     if self.plotting:
-      self.fig,\
-      (self.ax1,
-       self.ax2,
-       self.ax3) = plt.subplots(3, 1,
-                                gridspec_kw = {'height_ratios':[1, 1, 8],})
+      # self.fig,\
+      # (self.ax1,
+      #  self.ax2,
+      #  self.ax3) = plt.subplots(3, 1,
+      #                           gridspec_kw = {'height_ratios':[1, 1, 8],})
+      #
+
+      self.fig = plt.figure()
+      self.ax1 = self.fig.add_subplot(411)
+      self.ax2 = self.fig.add_subplot(412)
+      self.ax3 = self.fig.add_subplot(212)
+
       plt.ion()
+      plt.tight_layout()
+      self.ax3.set_xlabel("Inhibitory-Inhibitory connections")
       self.fig.show()
       self.fig.canvas.draw()
 
@@ -625,6 +667,9 @@ class CAN1DNetwork(object):
     if position is not None:
       titleString += "  Position = {}".format(str(position)[:4])
     self.ax1.set_title(titleString)
+
+    self.ax1.set_xlabel("Excitatory activity")
+    self.ax2.set_xlabel("Inhibitory activity")
 
     self.fig.canvas.draw()
 
