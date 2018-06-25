@@ -555,13 +555,6 @@ class CAN1DNetwork(object):
     """
     # Set up plotting
     if self.plotting:
-      # self.fig,\
-      # (self.ax1,
-      #  self.ax2,
-      #  self.ax3) = plt.subplots(3, 1,
-      #                           gridspec_kw = {'height_ratios':[1, 1, 8],})
-      #
-
       self.fig = plt.figure()
       self.ax1 = self.fig.add_subplot(411)
       self.ax2 = self.fig.add_subplot(412)
