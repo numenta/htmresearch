@@ -39,7 +39,8 @@ ESTIMATION_INTERVAL = 0.5
 def defaultSTDPKernel(preSynActivation,
                       postSynActivation,
                       dt,
-                      inhibitoryPresyn=False,):
+                      inhibitoryPresyn=False,
+                      inhibitoryPostsyn=False):
   """
   This function implements a modified version of the STDP kernel from
   Widloski & Fiete, 2014.
@@ -53,30 +54,38 @@ def defaultSTDPKernel(preSynActivation,
   stdpScaler = 1
   stdpTimeScaler = 1.
 
+  # Set up STDP directions
+  if inhibitoryPresyn and not inhibitoryPostsyn:
+    #I-E, anti-Hebbian (weakening inhibitory connections)
+    stdpScaler *= 1
+  elif not inhibitoryPresyn and inhibitoryPostsyn:
+    # E-I, anti-Hebbian
+    stdpScaler *= -1
+  elif inhibitoryPresyn and inhibitoryPostsyn:
+    # I-I, Hebbian (strengthening inhibitory connections)
+    stdpScaler *= -1
+
+  # Set up parameters
   if dt < 0 and not inhibitoryPresyn:
+    # Anti-causal
     stdpScaler *= 1
     stdpTimeScaler *= 3
   elif dt > 0 and not inhibitoryPresyn:
-    stdpTimeScaler *= 4
     stdpScaler *= 1.2
-
-  # Inhibitory cell responses are flipped from those of other cells.
+    stdpTimeScaler *= 4
   elif dt > 0 and inhibitoryPresyn:
-    stdpScaler *= -.5
+    stdpScaler *= .5
     stdpTimeScaler *= 4
   elif dt < 0 and inhibitoryPresyn:
-    stdpScaler *= -1
+    stdpScaler *= 1
     stdpTimeScaler *= 2
 
-
-  preSynActivation = np.reshape(preSynActivation, (-1, 1))
-  postSynActivation = np.reshape(postSynActivation, (1, -1))
-  intermediate = np.matmul(preSynActivation, postSynActivation)
   timeFactor = np.exp(-1*np.abs(dt)/(SDTP_TIME_CONSTANT*stdpTimeScaler))
-  intermediate *= timeFactor*np.sign(dt)
-  intermediate *= stdpScaler
+  preSynActivation *= timeFactor*np.sign(dt)*stdpScaler
 
-  return intermediate
+  updates = np.outer(preSynActivation, postSynActivation)
+
+  return updates
 
 
 """
@@ -106,8 +115,8 @@ class CAN1DNetwork(object):
                placeGainI=50,
                sigmaLoc=0.01,
                stdpKernel=defaultSTDPKernel,
-               globalTonicMagnitude=1,
-               constantTonicMagnitude=1,
+               globalTonicMagnitude=0,
+               constantTonicMagnitude=0,
                learnFactorII=7,
                learnFactorEI=2,
                learnFactorIE=1,
@@ -208,7 +217,7 @@ class CAN1DNetwork(object):
 
 
   def calculatePathIntegrationError(self, time, dt=None, trajectory=None,
-                                    envelope=True, inputNoise=None):
+                                    envelope=False, inputNoise=None):
     """
     Calculate the error of our path integration, relative to an ideal module.
     To do this, we track the movement of an individual bump
@@ -242,16 +251,20 @@ class CAN1DNetwork(object):
 
       plt.tight_layout()
 
-    self.activationsI = np.random.random_sample(self.activationsI.shape)
-    self.activationsEL = np.random.random_sample(self.activationsEL.shape)
-    self.activationsER = np.random.random_sample(self.activationsER.shape)
-
 
     if dt is None:
       oldDt = self.dt
     else:
       oldDt = self.dt
       self.dt = dt
+
+    # Simulate for a second to get nice starting activation bumps.
+    # Turn plotting off so as not to confuse the viewer
+    oldPlotting = self.plotting
+    self.plotting = False
+    self.simulate(1, 1, 1, 0, envelope=envelope, inputNoise=None)
+    self.plotting = oldPlotting
+
 
     estimatedVelocities = []
     trueVelocities = []
@@ -363,7 +376,7 @@ class CAN1DNetwork(object):
                v,
                recurrent=True,
                dt=None,
-               envelope=True,
+               envelope=False,
                inputNoise=None):
     """
     :param time: Amount of time to simulate.
@@ -421,7 +434,7 @@ class CAN1DNetwork(object):
     self.dt = oldDt
 
   def update(self, feedforwardInputI, feedforwardInputE, v, recurrent=True,
-             envelope=False, iSpeedTuning=False):
+             envelope=False, iSpeedTuning=False, enforceDale=True):
     """
     Do one update of the CAN network, of length self.dt.
     :param feedforwardInputI: The feedforward input to inhibitory cells.
@@ -433,6 +446,8 @@ class CAN1DNetwork(object):
              activations partially depend on current movement speed.  This is
              necessary for periodic training, serving a role similar to that of
              the envelope.
+    :param Whether or not Dale's law should be enforced locally.  Helps with
+             training with recurrent weights active, but can slow down training.
     """
 
     deltaI = np.zeros(self.activationsI.shape)
@@ -443,13 +458,26 @@ class CAN1DNetwork(object):
     deltaEL += feedforwardInputE
     deltaER += feedforwardInputE
 
-    if recurrent:
-      deltaI += (np.matmul(self.activationsEL, self.weightsELI) +\
-                np.matmul(self.activationsER, self.weightsERI) +\
-                np.matmul(self.activationsI, self.weightsII))
+    if enforceDale:
+      weightsII =  np.minimum(self.weightsII, 0)
+      weightsIER = np.minimum(self.weightsIER, 0)
+      weightsIEL = np.minimum(self.weightsIEL, 0)
+      weightsELI = np.maximum(self.weightsELI, 0)
+      weightsERI = np.maximum(self.weightsERI, 0)
+    else:
+      weightsII =  self.weightsII
+      weightsIER = self.weightsIER
+      weightsIEL = self.weightsIEL
+      weightsELI = self.weightsELI
+      weightsERI = self.weightsERI
 
-      deltaEL += np.matmul(self.activationsI, self.weightsIEL)
-      deltaER += np.matmul(self.activationsI, self.weightsIER)
+    if recurrent:
+      deltaI += (np.matmul(self.activationsEL, weightsELI) +\
+                np.matmul(self.activationsER, weightsERI) +\
+                np.matmul(self.activationsI, weightsII))
+
+      deltaEL += np.matmul(self.activationsI, weightsIEL)
+      deltaER += np.matmul(self.activationsI, weightsIER)
 
     deltaEL *= max((1 - self.velocityGain*v), 0)
     deltaER *= max((1 + self.velocityGain*v), 0)
@@ -507,7 +535,8 @@ class CAN1DNetwork(object):
             runs,
             dir=1,
             periodic=False,
-            recurrent=True):
+            recurrent=True,
+            randomSpeed=False):
     """
     Traverses a sinusoidal trajectory across the environment, learning during
     the process.  A pair of runs across the environment (one in each direction)
@@ -519,7 +548,10 @@ class CAN1DNetwork(object):
     :param periodic: Whether or not the learning environment should be
             periodic (toroidal).
     :param recurrent: Whether or not recurrent connections should be active
-            during learning.  Warning: True leads to instability.
+            during learning.  Warning: True can lead to instability.
+    :param randomSpeed: Whether or not to use a random maximum speed for each
+            run, to better simulate real learning.  Can degrade performance.
+            Only supported in periodic environments.
     """
     # Set up plotting
     if self.plotting:
@@ -544,57 +576,74 @@ class CAN1DNetwork(object):
     # Set up the trajectories and running times.
     if not periodic:
       time = 4.*runs
-      times = np.arange(0, time, self.dt)
-      trajectory = (np.sin(dir*(times*np.pi/2 - np.pi/2.))+1)/2
+      timings = [np.arange(0, time, self.dt)]
+      trajectories = [(np.sin(dir*(times*np.pi/2 - np.pi/2.))+1)/2]
     else:
       # Space the starting points of the runs out.  This tends to improve the
       # translation-invariance of the weight profiles, and thus gives better
       # overall path integration.
-      time = 10.*runs
       startingPoint = 0
       trajectories = []
+      timings = []
+      time = 0
+      residTime = 0
       for run in xrange(runs):
-        runTimes = np.arange(run*10., run*10. + 10, self.dt)
-        trajectory = (np.sin(dir*(runTimes*np.pi/5 - np.pi/2.)) + 1)*2.5 +\
-                      startingPoint
+        if randomSpeed:
+          speed = np.random.random() + 0.5
+        else:
+          speed = 1.
+        length = 10./speed
+
+        runTimes = np.arange(0, length, self.dt)
+        trajectory = (np.sin(dir*(runTimes*np.pi/(5/speed) - np.pi/2.)) + 1)*\
+                      2.5 + startingPoint
         trajectories.append(trajectory)
-
-        startingPoint += 1./(runs + 1)
-
-      trajectory = np.concatenate(trajectories)
-      times = np.arange(0, time, self.dt)
+        timings.append(runTimes + time)
+        time += length
+        startingPoint += 1./runs
 
 
-    velocities = np.diff(trajectory)/self.dt
 
+    for trajectory, timing in zip(trajectories, timings):
+      self.activationsI = np.zeros(self.activationsI.shape)
+      self.activationsER = np.zeros(self.activationsER.shape)
+      self.activationsEL = np.zeros(self.activationsEL.shape)
+      velocities = np.diff(trajectory)/self.dt
+      for i, t in enumerate(timing[:-1]):
+        x = trajectory[i] % 1
+        v = velocities[i]
+        feedforwardInputI = np.exp(-1.*(self.placeCodeI - x)**2 /
+                            (2*self.sigmaLoc**2))
+        feedforwardInputI *= self.placeGainI
+        feedforwardInputI += self.globalTonicMagnitude
+        feedforwardInputE = np.exp(-1.*(self.placeCodeE - x)**2 /
+                            (2*self.sigmaLoc**2))
+        feedforwardInputE *= self.placeGainE
+        feedforwardInputE += self.globalTonicMagnitude
 
-    for i, t in enumerate(times[:-1]):
-      x = trajectory[i] % 1
-      v = velocities[i]
-      feedforwardInputI = np.exp(-1.*(self.placeCodeI - x)**2 /
-                          (2*self.sigmaLoc**2))
-      feedforwardInputI *= self.placeGainI
-      feedforwardInputI += self.globalTonicMagnitude
-      feedforwardInputE = np.exp(-1.*(self.placeCodeE - x)**2 /
-                          (2*self.sigmaLoc**2))
-      feedforwardInputE *= self.placeGainE
-      feedforwardInputE += self.globalTonicMagnitude
+        self.update(feedforwardInputI,
+                    feedforwardInputE,
+                    v,
+                    recurrent=recurrent,
+                    envelope=(not periodic),
+                    iSpeedTuning=periodic,
+                    enforceDale=True,
+                    )
+        self.stdpUpdate(time=i)
 
-      self.update(feedforwardInputI, feedforwardInputE, v, recurrent=recurrent,
-                  envelope=(not periodic), iSpeedTuning=periodic)
-      self.stdpUpdate(time=i)
+        if self.plotting:
+          residTime += self.dt
+          if residTime > PLOT_INTERVAL:
+            residTime -= PLOT_INTERVAL
+            self.ax3.matshow(self.weightsII, cmap=plt.cm.coolwarm)
+            self.plotActivation(position=x, time=t)
 
-      if self.plotting:
-        plotTime = np.abs(np.mod(t, PLOT_INTERVAL))
-        if plotTime <= 0.00001 or np.abs(plotTime - PLOT_INTERVAL) <= 0.00001:
-          self.ax3.matshow(self.weightsII, cmap=plt.cm.coolwarm)
-          self.plotActivation(position = x, time = t)
-
-    # Carry out any hanging STDP updates.
-    self.stdpUpdate(time = i, clearBuffer=True)
+      # Carry out any hanging STDP updates.
+      self.stdpUpdate(time=i, clearBuffer=True)
 
     # Finally, enforce Dale's law.  Inhibitory neurons must be inhibitory,
     # excitatory neurons must be excitatory.
+    # This could be handled through update, but it's faster to do it here.
     np.minimum(self.weightsII, 0, self.weightsII)
     np.minimum(self.weightsIER, 0, self.weightsIER)
     np.minimum(self.weightsIEL, 0, self.weightsIEL)
@@ -686,70 +735,100 @@ class CAN1DNetwork(object):
         baseI, baseEL, baseER, t = self.activationBuffer.popleft()
         for (I, EL, ER, i) in self.activationBuffer:
           t = 1. * (i - t) * self.dt
-          self.weightsII += self.learningRate * \
-                            self.stdpKernel(self.activationsI, I, t, True) * \
-                            self.learnFactorII * self.dt
+          self.weightsII += self.stdpKernel(self.learningRate *\
+                                            self.learnFactorII *\
+                                            self.dt *\
+                                            self.activationsI, I, t,
+                                            True, True)
 
-          self.weightsIEL += self.learningRate * \
-                             self.stdpKernel(self.activationsI, EL, t, True) * \
-                             self.learnFactorIE * self.dt
+          self.weightsIEL += self.stdpKernel(self.learningRate *\
+                                             self.learnFactorIE *\
+                                             self.dt *\
+                                             self.activationsI, EL, t,
+                                             True, False)
 
-          self.weightsIER += self.learningRate * \
-                             self.stdpKernel(self.activationsI, ER, t, True) * \
-                             self.learnFactorIE * self.dt
+          self.weightsIER += self.stdpKernel(self.learningRate *\
+                                             self.learnFactorIE *\
+                                             self.dt *\
+                                             self.activationsI, ER, t,
+                                             True, False)
 
-          self.weightsELI += self.learningRate * \
-                             self.stdpKernel(self.activationsEL, I, t, False) * \
-                             self.learnFactorEI * self.dt
+          self.weightsELI += self.stdpKernel(self.learningRate *\
+                                             self.learnFactorEI *\
+                                             self.dt *\
+                                             self.activationsEL, I, t,
+                                             False, True)
 
-          self.weightsERI += self.learningRate * \
-                             self.stdpKernel(self.activationsER, I, t, False) * \
-                             self.learnFactorEI * self.dt
+          self.weightsERI += self.stdpKernel(self.learningRate *\
+                                             self.learnFactorEI *\
+                                             self.dt *\
+                                             self.activationsER, I, t,
+                                             False, True)
 
     else:
       for I, EL, ER, i in reversed(self.activationBuffer):
         t = (i - time) * self.dt
-        self.weightsII +=  self.learningRate * \
-                           self.stdpKernel(self.activationsI, I, t, True) * \
-                           self.learnFactorII * self.dt
+        self.weightsII +=  self.stdpKernel(self.learningRate *\
+                                           self.learnFactorII *\
+                                           self.dt *\
+                                           self.activationsI, I, t,
+                                           True, True)
 
-        self.weightsIEL += self.learningRate * \
-                           self.stdpKernel(self.activationsI, EL, t, True) * \
-                           self.learnFactorIE * self.dt
+        self.weightsIEL += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorIE *\
+                                           self.dt *\
+                                           self.activationsI, EL, t,
+                                           True, False)
 
-        self.weightsIER += self.learningRate * \
-                           self.stdpKernel(self.activationsI, ER, t, True) * \
-                           self.learnFactorIE * self.dt
+        self.weightsIER += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorIE *\
+                                           self.dt *\
+                                           self.activationsI, ER, t,
+                                           True, False)
 
-        self.weightsELI += self.learningRate * \
-                           self.stdpKernel(self.activationsEL, I, t, False) * \
-                           self.learnFactorEI * self.dt
+        self.weightsELI += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorEI *\
+                                           self.dt *\
+                                           self.activationsEL, I, t,
+                                           False, True)
 
-        self.weightsERI += self.learningRate * \
-                           self.stdpKernel(self.activationsER, I, t, False) * \
-                           self.learnFactorEI * self.dt
+        self.weightsERI += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorEI *\
+                                           self.dt *\
+                                           self.activationsER, I, t,
+                                           False, True)
 
       for I, EL, ER, i in self.activationBuffer:
         t = (time - i) * self.dt
-        self.weightsII +=  self.learningRate * \
-                           self.stdpKernel(I, self.activationsI, t, True) * \
-                           self.learnFactorII * self.dt
+        self.weightsII +=  self.stdpKernel(self.learningRate *\
+                                           self.learnFactorII *\
+                                           self.dt *\
+                                           I, self.activationsI, t,
+                                           True, True)
 
-        self.weightsIEL += self.learningRate * \
-                           self.stdpKernel(I, self.activationsEL, t, True) * \
-                           self.learnFactorIE * self.dt
+        self.weightsIEL += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorIE *\
+                                           self.dt *\
+                                           I, self.activationsEL, t,
+                                           True, False)
 
-        self.weightsIER += self.learningRate * \
-                           self.stdpKernel(I, self.activationsER, t, True) * \
-                           self.learnFactorIE * self.dt
+        self.weightsIER += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorIE *\
+                                           self.dt *\
+                                           I, self.activationsER, t,
+                                           True, False)
 
-        self.weightsELI += self.learningRate * \
-                           self.stdpKernel(EL, self.activationsI, t, False) * \
-                           self.learnFactorEI * self.dt
+        self.weightsELI += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorEI *\
+                                           self.dt *\
+                                           EL, self.activationsI, t,
+                                           False, True)
 
-        self.weightsERI += self.learningRate * \
-                           self.stdpKernel(ER, self.activationsI, t, False) * \
-                           self.learnFactorEI * self.dt
+        self.weightsERI += self.stdpKernel(self.learningRate *\
+                                           self.learnFactorEI *\
+                                           self.dt *\
+                                           ER, self.activationsI, t,
+                                           False, True)
 
       self.activationBuffer.append((np.copy(self.activationsI),
                                     np.copy(self.activationsEL),
