@@ -177,18 +177,18 @@ class L2456NetworkTest(unittest.TestCase):
         L4Column = net.regions["L4Column" + suffix]
 
         self.assertEqual(
-          L6Column.getInputData("activeColumns").nonzero()[0].sum(),
+          L6Column.getInputData("activeColumns").sum(),
           sum([12 + i + k * 10, 52 + i + k * 10, 110 + i + k * 10]),
           "Feedforward input to L6Column is incorrect"
         )
 
         self.assertGreaterEqual(
-          L6Column.getInputData("basalInput").nonzero()[0].sum(),
+          L6Column.getInputData("basalInput").sum(),
           40, "External input to L6Column is incorrect"
         )
 
         self.assertEqual(
-          L4Column.getInputData("activeColumns").nonzero()[0].sum(),
+          L4Column.getInputData("activeColumns").sum(),
           sum([22 + i + k * 10, 62 + i + k * 10, 120 + i + k * 10]),
           "Feedforward input to L4Column is incorrect"
         )
