@@ -153,7 +153,7 @@ class CAN1DNetwork(object):
              the suppressive envelope is first applied.
     :param envelopeFactor: The steepness of the suppressive envelope.
     :param initialWeightScale: The maximum initial weight value.
-    :param clip: The maximum possible activation.
+    :param clip: The maximum possible activation.  Set to np.inf to disable.
     :param plotting: Whether or not to generate plots.  False speeds training.
 
     """
@@ -192,6 +192,10 @@ class CAN1DNetwork(object):
     self.activationsI = np.zeros((numInhibitory,), dtype="float32")
     self.activationsER = np.zeros((numExcitatory,), dtype="float32")
     self.activationsEL = np.zeros((numExcitatory,), dtype="float32")
+
+    self.instantaneousI = np.zeros((numInhibitory,), dtype="float32")
+    self.instantaneousER = np.zeros((numExcitatory,), dtype="float32")
+    self.instantaneousEL = np.zeros((numExcitatory,), dtype="float32")
 
     self.stdpWindow = stdpWindow
     self.stdpKernel = stdpKernel
@@ -450,13 +454,13 @@ class CAN1DNetwork(object):
              training with recurrent weights active, but can slow down training.
     """
 
-    deltaI = np.zeros(self.activationsI.shape)
-    deltaEL = np.zeros(self.activationsEL.shape)
-    deltaER = np.zeros(self.activationsER.shape)
+    self.instantaneousI.fill(0)
+    self.instantaneousEL.fill(0)
+    self.instantaneousER.fill(0)
 
-    deltaI += feedforwardInputI
-    deltaEL += feedforwardInputE
-    deltaER += feedforwardInputE
+    self.instantaneousI += feedforwardInputI
+    self.instantaneousEL += feedforwardInputE
+    self.instantaneousER += feedforwardInputE
 
     if enforceDale:
       weightsII =  np.minimum(self.weightsII, 0)
@@ -472,45 +476,38 @@ class CAN1DNetwork(object):
       weightsERI = self.weightsERI
 
     if recurrent:
-      deltaI += (np.matmul(self.activationsEL, weightsELI) +\
+      self.instantaneousI += (np.matmul(self.activationsEL, weightsELI) +\
                 np.matmul(self.activationsER, weightsERI) +\
                 np.matmul(self.activationsI, weightsII))
 
-      deltaEL += np.matmul(self.activationsI, weightsIEL)
-      deltaER += np.matmul(self.activationsI, weightsIER)
+      self.instantaneousEL += np.matmul(self.activationsI, weightsIEL)
+      self.instantaneousER += np.matmul(self.activationsI, weightsIER)
 
-    deltaEL *= max((1 - self.velocityGain*v), 0)
-    deltaER *= max((1 + self.velocityGain*v), 0)
+    self.instantaneousEL *= max((1 - self.velocityGain*v), 0)
+    self.instantaneousER *= max((1 + self.velocityGain*v), 0)
     if iSpeedTuning:
-      deltaI *= min(self.velocityGain*np.abs(v), 1)
+      self.instantaneousI *= min(self.velocityGain*np.abs(v), 1)
 
-    deltaI += self.constantTonicMagnitude
-    deltaEL += self.constantTonicMagnitude
-    deltaER += self.constantTonicMagnitude
+    self.instantaneousI += self.constantTonicMagnitude
+    self.instantaneousEL += self.constantTonicMagnitude
+    self.instantaneousER += self.constantTonicMagnitude
 
     if envelope:
-      deltaI *= self.envelopeI
-      deltaER *= self.envelopeE
-      deltaEL *= self.envelopeE
+      self.instantaneousI *= self.envelopeI
+      self.instantaneousER *= self.envelopeE
+      self.instantaneousEL *= self.envelopeE
 
-    deltaI -= self.activationsI/self.decayConstant
-    deltaEL -= self.activationsEL/self.decayConstant
-    deltaER -= self.activationsER/self.decayConstant
+    # Input must be positive.
+    np.maximum(self.instantaneousI, 0., self.instantaneousI)
+    np.maximum(self.instantaneousEL, 0., self.instantaneousEL)
+    np.maximum(self.instantaneousER, 0., self.instantaneousER)
 
-    deltaI *= self.dt
-    deltaEL *= self.dt
-    deltaER *= self.dt
+    # Activity decay and timestep adjustment
+    self.activationsI += (self.instantaneousI - self.activationsI/self.decayConstant)*self.dt
+    self.activationsEL += (self.instantaneousEL - self.activationsEL/self.decayConstant)*self.dt
+    self.activationsER += (self.instantaneousER - self.activationsER/self.decayConstant)*self.dt
 
-    self.activationsI += deltaI
-    self.activationsEL += deltaEL
-    self.activationsER += deltaER
-
-    # Activations by definition must be positive
-    np.maximum(self.activationsI, 0., self.activationsI)
-    np.maximum(self.activationsEL, 0., self.activationsEL)
-    np.maximum(self.activationsER, 0., self.activationsER)
-
-    # Clip activations for stability
+    # Finally, clip activations for stability
     np.minimum(self.activationsI, self.clip, self.activationsI)
     np.minimum(self.activationsEL, self.clip, self.activationsEL)
     np.minimum(self.activationsER, self.clip, self.activationsER)
@@ -731,31 +728,31 @@ class CAN1DNetwork(object):
           self.weightsII += self.stdpKernel(self.learningRate *\
                                             self.learnFactorII *\
                                             self.dt *\
-                                            self.activationsI, I, t,
+                                            baseI, I, t,
                                             True, True)
 
           self.weightsIEL += self.stdpKernel(self.learningRate *\
                                              self.learnFactorIE *\
                                              self.dt *\
-                                             self.activationsI, EL, t,
+                                             baseI, EL, t,
                                              True, False)
 
           self.weightsIER += self.stdpKernel(self.learningRate *\
                                              self.learnFactorIE *\
                                              self.dt *\
-                                             self.activationsI, ER, t,
+                                             baseI, ER, t,
                                              True, False)
 
           self.weightsELI += self.stdpKernel(self.learningRate *\
                                              self.learnFactorEI *\
                                              self.dt *\
-                                             self.activationsEL, I, t,
+                                             baseEL, I, t,
                                              False, True)
 
           self.weightsERI += self.stdpKernel(self.learningRate *\
                                              self.learnFactorEI *\
                                              self.dt *\
-                                             self.activationsER, I, t,
+                                             baseER, I, t,
                                              False, True)
 
     else:
@@ -764,31 +761,31 @@ class CAN1DNetwork(object):
         self.weightsII +=  self.stdpKernel(self.learningRate *\
                                            self.learnFactorII *\
                                            self.dt *\
-                                           self.activationsI, I, t,
+                                           self.instantaneousI, I, t,
                                            True, True)
 
         self.weightsIEL += self.stdpKernel(self.learningRate *\
                                            self.learnFactorIE *\
                                            self.dt *\
-                                           self.activationsI, EL, t,
+                                           self.instantaneousI, EL, t,
                                            True, False)
 
         self.weightsIER += self.stdpKernel(self.learningRate *\
                                            self.learnFactorIE *\
                                            self.dt *\
-                                           self.activationsI, ER, t,
+                                           self.instantaneousI, ER, t,
                                            True, False)
 
         self.weightsELI += self.stdpKernel(self.learningRate *\
                                            self.learnFactorEI *\
                                            self.dt *\
-                                           self.activationsEL, I, t,
+                                           self.instantaneousEL, I, t,
                                            False, True)
 
         self.weightsERI += self.stdpKernel(self.learningRate *\
                                            self.learnFactorEI *\
                                            self.dt *\
-                                           self.activationsER, I, t,
+                                           self.instantaneousER, I, t,
                                            False, True)
 
       for I, EL, ER, i in self.activationBuffer:
@@ -796,33 +793,33 @@ class CAN1DNetwork(object):
         self.weightsII +=  self.stdpKernel(self.learningRate *\
                                            self.learnFactorII *\
                                            self.dt *\
-                                           I, self.activationsI, t,
+                                           I, self.instantaneousI, t,
                                            True, True)
 
         self.weightsIEL += self.stdpKernel(self.learningRate *\
                                            self.learnFactorIE *\
                                            self.dt *\
-                                           I, self.activationsEL, t,
+                                           I, self.instantaneousEL, t,
                                            True, False)
 
         self.weightsIER += self.stdpKernel(self.learningRate *\
                                            self.learnFactorIE *\
                                            self.dt *\
-                                           I, self.activationsER, t,
+                                           I, self.instantaneousER, t,
                                            True, False)
 
         self.weightsELI += self.stdpKernel(self.learningRate *\
                                            self.learnFactorEI *\
                                            self.dt *\
-                                           EL, self.activationsI, t,
+                                           EL, self.instantaneousI, t,
                                            False, True)
 
         self.weightsERI += self.stdpKernel(self.learningRate *\
                                            self.learnFactorEI *\
                                            self.dt *\
-                                           ER, self.activationsI, t,
+                                           ER, self.instantaneousI, t,
                                            False, True)
 
-      self.activationBuffer.append((np.copy(self.activationsI),
-                                    np.copy(self.activationsEL),
-                                    np.copy(self.activationsER), time))
+      self.activationBuffer.append((np.copy(self.instantaneousI),
+                                    np.copy(self.instantaneousEL),
+                                    np.copy(self.instantaneousER), time))

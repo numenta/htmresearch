@@ -2,7 +2,7 @@ from __future__ import division
 import numpy as np
 
 # function [G_I_EL,G_I_ER,G_EL_I,G_ER_I,G_I_I]
-def compute_hardwired_weights(rho,N_E,N_I,periodic):
+def compute_hardwired_weights(rho,N_E,N_I,periodic, onlyI=False):
   '''
   %This function returns the synaptic weight matrices
   %(G_I_EL,G_I_ER,G_EL_I,G_ER_I,G_I_I) and the suppressive envelope
@@ -29,7 +29,8 @@ def compute_hardwired_weights(rho,N_E,N_I,periodic):
   delta_param = np.asarray([0, 0, 3, 3, 3])            #controls weight asymmetries
 
   #the for-loop below iterates through the 5 synaptic weight types
-  for k in range(5):
+  for k in [4,3,2,1,0]:
+
 
       #N_2 = size of projecting pop; N_1 = size of receiving pop.
       N_1 = weight_sizes[k][0]
@@ -64,5 +65,30 @@ def compute_hardwired_weights(rho,N_E,N_I,periodic):
           G_ER_I = G
       else:
           G_I_I = G
+          if onlyI:
+            return G_I_I, G_I_I, G_I_I, G_I_I, G_I_I
 
   return G_I_EL, G_I_ER, G_EL_I, G_ER_I, G_I_I
+
+
+#function A
+def create_envelope(periodic,N):
+  '''
+    %This function returns an envelope for network of size N; The envelope can
+    %either be suppressive (periodic = 0) or flat and equal to one (periodic = 1)
+  '''
+  kappa = 0.3; # controls width of main body of envelope
+  a0 = 30;    # contrls steepness of envelope
+
+  if periodic==0:
+      A = np.zeros(N)
+      for m in range(N):
+          r = np.abs(m-N/2);
+          if r<kappa*N:
+              A[m] = 1
+          else:
+              A[m] = np.exp(-a0*((r-kappa*N)/((1-kappa)*N))**2)
+  else:
+      A = np.ones((1,N));
+
+  return A
