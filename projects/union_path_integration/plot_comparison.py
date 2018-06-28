@@ -139,15 +139,15 @@ def chart():
       accuracy = (float(numObjects) - float(failed)) / float(numObjects)
       capacities[k].append((numObjects, accuracy))
 
-  plotData = np.zeros((4, 8))
+  plotData = np.zeros((4, 4))
   modSizeMap = (49, 100, 144, 196)
-  numFeaturesMap = (25, 50, 75, 100, 125, 150, 175, 200)
-  #numFeaturesMap = (50, 100, 150, 200)
+  #numFeaturesMap = (25, 50, 75, 100, 125, 150, 175, 200)
+  numFeaturesMap = (50, 100, 150, 200)
   scatterX = []
   scatterY = []
   scatterLabels = []
   for modSizeI in xrange(4):
-    for numFeaturesI in xrange(8):
+    for numFeaturesI in xrange(4):
       modSize = modSizeMap[modSizeI]
       numFeatures = numFeaturesMap[numFeaturesI]
       print modSize, numFeatures
@@ -198,15 +198,15 @@ def chart():
 
   # Module size vs. # features comparison scatter plot
 
-  plt.plot([0, 40000], [b, (a * 40000) + b])
+  plt.plot([0, 40000], [b, (a * 40000) + b], "k-")
   aBelow = a - perr[0]
   aAbove = a + perr[0]
   bBelow = b - perr[1]
   bAbove = b + perr[1]
   yBelow = [bBelow, (aBelow * 40000) + bBelow]
   yAbove = [bAbove, (aAbove * 40000) + bAbove]
-  plt.fill_between([0, 40000], yBelow, yAbove, alpha=0.3)
-  plt.scatter(scatterX, scatterY)
+  #plt.fill_between([0, 40000], yBelow, yAbove, alpha=0.3)
+  plt.scatter(scatterX, scatterY, c="000", marker="D")
 
   #plt.figure(figsize=(4, 3))
 

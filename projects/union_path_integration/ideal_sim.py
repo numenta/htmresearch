@@ -33,6 +33,7 @@ import numpy as np
 
 
 def generateObjects(numObjects, numFeatures):
+  np.random.seed(numObjects)
   objects = {}
   for i in xrange(numObjects):
     obj = np.zeros((16,), dtype=np.int32)
@@ -59,22 +60,27 @@ def runTrial(objects, startingSpots, numFeatures):
 
   results = collections.defaultdict(int)
   for targetID in xrange(numObjects):
+    #random.seed(targetID)
     targetObject = objects[targetID]
 
     possibleObjects = None
 
-    possiblePositions = range(16)
-    random.shuffle(possiblePositions)
+    possiblePositions = []
+    for x in xrange(4):
+      for y in xrange(4):
+        if targetObject[x][y] != -1:
+          possiblePositions.append((x, y))
+    idx = range(10)
+    #print idx
+    random.shuffle(idx)
+    #print idx
+    possiblePositions = [possiblePositions[i] for i in idx]
+    #print possiblePositions
     steps = 0
 
-    for pos in possiblePositions:
-
-      x = pos % 4
-      y = pos / 4
+    for x, y in possiblePositions:
       feat = targetObject[x, y]
-
-      if feat == -1:
-        continue
+      #print x, y, feat
 
       steps += 1
       curPos = (x, y)
@@ -89,10 +95,10 @@ def runTrial(objects, startingSpots, numFeatures):
         for objectID, coords in possibleObjects:
           newX = coords[0] + changeX
           newY = coords[1] + changeY
-          try:
-            expectedFeat = objects[objectID][newX, newY]
-          except IndexError:
+          if (newX < 0 or newX >= objects[objectID].shape[0] or
+              newY < 0 or newY >= objects[objectID].shape[1]):
             continue
+          expectedFeat = objects[objectID][newX, newY]
           if expectedFeat == feat:
             newPossibleObjects.append((objectID, (newX, newY)))
         possibleObjects = newPossibleObjects

@@ -176,6 +176,8 @@ def chart():
   plt.ylabel("Accuracy")
   plt.legend(loc="upper right")
 
+  plt.tight_layout()
+
   plt.savefig(os.path.join(CHART_DIR, "capacity100.pdf"))
 
   plt.clf()
@@ -183,21 +185,39 @@ def chart():
   # Capacity vs num objects with different # of unique features
   #
   # Generated with:
-  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 50 --locationModuleWidth 20 --resultName results/capacity_50_feats_400_cpm.json
-  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 100 --locationModuleWidth 20 --resultName results/capacity_100_feats_400_cpm.json
-  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 500 --locationModuleWidth 20 --resultName results/capacity_500_feats_400_cpm.json
+  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 50 --locationModuleWidth 20 --thresholds 18--resultName results/capacity_50_feats_400_cpm.json
+  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 100 --locationModuleWidth 20 --thresholds 18 --resultName results/capacity_100_feats_400_cpm.json
+  #   python convergence_simulation.py --numObjects 500 1000 1500 2000 2500 3000 3500 4000 4500 5000 --numUniqueFeatures 500 --locationModuleWidth 20 --thresholds 18 --resultName results/capacity_500_feats_400_cpm.json
 
   #plt.style.use("ggplot")
 
-  # TODO
-  #plt.plot(
-  #    X5k, Y5k25, "-", label="25 cells per module",
-  #)
+  for feats in (50, 100, 500):
+    with open("results/capacity_{}_feats_400_cpm.json".format(str(feats)), "r") as f:
+      experiments = json.load(f)
+    expResults = []
+    for exp in experiments:
+      numObjects = exp[0]["numObjects"]
+      failed = exp[1].get("null", 0)
+      expResults.append((
+        numObjects,
+        1.0 - (float(failed) / float(numObjects))
+      ))
+
+    x = []
+    y = []
+    for i, j in sorted(expResults):
+      x.append(i)
+      y.append(j)
+
+    plt.plot(
+      x, y, "o-", label="{} Unique Features".format(str(feats)),
+    )
 
   plt.xlabel("Number of Objects")
   plt.ylabel("Accuracy")
   plt.legend(loc="lower left")
-  plt.ylim(-0.01, 1.01)
+
+  plt.tight_layout()
 
   plt.savefig(os.path.join(CHART_DIR, "capacity_with_features.pdf"))
 

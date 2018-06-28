@@ -77,13 +77,15 @@ def chart():
     xError = x[:len(yBelow)]
 
     plt.plot(
-        x, y, "-", label="{} unique features".format(feats),
+        x, y, "o-", label="{} unique features".format(feats),
     )
     plt.fill_between(xError, yBelow, yAbove, alpha=0.3)
 
   plt.xlabel("Number of Objects")
   plt.ylabel("Average Number of Sensations")
   plt.legend(loc="center right")
+
+  plt.tight_layout()
 
   plt.savefig(os.path.join(CHART_DIR, "convergence_vs_objects_w_feats.pdf"))
 
@@ -128,6 +130,8 @@ def chart():
   plt.xlabel("Number of Objects")
   plt.ylabel("Average Number of Sensations")
   plt.legend(loc="upper left")
+
+  plt.tight_layout()
 
   plt.savefig(os.path.join(CHART_DIR, "convergence_with_modsize.pdf"))
 
@@ -183,6 +187,8 @@ def chart():
   plt.ylabel("Average Number of Sensations")
   plt.legend(loc="upper right")
 
+  plt.tight_layout()
+
   plt.savefig(os.path.join(CHART_DIR, "convergence_vs_modules_100_feats.pdf"))
 
   plt.clf()
@@ -190,8 +196,8 @@ def chart():
   # Cumulative convergence
   #
   # Generated with:
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 20 --resultName results/cumulative_convergence_400_cpm_10_feats_100_objs.json --repeat 10
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 40 --resultName results/cumulative_convergence_1600_cpm_10_feats_100_objs.json --repeat 10
+  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 20 --thresholds 18 --resultName results/cumulative_convergence_400_cpm_10_feats_100_objs.json --repeat 10
+  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 10 --thresholds 19 --resultName results/cumulative_convergence_100_cpm_10_feats_100_objs.json --repeat 10
   #   python ideal_sim.py
   #   python bof_sim.py
 
@@ -223,9 +229,9 @@ def chart():
   plt.plot(
       x, y, "o-", label="400 Cells per Module",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
-  # 1600 CPM
+  # 100 CPM
 
   yData = collections.defaultdict(list)
 
@@ -253,7 +259,7 @@ def chart():
   plt.plot(
       x, y, "o-", label="100 Cells Per Module",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Ideal
   with open("results/ideal.json", "r") as f:
@@ -273,7 +279,7 @@ def chart():
   plt.plot(
       x, y, "o-", label="Ideal Observor",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # BOF
   with open("results/bof.json", "r") as f:
@@ -293,7 +299,7 @@ def chart():
   plt.plot(
       x, y, "o-", label="Bag of Features",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Formatting
   plt.xlabel("Number of Sensations")
@@ -302,6 +308,7 @@ def chart():
   plt.xticks([(i+1)*2 for i in xrange(10)])
 
   plt.tight_layout()
+
   plt.savefig(os.path.join(CHART_DIR, "cumulative_accuracy.pdf"))
 
   plt.clf()

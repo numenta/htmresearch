@@ -32,6 +32,7 @@ from multiprocessing import cpu_count, Pool
 from copy import copy
 import time
 import json
+import StringIO
 
 import numpy as np
 
@@ -41,46 +42,36 @@ random.seed(357627)
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
 from two_layer_tracing import PIUNVisualizer as trace
+from two_layer_tracing import PIUNLogger as rawTrace
+
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def generateFeatures(numFeatures):
-  """Return string features.
-
-  If <=62 features are requested, output will be single character
-  alphanumeric strings. Otherwise, output will be ["F1", "F2", ...]
-  """
-  # Capital letters, lowercase letters, numbers
-  candidates = ([chr(i+65) for i in xrange(26)] +
-                [chr(i+97) for i in xrange(26)] +
-                [chr(i+48) for i in xrange(10)])
-
-  if numFeatures > len(candidates):
-    candidates = ["F{}".format(i) for i in xrange(numFeatures)]
-    return candidates
-
-  return candidates[:numFeatures]
-
-
-def generateObjects(numObjects, featuresPerObject, objectWidth, featurePool):
+def generateObjects(numObjects, featuresPerObject, objectWidth, numFeatures):
   assert featuresPerObject <= (objectWidth ** 2)
   featureScale = 20
 
-  locations = []
-  for x in xrange(objectWidth):
-    for y in xrange(objectWidth):
-      locations.append((x, y))
+  np.random.seed(numObjects)
+  objectMap = {}
+  for i in xrange(numObjects):
+    obj = np.zeros((objectWidth ** 2,), dtype=np.int32)
+    obj.fill(-1)
+    obj[:featuresPerObject] = np.random.randint(numFeatures, size=featuresPerObject, dtype=np.int32)
+    np.random.shuffle(obj)
+    objectMap[i] = obj.reshape((4, 4))
 
   objects = []
   for o in xrange(numObjects):
-    np.random.shuffle(locations)
     features = []
-    for i in xrange(featuresPerObject):
-      x, y = locations[i]
-      featureName = random.choice(featurePool)
-      features.append({"top": y*featureScale, "left": x*featureScale,
-                       "width": featureScale, "height": featureScale,
-                       "name": featureName})
-    objects.append({"name": "Object {}".format(o), "features": features})
+    for x in xrange(objectWidth):
+      for y in xrange(objectWidth):
+        feat = objectMap[o][x][y]
+        if feat == -1:
+          continue
+        features.append({"left": y*featureScale, "top": x*featureScale,
+                         "width": featureScale, "height": featureScale,
+                         "name": str(feat)})
+    objects.append({"name": str(o), "features": features})
   return objects
 
 
@@ -91,9 +82,11 @@ def doExperiment(cellDimensions,
                  objectWidth,
                  numFeatures,
                  useTrace,
+                 useRawTrace,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
+                 thresholds,
                  anchoringMethod = "narrowing"):
   """
   Learn a set of objects. Then try to recognize each object. Output an
@@ -108,14 +101,17 @@ def doExperiment(cellDimensions,
   if not os.path.exists("traces"):
     os.makedirs("traces")
 
-  features = generateFeatures(numFeatures)
+  features = [str(i) for i in xrange(numFeatures)]
   objects = generateObjects(numObjects, featuresPerObject, objectWidth,
-                            features)
+                            numFeatures)
 
   locationConfigs = []
   scale = 40.0
 
-  thresholds = numModules
+  if thresholds is None:
+    thresholds = int(((numModules + 1)*0.8))
+  elif thresholds == 0:
+    thresholds = numModules
   perModRange = float(90.0 / float(numModules))
   for i in xrange(numModules):
     orientation = float(i) * perModRange
@@ -138,7 +134,7 @@ def doExperiment(cellDimensions,
     "initialPermanence": 1.0,
     "activationThreshold": thresholds,
     "reducedBasalThreshold": thresholds,
-    "minThreshold": thresholds,
+    "minThreshold": numModules,
     "sampleSize": numModules,
     "cellsPerColumn": 16,
   }
@@ -152,8 +148,20 @@ def doExperiment(cellDimensions,
   for objectDescription in objects:
     exp.learnObject(objectDescription)
 
-  filename = "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
-    len(cellCoordinateOffsets)**2, np.prod(cellDimensions), numObjects, numFeatures)
+  filename = os.path.join(
+      SCRIPT_DIR,
+      "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
+          len(cellCoordinateOffsets)**2, np.prod(cellDimensions),
+          numObjects, numFeatures)
+  )
+  rawFilename = os.path.join(
+      SCRIPT_DIR,
+      "traces/{}-points-{}-cells-{}-objects-{}-feats.trace".format(
+          len(cellCoordinateOffsets)**2, np.prod(cellDimensions),
+          numObjects, numFeatures)
+  )
+
+  assert not (useTrace and useRawTrace), "Cannot use both --trace and --rawTrace"
 
   convergence = collections.defaultdict(int)
   if useTrace:
@@ -161,10 +169,22 @@ def doExperiment(cellDimensions,
       with trace(fileOut, exp, includeSynapses=True):
         print "Logging to", filename
         for objectDescription in objects:
+          random.seed(int(objectDescription["name"]))
           steps = exp.inferObjectWithRandomMovements(objectDescription)
           convergence[steps] += 1
           if steps is None:
             print 'Failed to infer object "{}"'.format(objectDescription["name"])
+  elif useRawTrace:
+    with io.open(rawFilename, "w", encoding="utf8") as fileOut:
+      strOut = StringIO.StringIO()
+      with rawTrace(strOut, exp, includeSynapses=False):
+        print "Logging to", filename
+        for objectDescription in objects:
+          steps = exp.inferObjectWithRandomMovements(objectDescription)
+          convergence[steps] += 1
+          if steps is None:
+            print 'Failed to infer object "{}"'.format(objectDescription["name"])
+      fileOut.write(unicode(strOut.getvalue()))
   else:
     print "Logging to", filename
     for objectDescription in objects:
@@ -223,9 +243,9 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
     for arg in experiments:
       result.append(doExperiment(arg))
 
-  # Pickle results for later use
+  # Save results for later use
   results = [(arg,res) for arg, res in zip(experiments, result)]
-  with open(resultName,"wb") as f:
+  with open(os.path.join(SCRIPT_DIR, resultName),"wb") as f:
     json.dump(results,f)
 
   return results
@@ -236,12 +256,18 @@ if __name__ == "__main__":
   parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
-  parser.add_argument("--coordinateOffsetWidth", type=int, default=7)
+  parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
   parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
   parser.add_argument("--useTrace", action="store_true")
+  parser.add_argument("--useRawTrace", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
-  parser.add_argument("--anchoringMethod", type = str, default="narrowing")
+  parser.add_argument(
+    "--thresholds", type=int, default=None,
+    help=(
+      "The TM prediction threshold. Defaults to int((numModules+1)*0.8)."
+      "Set to 0 for the threshold to match the number of modules.")
+  parser.add_argument("--anchoringMethod", type = str, default="reanchoring")
   parser.add_argument("--resultName", type = str, default="results.json")
   parser.add_argument("--repeat", type=int, default=1)
 
@@ -262,8 +288,10 @@ if __name__ == "__main__":
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
+    useRawTrace=args.useRawTrace,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
+    thresholds=args.thresholds,
     anchoringMethod=args.anchoringMethod,
   )
