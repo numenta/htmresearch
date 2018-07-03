@@ -99,43 +99,43 @@ def chart():
 
   #plt.style.use("ggplot")
 
-  for cpm in (25, 100, 400):
-    with open("results/convergence_vs_num_objs_{}_cpm.json".format(cpm), "r") as f:
-      convVsObjs = json.load(f)
+  #for cpm in (25, 100, 400):
+  #  with open("results/convergence_vs_num_objs_{}_cpm.json".format(cpm), "r") as f:
+  #    convVsObjs = json.load(f)
 
-    yData = collections.defaultdict(list)
-    for exp in convVsObjs:
-      results = exp[1].items()
-      total = 0
-      count = 0
-      for i, j in results:
-        total += (int(str(i)) * j)
-        count += j
-      y = float(total) / float(count)
-      numObjects = int(str(exp[0]["numObjects"]))
-      yData[numObjects].append(y)
+  #  yData = collections.defaultdict(list)
+  #  for exp in convVsObjs:
+  #    results = exp[1].items()
+  #    total = 0
+  #    count = 0
+  #    for i, j in results:
+  #      total += (int(str(i)) * j)
+  #      count += j
+  #    y = float(total) / float(count)
+  #    numObjects = int(str(exp[0]["numObjects"]))
+  #    yData[numObjects].append(y)
 
-    x = list(sorted(yData.keys()))
-    yData = sorted(yData.iteritems())
-    y = [float(sum(pair[1])) / float(len(pair[1])) for pair in yData]
-    std = [np.std(pair[1]) for pair in yData]
-    yBelow = [yi - stdi for yi, stdi in zip(y, std)]
-    yAbove = [yi + stdi for yi, stdi in zip(y, std)]
+  #  x = list(sorted(yData.keys()))
+  #  yData = sorted(yData.iteritems())
+  #  y = [float(sum(pair[1])) / float(len(pair[1])) for pair in yData]
+  #  std = [np.std(pair[1]) for pair in yData]
+  #  yBelow = [yi - stdi for yi, stdi in zip(y, std)]
+  #  yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
-    plt.plot(
-        x, y, "o-", label="{} cells per module".format(cpm),
-    )
-    plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #  plt.plot(
+  #      x, y, "o-", label="{} cells per module".format(cpm),
+  #  )
+  #  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
-  plt.xlabel("Number of Objects")
-  plt.ylabel("Average Number of Sensations")
-  plt.legend(loc="upper left")
+  #plt.xlabel("Number of Objects")
+  #plt.ylabel("Average Number of Sensations")
+  #plt.legend(loc="upper left")
 
-  plt.tight_layout()
+  #plt.tight_layout()
 
-  plt.savefig(os.path.join(CHART_DIR, "convergence_with_modsize.pdf"))
+  #plt.savefig(os.path.join(CHART_DIR, "convergence_with_modsize.pdf"))
 
-  plt.clf()
+  #plt.clf()
 
   # Convergence vs. number of modules
   #
@@ -146,7 +146,7 @@ def chart():
 
   #plt.style.use("ggplot")
 
-  for cpm in (25, 100, 400):
+  for cpm in (49, 100, 400):
     with open("results/convergence_vs_num_modules_100_feats_{}_cpm.json".format(cpm), "r") as f:
       convVsMods100 = json.load(f)
 
@@ -165,7 +165,7 @@ def chart():
       numModules = int(str(exp[0]["numModules"]))
       yData[numModules].append(y)
 
-    x = [i+1 for i in xrange(10)]
+    x = [i+1 for i in xrange(20)]
     #y = [float(sum(pair[1])) / float(len(pair[1])) for pair in yData]
     y = [float(sum(yData[step])) / float(len(yData[step])) for step in x]
     #yData20 = yData[19][1]
@@ -181,11 +181,14 @@ def chart():
     )
     plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
-  plt.plot([1, 10], [2.7, 2.7], "--")
+  # TODO: Update this to ideal?
+  #plt.plot([1, 10], [2.7, 2.7], "--")
 
   plt.xlabel("Number of Modules")
   plt.ylabel("Average Number of Sensations")
   plt.legend(loc="upper right")
+  plt.ylim((0.0, 5.0))
+  plt.xticks([(i+1)*2 for i in xrange(10)])
 
   plt.tight_layout()
 
@@ -205,7 +208,7 @@ def chart():
 
   yData = collections.defaultdict(list)
 
-  with open("results/cumulative_convergence_400_cpm_10_feats_100_objs.json", "r") as f:
+  with open("results/cumulative_convergence_400_cpm_50_feats_100_objs.json", "r") as f:
     experiments = json.load(f)
   for exp in experiments:
     cum = 0
@@ -235,7 +238,7 @@ def chart():
 
   yData = collections.defaultdict(list)
 
-  with open("results/cumulative_convergence_100_cpm_10_feats_100_objs.json", "r") as f:
+  with open("results/cumulative_convergence_100_cpm_50_feats_100_objs.json", "r") as f:
     experiments = json.load(f)
   for exp in experiments:
     cum = 0
