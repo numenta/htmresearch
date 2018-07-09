@@ -137,6 +137,11 @@ class Dynamic1DCAN(object):
                maxWeightEI=10,
                maxWeightPI=1,
                maxWeightPE=3,
+               boostGradient=1.,
+               gradientType="linear",
+               IEWeightFactor=1.,
+               placeWeightInitialScale=.25,
+               roomSize=1.,
                ):
     """
 
@@ -172,7 +177,11 @@ class Dynamic1DCAN(object):
     :param boostEffect: How strong a boosting effect to use to promote activity
             of underused neurons.  0 is disabled.  Only used in early learning.
     :param boostDecay: How fast boosting history decays
-
+    :param boostGradient: How much stronger boosting should be on the right side
+            of the sheet than the left side.
+    :param gradientType: If enabled, sets boosting gradient to be linear or
+            exponential.
+    :param roomSize: The size of the initial learning room (length in meters).
     """
     # Synapse weights.  We assume dense connections.
     # Inhibitory neuron recurrent weights.
@@ -193,15 +202,16 @@ class Dynamic1DCAN(object):
 
     # Place code weights
     self.weightsPI = np.random.random_sample((numPlaces, numInhibitory))* \
-                          initialWeightScale
+                          placeWeightInitialScale
     self.weightsPEL = np.random.random_sample((numPlaces, numExcitatory))* \
-                          initialWeightScale
+                          placeWeightInitialScale
     self.weightsPER = np.random.random_sample((numPlaces, numExcitatory))* \
-                          initialWeightScale
+                          placeWeightInitialScale
 
     # Determine a starting place code, which will govern activation
     # during learning.  This code is ignored during testing.
-    self.placeCode = np.arange(0, 1, 1./numPlaces)
+    self.placeCode = np.arange(0, roomSize, float(roomSize)/numPlaces)
+    self.roomSize = roomSize
 
     self.placeGainE = placeGainE
     self.placeGainI = placeGainI
@@ -241,8 +251,8 @@ class Dynamic1DCAN(object):
     self.learnFactorIE = learnFactorIE
     self.learnFactorP = learnFactorP
 
-    # self.envelopeI = self.computeEnvelope(self.placeCodeI)
-    # self.envelopeE = self.computeEnvelope(self.placeCodeE)
+    self.envelopeI = self.computeEnvelope(np.linspace(0, 1, numInhibitory))
+    self.envelopeE = self.computeEnvelope(np.linspace(0, 1, numExcitatory))
 
     self.clip = clip
     self.maxWeightEI = maxWeightEI
@@ -251,11 +261,32 @@ class Dynamic1DCAN(object):
 
     self.plotting = plotting
 
-    self.boostEffect = boostEffect
+    if "linear" in gradientType.lower():
+      self.boostEffectI = np.linspace(1, boostGradient, numInhibitory)*boostEffect
+      self.boostEffectE = np.linspace(1, boostGradient, numExcitatory)*boostEffect
+    elif "exponential" in gradientType.lower():
+      base = np.power(boostGradient, 1./numInhibitory)
+      self.boostEffectI = np.power(base, np.arange(0, numInhibitory))
+      base = np.power(boostGradient, 1./numExcitatory)
+      self.boostEffectE = np.power(base, np.arange(0, numExcitatory))
+
     self.alpha = boostDecay
+
+    self.weightFilter = np.zeros((numExcitatory, numInhibitory), dtype="float32")
+    for i in range(self.weightFilter.shape[0]):
+      for j in range(self.weightFilter.shape[1]):
+        offset = np.abs(float(i)/self.weightFilter.shape[0] -
+                        float(j)/self.weightFilter.shape[1])
+        if offset < 0.1:
+          self.weightFilter[i, j] = 1.
 
     if hardwireI:
       self.hardwireWeights(False, True, True)
+      self.weightsII *= self.weightFilter
+      self.weightsIER *= self.weightFilter
+      self.weightsIEL *= self.weightFilter
+      self.weightsIEL *= IEWeightFactor
+      self.weightsIER *= IEWeightFactor
 
 
 
@@ -448,7 +479,9 @@ class Dynamic1DCAN(object):
                recurrent=True,
                dt=None,
                envelope=False,
-               inputNoise=None):
+               inputNoise=None,
+               sampleFreq=1,
+               startFrom=0,):
     """
     :param time: Amount of time to simulate.
            Divided into chunks of len dt.
@@ -463,7 +496,6 @@ class Dynamic1DCAN(object):
            model.
     :return: Nothing.  All changes internal.
     """
-
     # Set up plotting
     if self.plotting:
       self.fig = plt.figure()
@@ -493,6 +525,9 @@ class Dynamic1DCAN(object):
       oldDt = self.dt
       self.dt = dt
     times = np.arange(0, time, self.dt)
+    samples = np.arange(startFrom, time, self.dt)
+    results = np.zeros((len(samples)/sampleFreq, len(self.activationsI)))
+    s = 0
     for i, t in enumerate(times):
       if inputNoise is not None:
         noisesI = np.random.random_sample(feedforwardInputI.shape)*inputNoise
@@ -505,12 +540,21 @@ class Dynamic1DCAN(object):
       self.update(feedforwardInputI*noisesI, feedforwardInputE*noisesE,
                   v, recurrent, envelope=envelope)
 
+
+      if i % sampleFreq == 0 and t >= startFrom:
+        results[s] = self.activationsI
+        print("At {}".format(t))
+        s += 1
+
+
       if self.plotting:
         plotTime = np.abs(np.mod(t, PLOT_INTERVAL))
         if plotTime <= 0.00001 or np.abs(plotTime - PLOT_INTERVAL) <= 0.00001:
           self.plotActivation(time=t, velocity=v)
 
     self.dt = oldDt
+
+    return results
 
 
   def update(self, feedforwardInputI, feedforwardInputE, v, recurrent=True,
@@ -538,14 +582,13 @@ class Dynamic1DCAN(object):
     np.matmul(self.activationsP * self.placeGainE, self.weightsPER,
               self.instantaneousER)
 
-    self.instantaneousI += self.boostEffect*\
+    self.instantaneousI += self.boostEffectI*\
                            self.activationHistoryI +\
                            feedforwardInputI
-    self.instantaneousEL += self.boostEffect*\
+    self.instantaneousEL += self.boostEffectE*\
                             self.activationHistoryEL +\
                             feedforwardInputE
-
-    self.instantaneousER += self.boostEffect*\
+    self.instantaneousER += self.boostEffectE*\
                             self.activationHistoryER +\
                             feedforwardInputE
 
@@ -600,10 +643,17 @@ class Dynamic1DCAN(object):
     np.minimum(self.activationsEL, self.clip, self.activationsEL)
     np.minimum(self.activationsER, self.clip, self.activationsER)
 
-    self.activationHistoryI =  self.activationHistoryI*(np.max(np.abs(v)*self.alpha, 0)) + (1 - np.max(np.abs(v)*self.alpha, 0))*(self.activationsI - np.mean(self.activationsI))
-    self.activationHistoryEL = self.activationHistoryEL*(np.max(np.abs(v)*self.alpha, 0)) + (1 - np.max(np.abs(v)*self.alpha, 0))*(self.activationsEL - np.mean(self.activationsEL))
-    self.activationHistoryER = self.activationHistoryER*(np.max(np.abs(v)*self.alpha, 0)) + (1 - np.max(np.abs(v)*self.alpha, 0))*(self.activationsER - np.mean(self.activationsER))
+    self.activationHistoryI += (-self.activationsI + np.sum(self.activationsI)/np.sum(self.envelopeI))*self.dt
+    self.activationHistoryEL += (-self.activationsEL + np.sum(self.activationsEL)/np.sum(self.envelopeE))*self.dt
+    self.activationHistoryER += (-self.activationsER + np.sum(self.activationsER)/np.sum(self.envelopeE))*self.dt
 
+    self.activationHistoryI -= self.dt*self.activationHistoryI/self.alpha
+    self.activationHistoryEL -= self.dt*self.activationHistoryEL/self.alpha
+    self.activationHistoryER -= self.dt*self.activationHistoryER/self.alpha
+    #
+    # self.activationHistoryI * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
+    # self.activationHistoryEL * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
+    # self.activationHistoryER * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
 
   def decayWeights(self, decayConst=60):
     """
@@ -626,7 +676,8 @@ class Dynamic1DCAN(object):
              periodic=False,
              recurrent=True,
              randomSpeed=False,
-             learnRecurrent=False):
+             learnRecurrent=False,
+             envelope=True,):
     """
     Traverses a sinusoidal trajectory across the environment, learning during
     the process.  A pair of runs across the environment (one in each direction)
@@ -643,6 +694,7 @@ class Dynamic1DCAN(object):
             run, to better simulate real learning.  Can degrade performance.
             Only supported in periodic environments.
     :param learnRecurrent: Whether or not to learn recurrent connections.
+    :param envelope: Whether or not the envelope should be active in learning.
     """
 
     # Simulate for a second to get nice starting activation bumps.
@@ -704,14 +756,14 @@ class Dynamic1DCAN(object):
       self.activationHistoryER = np.zeros(self.activationsER.shape)
       velocities = np.diff(trajectory)/self.dt
       for i, t in enumerate(timing[:-1]):
-        x = trajectory[i] % 1
+        x = trajectory[i] % self.roomSize
         v = velocities[i]
         self.activationsP = np.exp(-1.*(self.placeCode - x)**2 /
                               (2*self.sigmaLoc**2))
 
         self.update(0, 0, v,
                     recurrent=recurrent,
-                    envelope=(not periodic),
+                    envelope=envelope,
                     iSpeedTuning=periodic,
                     enforceDale=True,
                     )
@@ -802,7 +854,7 @@ class Dynamic1DCAN(object):
     if boosting:
       self.ax3.clear()
       x = np.arange(0, len(self.activationHistoryI), 1)
-      self.ax3.plot(x, self.activationHistoryI*self.boostEffect, color = "k", label = "Boost history")
+      self.ax3.plot(x, self.activationHistoryI*self.boostEffectI, color = "k", label = "Boost history")
       if position is not None:
         self.ax3.axvline(x=position*len(self.activationsI))
       self.ax3.legend(loc = "best")
@@ -1433,6 +1485,7 @@ class Dynamic2DCAN(Dynamic1DCAN):
       self.activationsER = np.zeros(self.activationsER.shape)
       self.activationsEL = np.zeros(self.activationsEL.shape)
       velocities = np.diff(trajectory)/self.dt
+
       for i, t in enumerate(timing[:-1]):
         x = trajectory[i] % 1
         v = velocities[i]
