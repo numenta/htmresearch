@@ -45,4 +45,22 @@ def normalize(x):
     return x_
 
 
+def compute_scales(W):
+    num_gc = W.shape[1]
+    scales = np.zeros(num_gc)
+    for i in range(num_gc):
+        f   = (W[:,i] > 0.5).astype(float)
+        df  = f[1:] - f[:-1]
+        ind = np.where(df == -1.)[0]
+        ind = ind.astype(float)
+
+        if len(ind) > 1:
+            scales[i] = np.mean(ind[1:] - ind[:-1])
+
+        else:
+            scales[i] = -1.
+
+    return scales
+
+
 
