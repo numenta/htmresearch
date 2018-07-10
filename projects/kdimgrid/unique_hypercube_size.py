@@ -30,7 +30,7 @@ from htmresearch_core.experimental import computeGridUniquenessHypercube
 
 
 def doRandomModuleExperiment(ms, ks):
-  scales = [1.*(math.sqrt(2)**s) for s in xrange(len(ms))]
+  scales = [1.*(math.sqrt(2)**s) for s in xrange(max(ms))]
   phase_resolution = 0.2
 
   A = np.zeros((len(scales), 2, max(ks)), dtype="float")
@@ -82,7 +82,7 @@ def experiment1():
   plt.xticks(ks)
   plt.xlabel("Number of dimensions")
   plt.ylabel("Diameter of unique hypercube")
-  plt.legend(["{} module{}".format(m + 1, "" if m == 0 else "s")
+  plt.legend(["{} module{}".format(m, "" if m == 0 else "s")
               for m in ms])
   filename = "Diameter_%s.pdf" % timestamp
   print "Saving", filename
