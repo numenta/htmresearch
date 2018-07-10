@@ -481,7 +481,8 @@ class Dynamic1DCAN(object):
                envelope=False,
                inputNoise=None,
                sampleFreq=1,
-               startFrom=0,):
+               startFrom=0,
+               save=True):
     """
     :param time: Amount of time to simulate.
            Divided into chunks of len dt.
@@ -541,7 +542,7 @@ class Dynamic1DCAN(object):
                   v, recurrent, envelope=envelope)
 
 
-      if i % sampleFreq == 0 and t >= startFrom:
+      if i % sampleFreq == 0 and t >= startFrom and save:
         results[s] = self.activationsI
         print("At {}".format(t))
         s += 1
@@ -554,7 +555,8 @@ class Dynamic1DCAN(object):
 
     self.dt = oldDt
 
-    return results
+    if save:
+      return results
 
 
   def update(self, feedforwardInputI, feedforwardInputE, v, recurrent=True,
@@ -650,6 +652,18 @@ class Dynamic1DCAN(object):
     self.activationHistoryI -= self.dt*self.activationHistoryI/self.alpha
     self.activationHistoryEL -= self.dt*self.activationHistoryEL/self.alpha
     self.activationHistoryER -= self.dt*self.activationHistoryER/self.alpha
+
+    # self.activationHistoryI +=  self.activationHistoryI * (self.alpha) + \
+    #                             (1 - self.alpha)*\
+    #                             (-self.activationsI + np.sum(self.activationsI)/np.sum(self.envelopeI))*self.dt
+    # self.activationHistoryEL += self.activationHistoryEL * (self.alpha) + \
+    #                             (1 - self.alpha)*\
+    #                             (-self.activationsEL + np.sum(self.activationsEL)/np.sum(self.envelopeE))*self.dt
+    # self.activationHistoryER += self.activationHistoryER * (self.alpha) + \
+    #                             (1 - self.alpha)*\
+    #                             (-self.activationsER + np.sum(self.activationsER)/np.sum(self.envelopeE))*self.dt
+
+
     #
     # self.activationHistoryI * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
     # self.activationHistoryEL * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
@@ -701,7 +715,7 @@ class Dynamic1DCAN(object):
     # Turn plotting off so as not to confuse the viewer
     oldPlotting = self.plotting
     self.plotting = False
-    self.simulate(10, 1, 1, 0, envelope=False, inputNoise=None)
+    self.simulate(10, 1, 1, 0, envelope=False, inputNoise=None, save=False)
     self.plotting = oldPlotting
 
     # Set up plotting
