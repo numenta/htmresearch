@@ -101,7 +101,7 @@ def experiment1():
   plt.xticks(ks)
   plt.xlabel("Number of dimensions")
   plt.ylabel("Volume of unique hypercube")
-  plt.legend(["{} module{}".format(m + 1, "" if m == 0 else "s")
+  plt.legend(["{} module{}".format(m, "" if m == 0 else "s")
               for m in ms])
   filename = "Volume_%s.pdf" % timestamp
   print "Saving", filename
