@@ -105,16 +105,18 @@ class TimingADTM(object):
                         apicalGrowthCandidates=None,
                         learn=False)
 
-      self.apicalIntersect = []
-      for ii in range(int(round(item[1][1]))):
-        self.apicalIntersect = np.union1d(self.apicalIntersect, self.adtm.apicalCheck(self.timeIndices[ii + 1]))
+      self.apicalIntersect = np.empty(0)
+      # for ii in range(int(round(item[1][1]))):
+      for ii in range(apicalTimestamp):
+        self.apicalIntersect = np.union1d(self.apicalIntersect, self.adtm.apicalCheck(self.timeIndices[ii]))
 
       self.results['active_cells'].append(self.adtm.getActiveCells())
       self.results['basal_predicted_cells'].append(self.adtm.getNextBasalPredictedCells())
       self.results['apical_predicted_cells'].append(self.adtm.getNextApicalPredictedCells())
       self.results['predicted_cells'].append(self.adtm.getNextPredictedCells())
 
-      if (not self.adtm.getNextApicalPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
+      #if (not self.adtm.getNextApicalPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
+      if (not self.adtm.getNextPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
 
         if self.apicalIntersect.any():
           tempoFactor = tempoFactor * 0.5
