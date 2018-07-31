@@ -1,7 +1,24 @@
-import numpy as np
-from projects.specific_timing.timing_adtm import TimingADTM
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2018, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
 
-
+from htmresearch.frameworks.specific_timing.timing_adtm import TimingADTM
 
 Sequence1 = (('A', 5), ('B', 8), ('C', 12), ('D', 16))
 Sequence2 = (('X', 5), ('B', 8), ('C', 12), ('Y', 16))
@@ -20,8 +37,15 @@ Sequence10 = (('A', 4), ('B', 8), ('C', 16), ('D', 20), ('E', 12), ('F', 28), ('
 # Sequence13 = (('A', 2), ('B', 3), ('C', 6), ('D', 8), ('E', 4), ('F', 9), ('G', 5), ('H', 1))
 
 
-
 def testAny(trainSeqs, testSeqs, numIter):
+  """
+
+  :param trainSeqs: list of lists of(feature, timestamp) tuples i.e. [(('A', 5), ('B', 8)), (('A', 1), ('B', 3))]
+  :param testSeqs: list of lists of(feature, timestamp) tuples i.e. [(('A', 5), ('B', 8)), (('A', 1), ('B', 3))]
+  :param numIter: Number of times to train set of sequences in trainSeqs
+  :return: active, basally predicted, apically predicted and predicted cells for
+           each timestamp of each sequence in testSeqs
+  """
   tempoADTM = TimingADTM(numColumns=2048,
                          numActiveCells=39,
                          numTimeColumns=1024,
@@ -54,5 +78,5 @@ def testAny(trainSeqs, testSeqs, numIter):
 # results = testAny(trainSeqs=[Sequence1], testSeqs=[Sequence1, Sequence5], numIter=1)
 
 'Goal 2, test 2.1'
-# results = testAny(trainSeqs=[Sequence6], testSeqs=[Sequence6, Sequence7, Sequence8, Sequence9, Sequence10], numIter=1)
+results = testAny(trainSeqs=[Sequence6], testSeqs=[Sequence6, Sequence7, Sequence8, Sequence9, Sequence10], numIter=1)
 

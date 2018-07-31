@@ -1,26 +1,47 @@
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2018, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 from itertools import izip, count
 import string
 import numpy as np
 from nupic.encoders import ScalarEncoder
-from projects.specific_timing.apical_dependent_sequence_timing_memory import ApicalDependentSequenceTimingMemory as TM
+from htmresearch.frameworks.specific_timing.apical_dependent_sequence_timing_memory import ApicalDependentSequenceTimingMemory as TM
 
 
 class TimingADTM(object):
 
   """
-  Use the (vanilla) apical dependent sequence memory for
-  learning sequences in time
+  Uses the ApicalDependentSequenceTimingMemory for learning sequences with specific times.
+  Rescales apical input values (times) to recognize sequences sped up/slowed down by a factor of two
+
   """
 
   def __init__(self, numColumns, numActiveCells, numTimeColumns,
                numActiveTimeCells, numTimeSteps):
 
     """
-    :param numColumns:
-    :param numActiveCells:
-    :param numTimeColumns:
-    :param numActiveTimeCells:
-    :param numTimeSteps:
+    :param numColumns: Number of minicolumns
+    :param numActiveCells: Number of ON bits in SDR encoding of a given letter
+    :param numTimeColumns: Number of bits in the time encoder output
+    :param numActiveTimeCells: Number of ON bits in SDR encoding of a given timestamp
+    :param numTimeSteps: Number of time intervals that can be distinctly represented (clock resolution)
     """
 
     self.adtm = TM(columnCount=numColumns,
@@ -68,13 +89,18 @@ class TimingADTM(object):
 
 
   def learn(self, trainSeq, numIter):
+    """
+
+    :param trainSeq: list of (feature, timestamp) tuples i.e. (('A', 5), ('B', 8), ('C', 12), ('D', 16))
+    :param numIter: Number of iterations (in a row) over which a given sequence should be learned
+    """
     for _ in range(numIter):
 
-      for item in enumerate(trainSeq):
+      for item in trainSeq:
 
-        activeColumns = self.letterIndices[self.letters.index(item[1][0])]
+        activeColumns = self.letterIndices[self.letters.index(item[0])]
 
-        timeStamp = int(item[1][1] % 21)
+        timeStamp = int(item[1] % 21)
         apicalInput = self.timeIndices[timeStamp]
 
         self.adtm.compute(activeColumns,
@@ -87,15 +113,19 @@ class TimingADTM(object):
 
 
   def infer(self, testSeq):
+    """
+
+    :param testSeq: list of (feature, timestamp) tuples (same format as trainSeq, above)
+    """
 
     self.resetResults()
     tempoFactor = 1
 
-    for item in enumerate(testSeq):
+    for item in testSeq:
 
-      activeColumns = self.letterIndices[self.letters.index(item[1][0])]
+      activeColumns = self.letterIndices[self.letters.index(item[0])]
 
-      timeStamp = item[1][1]
+      timeStamp = item[1]
       apicalTimestamp = int((timeStamp * tempoFactor) % 21)
 
       apicalInput = self.timeIndices[apicalTimestamp]
@@ -144,6 +174,11 @@ class TimingADTM(object):
 
 
   def letterConverter(self, resultsKey):
+    """
+
+    :param resultsKey: results dictionary self.results, indexed by key
+    :return: letter(s) corresponding to predicted cell numbers
+    """
     convertedLetters = []
 
     for c in enumerate(resultsKey):

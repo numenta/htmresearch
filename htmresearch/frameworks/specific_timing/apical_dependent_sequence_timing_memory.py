@@ -1,4 +1,24 @@
-"""An adaptation of the ApicalDependentSequenceMemory"""
+# ----------------------------------------------------------------------
+# Numenta Platform for Intelligent Computing (NuPIC)
+# Copyright (C) 2018, Numenta, Inc.  Unless you have an agreement
+# with Numenta, Inc., for a separate license for this software code, the
+# following terms and conditions apply:
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU Affero Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+# See the GNU Affero Public License for more details.
+#
+# You should have received a copy of the GNU Affero Public License
+# along with this program.  If not, see http://www.gnu.org/licenses.
+#
+# http://numenta.org/licenses/
+# ----------------------------------------------------------------------
+
 
 import numpy as np
 from htmresearch.algorithms.apical_dependent_temporal_memory import (ApicalDependentTemporalMemory)
@@ -7,7 +27,11 @@ from htmresearch.algorithms.apical_dependent_temporal_memory import (ApicalDepen
 
 class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
   """
-  Sequence memory with apical dependence.
+  This is the ApicalDependentSequenceMemory with an extra function called apicalCheck.
+  apicalCheck retrieves basally predicted cells with apically active segments for any apical input.
+
+  This is currently used to report apical activity for apical inputs (temporally) preceding the apical
+  input used for the apical dependent sequence memory.
   """
 
   def __init__(self,
@@ -26,6 +50,29 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
                apicalPredictedSegmentDecrement=0.0,
                maxSynapsesPerSegment=-1,
                seed=42):
+    """
+
+    :param columnCount: The number of minicolumns
+    :param apicalInputSize: The number of bits in the apical input
+    :param cellsPerColumn: Number of cells per column
+    :param activationThreshold: If the number of active connected synapses on a segment is at least this
+                                threshold, the segment is said to be active.
+    :param reducedBasalThreshold: The activation threshold of basal (lateral) segments for cells that have
+                                  active apical segments. If equal to activationThreshold (default), this
+                                  parameter has no effect.
+    :param initialPermanence: Initial permanence of a new synapse
+    :param connectedPermanence: If the permanence value for a synapse is greater than this value, it is said
+                                to be connected.
+    :param minThreshold: If the number of potential synapses active on a segment is at least this
+                         threshold, it is said to be "matching" and is eligible for learning.
+    :param sampleSize: How much of the active SDR to sample with synapses.
+    :param permanenceIncrement: Amount by which permanences of synapses are incremented during learning.
+    :param permanenceDecrement: Amount by which permanences of synapses are decremented during learning.
+    :param basalPredictedSegmentDecrement: Amount by which basal segments are punished for incorrect predictions.
+    :param apicalPredictedSegmentDecrement: Amount by which apical segments are punished for incorrect predictions.
+    :param maxSynapsesPerSegment: The maximum number of synapses per segment.
+    :param seed: Seed for the random number generator.
+    """
     params = {
       "columnCount": columnCount,
       "basalInputSize": columnCount * cellsPerColumn,
