@@ -45,7 +45,8 @@ def chart():
 
   #plt.style.use("ggplot")
 
-  for feats in (50, 100, 5000):
+  markers = ("s", "o", "^")
+  for feats, marker in zip((100, 200, 5000), markers):
     with open("results/convergence_vs_num_objs_{}_feats.json".format(feats), "r") as f:
       convVsObjects = json.load(f)
 
@@ -77,13 +78,16 @@ def chart():
     xError = x[:len(yBelow)]
 
     plt.plot(
-        x, y, "-", label="{} unique features".format(feats),
+        x, y, "{}-".format(marker), label="{} unique features".format(feats),
     )
-    plt.fill_between(xError, yBelow, yAbove, alpha=0.3)
+    #plt.fill_between(xError, yBelow, yAbove, alpha=0.3)
 
   plt.xlabel("Number of Objects")
+  plt.xticks([(i+1)*200 for i in xrange(10)])
   plt.ylabel("Average Number of Sensations")
   plt.legend(loc="center right")
+
+  plt.tight_layout()
 
   plt.savefig(os.path.join(CHART_DIR, "convergence_vs_objects_w_feats.pdf"))
 
@@ -97,41 +101,43 @@ def chart():
 
   #plt.style.use("ggplot")
 
-  for cpm in (25, 100, 400):
-    with open("results/convergence_vs_num_objs_{}_cpm.json".format(cpm), "r") as f:
-      convVsObjs = json.load(f)
+  #for cpm in (25, 100, 400):
+  #  with open("results/convergence_vs_num_objs_{}_cpm.json".format(cpm), "r") as f:
+  #    convVsObjs = json.load(f)
 
-    yData = collections.defaultdict(list)
-    for exp in convVsObjs:
-      results = exp[1].items()
-      total = 0
-      count = 0
-      for i, j in results:
-        total += (int(str(i)) * j)
-        count += j
-      y = float(total) / float(count)
-      numObjects = int(str(exp[0]["numObjects"]))
-      yData[numObjects].append(y)
+  #  yData = collections.defaultdict(list)
+  #  for exp in convVsObjs:
+  #    results = exp[1].items()
+  #    total = 0
+  #    count = 0
+  #    for i, j in results:
+  #      total += (int(str(i)) * j)
+  #      count += j
+  #    y = float(total) / float(count)
+  #    numObjects = int(str(exp[0]["numObjects"]))
+  #    yData[numObjects].append(y)
 
-    x = list(sorted(yData.keys()))
-    yData = sorted(yData.iteritems())
-    y = [float(sum(pair[1])) / float(len(pair[1])) for pair in yData]
-    std = [np.std(pair[1]) for pair in yData]
-    yBelow = [yi - stdi for yi, stdi in zip(y, std)]
-    yAbove = [yi + stdi for yi, stdi in zip(y, std)]
+  #  x = list(sorted(yData.keys()))
+  #  yData = sorted(yData.iteritems())
+  #  y = [float(sum(pair[1])) / float(len(pair[1])) for pair in yData]
+  #  std = [np.std(pair[1]) for pair in yData]
+  #  yBelow = [yi - stdi for yi, stdi in zip(y, std)]
+  #  yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
-    plt.plot(
-        x, y, "o-", label="{} cells per module".format(cpm),
-    )
-    plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #  plt.plot(
+  #      x, y, "o-", label="{} cells per module".format(cpm),
+  #  )
+  #  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
-  plt.xlabel("Number of Objects")
-  plt.ylabel("Average Number of Sensations")
-  plt.legend(loc="upper left")
+  #plt.xlabel("Number of Objects")
+  #plt.ylabel("Average Number of Sensations")
+  #plt.legend(loc="upper left")
 
-  plt.savefig(os.path.join(CHART_DIR, "convergence_with_modsize.pdf"))
+  #plt.tight_layout()
 
-  plt.clf()
+  #plt.savefig(os.path.join(CHART_DIR, "convergence_with_modsize.pdf"))
+
+  #plt.clf()
 
   # Convergence vs. number of modules
   #
@@ -142,7 +148,8 @@ def chart():
 
   #plt.style.use("ggplot")
 
-  for cpm in (25, 100, 400):
+  markers = ("s", "o", "^")
+  for cpm, marker in zip((49, 100, 400), markers):
     with open("results/convergence_vs_num_modules_100_feats_{}_cpm.json".format(cpm), "r") as f:
       convVsMods100 = json.load(f)
 
@@ -161,7 +168,7 @@ def chart():
       numModules = int(str(exp[0]["numModules"]))
       yData[numModules].append(y)
 
-    x = [i+1 for i in xrange(10)]
+    x = [i+1 for i in xrange(20)]
     #y = [float(sum(pair[1])) / float(len(pair[1])) for pair in yData]
     y = [float(sum(yData[step])) / float(len(yData[step])) for step in x]
     #yData20 = yData[19][1]
@@ -173,15 +180,21 @@ def chart():
     yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
     plt.plot(
-        x, y, "o-", label="{} cells per module".format(cpm),
+      x, y, "{}-".format(marker),
+      label="{} cells per module".format(cpm),
     )
-    plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+    #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
-  plt.plot([1, 10], [2.7, 2.7], "--")
+  # TODO: Update this to ideal?
+  plt.plot([1, 20], [2.022, 2.022], "r--", label="Ideal")
 
   plt.xlabel("Number of Modules")
   plt.ylabel("Average Number of Sensations")
   plt.legend(loc="upper right")
+  plt.ylim((0.0, 7.0))
+  plt.xticks([(i+1)*2 for i in xrange(10)])
+
+  plt.tight_layout()
 
   plt.savefig(os.path.join(CHART_DIR, "convergence_vs_modules_100_feats.pdf"))
 
@@ -190,10 +203,42 @@ def chart():
   # Cumulative convergence
   #
   # Generated with:
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 20 --resultName results/cumulative_convergence_400_cpm_10_feats_100_objs.json --repeat 10
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 40 --resultName results/cumulative_convergence_1600_cpm_10_feats_100_objs.json --repeat 10
+  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 20 --thresholds 18 --resultName results/cumulative_convergence_400_cpm_10_feats_100_objs.json --repeat 10
+  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 10 --thresholds 19 --resultName results/cumulative_convergence_100_cpm_10_feats_100_objs.json --repeat 10
   #   python ideal_sim.py
   #   python bof_sim.py
+
+  numSteps = 12
+
+  # 1600 CPM
+
+  yData = collections.defaultdict(list)
+
+  with open("results/cumulative_convergence_1600_cpm_10_feats_100_objs.json", "r") as f:
+    experiments = json.load(f)
+  for exp in experiments:
+    cum = 0
+    for i in xrange(40):
+      step = i + 1
+      count = exp[1].get(str(step), 0)
+      yData[step].append(count)
+
+  x = [i+1 for i in xrange(numSteps)]
+  y = []
+  tot = float(sum([sum(counts) for counts in yData.values()]))
+  cum = 0.0
+  for step in x:
+    counts = yData[step]
+    cum += float(sum(counts))
+    y.append(100.0 * cum / tot)
+  std = [np.std(yData[step]) for step in x]
+  yBelow = [yi - stdi for yi, stdi in zip(y, std)]
+  yAbove = [yi + stdi for yi, stdi in zip(y, std)]
+
+  plt.plot(
+      x, y, "s-", label="1600 Cells Per Module",
+  )
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # 400 CPM
 
@@ -208,7 +253,7 @@ def chart():
       count = exp[1].get(str(step), 0)
       yData[step].append(count)
 
-  x = [i+1 for i in xrange(20)]
+  x = [i+1 for i in xrange(numSteps)]
   y = []
   tot = float(sum([sum(counts) for counts in yData.values()]))
   cum = 0.0
@@ -221,15 +266,15 @@ def chart():
   yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
   plt.plot(
-      x, y, "o-", label="400 Cells per Module",
+      x, y, "o-", label="400 Cells Per Module",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
-  # 1600 CPM
+  ## 289 CPM
 
   yData = collections.defaultdict(list)
 
-  with open("results/cumulative_convergence_100_cpm_10_feats_100_objs.json", "r") as f:
+  with open("results/cumulative_convergence_289_cpm_10_feats_100_objs_1.json", "r") as f:
     experiments = json.load(f)
   for exp in experiments:
     cum = 0
@@ -238,7 +283,7 @@ def chart():
       count = exp[1].get(str(step), 0)
       yData[step].append(count)
 
-  x = [i+1 for i in xrange(20)]
+  x = [i+1 for i in xrange(numSteps)]
   y = []
   tot = float(sum([sum(counts) for counts in yData.values()]))
   cum = 0.0
@@ -251,13 +296,14 @@ def chart():
   yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
   plt.plot(
-      x, y, "o-", label="100 Cells Per Module",
+      x, y, "^-", label="289 Cells Per Module",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Ideal
   with open("results/ideal.json", "r") as f:
     idealResults = json.load(f)
+  x = [i+1 for i in xrange(numSteps)]
   y = []
   std = [np.std(idealResults.get(str(steps), [0])) for steps in x]
   tot = float(sum([sum(counts) for counts in idealResults.values()]))
@@ -271,13 +317,14 @@ def chart():
   yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
   plt.plot(
-      x, y, "o-", label="Ideal Observor",
+      x, y, "x--", label="Ideal Observer",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # BOF
   with open("results/bof.json", "r") as f:
     bofResults = json.load(f)
+  x = [i+1 for i in xrange(numSteps)]
   y = []
   std = [np.std(bofResults.get(str(steps), [0])) for steps in x]
   tot = float(sum([sum(counts) for counts in bofResults.values()]))
@@ -291,17 +338,18 @@ def chart():
   yAbove = [yi + stdi for yi, stdi in zip(y, std)]
 
   plt.plot(
-      x, y, "o-", label="Bag of Features",
+      x, y, "d--", label="Bag of Features",
   )
-  plt.fill_between(x, yBelow, yAbove, alpha=0.3)
+  #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Formatting
   plt.xlabel("Number of Sensations")
   plt.ylabel("Cumulative Accuracy")
   plt.legend(loc="center right")
-  plt.xticks([(i+1)*2 for i in xrange(10)])
+  plt.xticks([(i+1)*2 for i in xrange(6)])
 
   plt.tight_layout()
+
   plt.savefig(os.path.join(CHART_DIR, "cumulative_accuracy.pdf"))
 
   plt.clf()
