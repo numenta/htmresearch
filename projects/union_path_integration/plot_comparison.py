@@ -37,12 +37,13 @@ def computeCapacity(results, threshold):
   """Returns largest number of objects with accuracy above threshold."""
   closestBelow = None
   closestAbove = None
-  for numObjects, accuracy in results:
+  for numObjects, accuracy in sorted(results):
     if accuracy >= threshold:
-      if closestAbove is None or accuracy < closestAbove[1]:
+      if closestAbove is None or closestAbove[0] < numObjects:
         closestAbove = (numObjects, accuracy)
+        closestBelow = None
     else:
-      if closestBelow is None or accuracy > closestBelow[1]:
+      if closestBelow is None:
         closestBelow = (numObjects, accuracy)
   if closestBelow is None or closestAbove is None:
     print closestBelow, threshold, closestAbove
@@ -69,25 +70,25 @@ def chart():
   # python convergence_simulation.py --numObjects 2500 3000 3500 --numUniqueFeatures 200 --locationModuleWidth 10 --resultName results/convergence_vs_num_objs_100_cpm_200_feats_2.json
   # python convergence_simulation.py --numObjects 1500 2000 2500 --numUniqueFeatures 200 --locationModuleWidth 7 --resultName results/convergence_vs_num_objs_49_cpm_200_feats_2.json
   fnames = (
+      "results/comparison_400_cpm_400_feats.json",
+      "results/comparison_289_cpm_400_feats.json",
+      "results/comparison_196_cpm_400_feats.json",
+      "results/comparison_100_cpm_400_feats.json",
+
+      "results/comparison_400_cpm_300_feats.json",
+      "results/comparison_289_cpm_300_feats.json",
+      "results/comparison_196_cpm_300_feats.json",
+      "results/comparison_100_cpm_300_feats.json",
+
+      "results/comparison_400_cpm_200_feats.json",
+      "results/comparison_289_cpm_200_feats.json",
       "results/comparison_196_cpm_200_feats.json",
-      "results/comparison_144_cpm_200_feats.json",
       "results/comparison_100_cpm_200_feats.json",
-      "results/comparison_49_cpm_200_feats.json",
 
-      "results/comparison_196_cpm_150_feats.json",
-      "results/comparison_144_cpm_150_feats.json",
-      "results/comparison_100_cpm_150_feats.json",
-      "results/comparison_49_cpm_150_feats.json",
-
+      "results/comparison_400_cpm_100_feats.json",
+      "results/comparison_289_cpm_100_feats.json",
       "results/comparison_196_cpm_100_feats.json",
-      "results/comparison_144_cpm_100_feats.json",
       "results/comparison_100_cpm_100_feats.json",
-      "results/comparison_49_cpm_100_feats.json",
-
-      "results/comparison_196_cpm_50_feats.json",
-      "results/comparison_144_cpm_50_feats.json",
-      "results/comparison_100_cpm_50_feats.json",
-      "results/comparison_49_cpm_50_feats.json",
 
       #"results/convergence_vs_num_objs_196_cpm_175_feats.json",
       #"results/convergence_vs_num_objs_196_cpm_125_feats.json",
@@ -129,9 +130,11 @@ def chart():
       capacities[k].append((numObjects, accuracy))
 
   plotData = np.zeros((4, 4))
-  modSizeMap = (49, 100, 144, 196)
+  modSizeMap = (100, 196, 289, 400)
+  #modSizeMap = (49, 100, 144, 196)
+  numFeaturesMap = (100, 200, 300, 400)
+  #numFeaturesMap = (50, 100, 150, 200)
   #numFeaturesMap = (25, 50, 75, 100, 125, 150, 175, 200)
-  numFeaturesMap = (50, 100, 150, 200)
   scatterX = []
   scatterY = []
   scatterLabels = []
@@ -187,13 +190,13 @@ def chart():
 
   # Module size vs. # features comparison scatter plot
 
-  plt.plot([0, 40000], [b, (a * 40000) + b], "k-")
+  plt.plot([0, 160000], [b, (a * 160000) + b], "k-")
   aBelow = a - perr[0]
   aAbove = a + perr[0]
   bBelow = b - perr[1]
   bAbove = b + perr[1]
-  yBelow = [bBelow, (aBelow * 40000) + bBelow]
-  yAbove = [bAbove, (aAbove * 40000) + bAbove]
+  yBelow = [bBelow, (aBelow * 160000) + bBelow]
+  yAbove = [bAbove, (aAbove * 160000) + bAbove]
   #plt.fill_between([0, 40000], yBelow, yAbove, alpha=0.3)
   plt.scatter(scatterX, scatterY, c="000", marker="D")
 

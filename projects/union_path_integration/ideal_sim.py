@@ -132,10 +132,14 @@ def runSim(numObjects, numFeatures, numTrials):
       results[steps].append(count)
 
   results = dict(results)
+  print results
+  total = sum([sum(l) for l in results.values()])
+  average = float(sum([sum([k*v for v in l]) for k, l in results.iteritems()])) / float(total)
+  print "average:", average
 
   with open("results/ideal.json", "w") as f:
     json.dump(results, f)
 
 
 if __name__ == "__main__":
-  runSim(100, 30, 10)
+  runSim(100, 10, 10)

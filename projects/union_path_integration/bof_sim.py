@@ -82,4 +82,4 @@ def runSim(numObjects, numFeatures, numTrials):
 
 
 if __name__ == "__main__":
-  runSim(100, 30, 10)
+  runSim(100, 10, 10)

@@ -74,8 +74,7 @@ def chart():
   numObjs = 3
   width = 15
 
-  plt.figure(figsize=(20, 16))
-  fig, axes = plt.subplots(1, numObjs)
+  fig, axes = plt.subplots(numModules, numObjs)
   finishingSteps = [2, 1, 4]
   #for i, obj in enumerate((4, 9, 10)):
   #for i, obj in enumerate((9, 29, 42)):
@@ -91,14 +90,23 @@ def chart():
         stepStop = (step + 1) * width
         plotData[cells, stepStart:stepStop, :] = [0, 0, 0]
 
-    axes[i].add_patch(matplotlib.patches.Rectangle((finishingSteps[i] * width, -1), width, numModules * numCells + 2, color="red", fill=False))
-    axes[i].set_xticks(np.arange(10) * width + (width / 2))
-    axes[i].set_yticks([])
-    axes[i].set_xticklabels([str(v+1) for v in np.arange(10)])
-    axes[i].set(xlabel="Steps", ylabel="Object {} Cells".format(i))
-    #axes[i].set_ylim((0, 501))
+    for m in xrange(numModules):
+      axes[m, i].add_patch(matplotlib.patches.Rectangle((finishingSteps[i] * width, -1), width, numModules * numCells + 2, color="red", fill=False))
+      axes[m, i].set_yticks([])
+      if m == 0:
+        axes[m, i].set_title("Object {}".format(i + 1))
+      if m == 3:
+        axes[m, i].set_xticks(np.arange(10) * width + (width / 2))
+        axes[m, i].set_xticklabels([str(v+1) for v in np.arange(10)])
+        axes[m, i].set(xlabel="Sensations")
+      else:
+        axes[m, i].set_xticks([])
+        axes[m, i].set_xticklabels([])
+      if i == 0:
+        axes[m, i].set(ylabel="Module {}".format(m))
+      #axesm, ii].set_ylim((0, 501))
 
-    axes[i].imshow(plotData, interpolation="none")
+      axes[m, i].imshow(plotData[m*numCells:(m+1)*numCells], interpolation="none")
 
   #plt.set(xlabel="Steps", ylabel="Cells")
   #plt.xlabel("Steps")
