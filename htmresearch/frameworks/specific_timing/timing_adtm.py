@@ -19,6 +19,7 @@
 # ----------------------------------------------------------------------
 
 from itertools import izip, count
+import random
 import string
 import numpy as np
 from nupic.encoders import ScalarEncoder
@@ -78,6 +79,8 @@ class TimingADTM(object):
     self.results['apical_predicted_cells'] = []
 
     self.apicalIntersect = []
+    self.prevVote = 0
+    self.scaleAdjustmentHistory = []
 
 
   def resetResults(self):
@@ -119,7 +122,10 @@ class TimingADTM(object):
     """
 
     self.resetResults()
+
     tempoFactor = 1
+    self.prevVote = 0
+    self.scaleAdjustmentHistory = []
 
     for item in testSeq:
 
@@ -148,11 +154,11 @@ class TimingADTM(object):
       #if (not self.adtm.getNextApicalPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
       if (not self.adtm.getNextPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
 
-        if self.apicalIntersect.any():
-          tempoFactor = tempoFactor * 0.5
+        # tempoFactor = self.tempoAdjust1(tempoFactor)
+        # tempoFactor = self.tempoAdjust2(tempoFactor)
+        # tempoFactor = self.tempoAdjust3(tempoFactor)
+        tempoFactor = self.tempoAdjust4(tempoFactor)
 
-        else:
-          tempoFactor = tempoFactor * 2
 
     print '{:<30s}{:<10s}'.format('Test Sequence:', testSeq)
     print '{:<30s}{:<10s}'.format('--------------', '--------------')
@@ -214,6 +220,7 @@ class TimingADTM(object):
 
     return timeIndices
 
+
   def encodeLetters(self):
     letterEncoder = ScalarEncoder(n=self.numColumns, w=self.numActiveCells, minval=0, maxval=25)
 
@@ -227,8 +234,154 @@ class TimingADTM(object):
 
     return letterIndices
 
+
   def debugResults(self):
     return self.results
 
+
   def debugLetters(self):
     return self.letterIndexArray
+
+
+  def tempoAdjust1(self, tempoFactor):
+    """
+    Adjust tempo based on recent active apical input only
+
+    :param tempoFactor: scaling signal to MC clock from last sequence item
+    :return: adjusted scaling signal
+    """
+
+    if self.apicalIntersect.any():
+      tempoFactor = tempoFactor * 0.5
+
+    else:
+      tempoFactor = tempoFactor * 2
+
+    return tempoFactor
+
+
+  def tempoAdjust2(self, tempoFactor):
+    """
+    Adjust tempo by aggregating active basal cell votes for pre vs. post
+
+    :param tempoFactor: scaling signal to MC clock from last sequence item
+    :return: adjusted scaling signal
+    """
+
+    late_votes = (len(self.adtm.getNextBasalPredictedCells()) - len(self.apicalIntersect)) * -1
+    early_votes = len(self.apicalIntersect)
+    votes = late_votes + early_votes
+    print('vote tally', votes)
+
+    if votes > 0:
+      tempoFactor = tempoFactor * 0.5
+      print 'speed up'
+
+    elif votes < 0:
+      tempoFactor = tempoFactor * 2
+      print 'slow down'
+
+    elif votes == 0:
+      print 'pick randomly'
+      if random.random() > 0.5:
+        tempoFactor = tempoFactor * 0.5
+        print 'random pick: speed up'
+      else:
+        tempoFactor = tempoFactor * 2
+        print 'random pick: slow down'
+
+    return tempoFactor
+
+
+  def tempoAdjust3(self, tempoFactor):
+    """
+    Adjust tempo by aggregating active basal cell votes for pre vs. post (like tempoAdjust2)
+    -> if vote total = 0 (tied), use result of last vote
+
+    :param tempoFactor: scaling signal to MC clock from last sequence item
+    :return: adjusted scaling signal
+    """
+
+    late_votes = (len(self.adtm.getNextBasalPredictedCells()) - len(self.apicalIntersect)) * -1
+    early_votes = len(self.apicalIntersect)
+    votes = late_votes + early_votes
+    print('vote tally', votes)
+
+    if votes > 0:
+      tempoFactor = tempoFactor * 0.5
+      self.prevVote = 0.5
+      print 'speed up'
+
+    elif votes < 0:
+      tempoFactor = tempoFactor * 2
+      self.prevVote = 2
+      print 'slow down'
+
+    elif votes == 0:
+
+      if self.prevVote == 0:
+        print 'pick randomly'
+        if random.random() > 0.5:
+          tempoFactor = tempoFactor * 0.5
+          self.prevVote = 0.5
+          print 'random pick: speed up'
+        else:
+          tempoFactor = tempoFactor * 2
+          self.prevVote = 2
+          print 'random pick: slow down'
+
+      else:
+        print 'tied: re-choose last choice'
+        tempoFactor = tempoFactor * self.prevVote
+
+    return tempoFactor
+
+  def tempoAdjust4(self, tempoFactor):
+    """
+    Adjust tempo by aggregating active basal cell votes for pre vs. post (like tempoAdjust2)
+    -> if vote total = 0 (tied), use result of last vote
+    -> if two wrong scale decisions in a row, use max/min tempo in opposite direction
+
+    :param tempoFactor: scaling signal to MC clock from last sequence item
+    :return: adjusted scaling signal
+    """
+
+    late_votes = (len(self.adtm.getNextBasalPredictedCells()) - len(self.apicalIntersect)) * -1
+    early_votes = len(self.apicalIntersect)
+    votes = late_votes + early_votes
+    print('vote tally', votes)
+
+    if votes > 0:
+      newScale = 0.5
+      print 'speed up'
+
+    elif votes < 0:
+      newScale = 2
+      print 'slow down'
+
+    elif votes == 0:
+
+      if not self.scaleAdjustmentHistory:
+        print 'pick randomly'
+        if random.random() > 0.5:
+          newScale = 0.5
+          print 'random pick: speed up'
+        else:
+          newScale = 2
+          print 'random pick: slow down'
+
+      else:
+        print 'tied: re-choose last choice'
+        newScale = self.scaleAdjustmentHistory[-1]
+
+    if len(self.scaleAdjustmentHistory) >1:
+
+      if self.scaleAdjustmentHistory[-2] == self.scaleAdjustmentHistory[-1]:
+
+        newScale = (self.scaleAdjustmentHistory[-1] * self.scaleAdjustmentHistory[-1])**-2
+        print('2 errors in a row; new scale is', tempoFactor * newScale)
+
+    self.scaleAdjustmentHistory.append(newScale)
+    tempoFactor = tempoFactor * newScale
+    print tempoFactor
+    return tempoFactor
