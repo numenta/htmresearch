@@ -202,8 +202,8 @@ class Superficial2DLocationModule(object):
     self.activePhases = np.array([np.random.random(2)])
     if self.anchoringMethod == "discrete":
       # Need to place the phase in the middle of a cell
-      self.active_phases = np.floor(
-      self.activePhases * self.cellDimensions)/self.cellDimensions
+      self.activePhases = np.floor(
+        self.activePhases * self.cellDimensions)/self.cellDimensions
     self._computeActiveCells()
 
 
