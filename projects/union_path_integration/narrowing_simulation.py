@@ -180,7 +180,7 @@ def doExperiment(cellDimensions,
       with rawTrace(strOut, exp, includeSynapses=False):
         print "Logging to", filename
         for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
+          steps = exp.inferObjectWithRandomMovementsNoStopping(objectDescription, steps=10)
           convergence[steps] += 1
           if steps is None:
             print 'Failed to infer object "{}"'.format(objectDescription["name"])
@@ -253,15 +253,15 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--numObjects", type=int, nargs="+", required=True)
+  parser.add_argument("--numObjects", type=int, required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
   parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
-  parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
-  parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
+  parser.add_argument("--noiseFactor", type=float, required=False, default = 0)
+  parser.add_argument("--moduleNoiseFactor", type=float, required=False, default=0)
   parser.add_argument("--useTrace", action="store_true")
   parser.add_argument("--useRawTrace", action="store_true")
-  parser.add_argument("--numModules", type=int, nargs="+", default=[20])
+  parser.add_argument("--numModules", type=int, default=20)
   parser.add_argument(
     "--thresholds", type=int, default=None,
     help=(
@@ -277,10 +277,10 @@ if __name__ == "__main__":
   cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
   if "both" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "corners"]
+    args.anchoringMethod = ["narrowing", "reanchoring"]
 
 
-  runMultiprocessNoiseExperiment(args.resultName, args.repeat,
+  doExperiment(
     cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,

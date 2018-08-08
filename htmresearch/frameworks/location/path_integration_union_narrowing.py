@@ -366,6 +366,76 @@ class PIUNExperiment(object):
     return currentStep if inferred else None
 
 
+  def inferObjectWithRandomMovementsNoStopping(
+      self,
+      objectDescription,
+      steps,
+      randomLocation=False,
+      checkFalseConvergence=True):
+    """
+    Attempt to recognize the specified object with the network. Randomly move
+    the sensor over the object until the object is recognized.
+
+    @param objectDescription (dict)
+    For example:
+    {"name": "Object 1",
+     "features": [{"top": 0, "left": 0, "width": 10, "height": 10, "name": "A"},
+                  {"top": 0, "left": 10, "width": 10, "height": 10, "name": "B"}]}
+
+    @return (bool)
+    True if inference succeeded
+    """
+    self.reset()
+
+    for monitor in self.monitors.values():
+      monitor.beforeInferObject(objectDescription)
+
+    currentStep = 0
+    inferred = None
+    prevTouchSequence = None
+
+
+    for _ in xrange(self.maxTraversals):
+
+      # Choose touch sequence.
+      while True:
+        touchSequence = range(len(objectDescription["features"]))
+        random.shuffle(touchSequence)
+
+        # Make sure the first touch will cause a movement.
+        if (prevTouchSequence is not None and
+            touchSequence[0] == prevTouchSequence[-1]):
+          continue
+
+        break
+
+      for iFeature in touchSequence:
+        currentStep += 1
+        feature = objectDescription["features"][iFeature]
+        self._move(feature, randomLocation=randomLocation)
+
+        featureSDR = self.features[feature["name"]]
+        self._sense(featureSDR, learn=False, waitForSettle=False)
+
+        representation = self.column.getLocationRepresentation()
+
+        target_representations = set(np.concatenate(
+          self.locationRepresentations[
+            (objectDescription["name"], iFeature)]))
+        if not inferred and (set(representation) <= target_representations):
+          inferred = currentStep
+
+        if currentStep == steps:
+          break
+
+      prevTouchSequence = touchSequence
+
+      if currentStep == steps:
+        break
+
+    return inferred
+
+
   def _move(self, feature, randomLocation = False, useNoise = True):
     """
     Move the sensor to the center of the specified feature. If the sensor is
