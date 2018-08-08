@@ -24,7 +24,6 @@ import numpy as np
 from htmresearch.algorithms.apical_dependent_temporal_memory import (ApicalDependentTemporalMemory)
 
 
-
 class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
   """
   This is the ApicalDependentSequenceMemory with an extra function called apicalCheck.
@@ -33,6 +32,7 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
   This is currently used to report apical activity for apical inputs (temporally) preceding the apical
   input used for the apical dependent sequence memory.
   """
+
 
   def __init__(self,
                columnCount=2048,
@@ -99,6 +99,7 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
 
     self.prevPredictedCells = np.empty(0, dtype="uint32")
 
+
   def reset(self):
     """
     Clear all cell and segment activity.
@@ -109,6 +110,7 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
     self.prevApicalGrowthCandidates = np.empty(0, dtype="uint32")
 
     self.prevPredictedCells = np.empty(0, dtype="uint32")
+
 
   def compute(self,
               activeColumns,
@@ -150,6 +152,7 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
     self.prevApicalInput = apicalInput.copy()
     self.prevApicalGrowthCandidates = apicalGrowthCandidates.copy()
 
+
   def apicalCheck(self, apicalInput):
     """
     Return 'recent' apically predicted cells for each tick  of apical timer
@@ -173,12 +176,14 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
 
     return predictedCells
 
+
   def getPredictedCells(self):
     """
     @return (numpy array)
     The prediction from the previous timestep
     """
     return self.prevPredictedCells
+
 
   def getNextPredictedCells(self):
     """
@@ -187,6 +192,7 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
     """
     return self.predictedCells
 
+
   def getNextBasalPredictedCells(self):
     """
     @return (numpy array)
@@ -194,6 +200,7 @@ class ApicalDependentSequenceTimingMemory(ApicalDependentTemporalMemory):
     """
     return np.unique(
       self.basalConnections.mapSegmentsToCells(self.activeBasalSegments))
+
 
   def getNextApicalPredictedCells(self):
     """
