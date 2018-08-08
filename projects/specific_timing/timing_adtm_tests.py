@@ -45,6 +45,16 @@ Sequence25 = (('A', 5), ('B', 0), ('C', 17), ('D', 3), ('E', 5), ('F', 1), ('G',
 Sequence26 = (('A', 4), ('B', 0), ('C', 3), ('D', 2), ('E', 4), ('F', 1), ('G', 3))
 Sequence27 = (('A', 6), ('B', 5), ('C', 8), ('D', 9), ('E', 7), ('F', 9), ('G', 5))
 
+Sequence28 = (('A', 12), ('B', 16), ('C', 4), ('D', 18), ('E', 14), ('F', 18), ('G', 10))
+Sequence29 = (('A', 0), ('B', 0), ('C', 17), ('D', 3), ('E', 5), ('F', 1), ('G', 7))
+Sequence30 = (('A', 4), ('B', 3), ('C', 19), ('D', 2), ('E', 5), ('F', 1), ('G', 3))
+Sequence31 = (('A', 6), ('B', 8), ('C', 2), ('D', 9), ('E', 7), ('F', 9), ('G', 5))
+
+Sequence32 = (('A', 12), ('B', 16), ('C', 8), ('D', 18), ('E', 14), ('F', 18), ('G', 10))
+Sequence33 = (('A', 0), ('B', 11), ('C', 2), ('D', 3), ('E', 5), ('F', 1), ('G', 7))
+Sequence34 = (('A', 4), ('B', 13), ('C', 3), ('D', 2), ('E', 5), ('F', 1), ('G', 3))
+Sequence35 = (('A', 6), ('B', 8), ('C', 4), ('D', 9), ('E', 7), ('F', 9), ('G', 5))
+
 
 
 def testAny(trainSeqs, testSeqs, numIter):
@@ -131,4 +141,17 @@ test_results['tricky 2'] = testAny(trainSeqs=[Sequence24, Sequence25, Sequence26
                                    testSeqs=[Sequence24, Sequence25, Sequence26, Sequence27],
                                    numIter=10)
 
+print '----------------------------------------------------------------------------------------'
+
+print 'constructed tricky case 3: for each time-step, more votes to move in wrong direction - including post hard-rest'
+test_results['tricky 3'] = testAny(trainSeqs=[Sequence28, Sequence29, Sequence30],
+                                   testSeqs=[Sequence28, Sequence29, Sequence30, Sequence31],
+                                   numIter=10)
+
+print '----------------------------------------------------------------------------------------'
+
+print 'constructed tricky case 4: at second time-step, more votes to move in wrong direction -- makes inertia useless '
+test_results['tricky 4'] = testAny(trainSeqs=[Sequence32, Sequence33, Sequence34],
+                                   testSeqs=[Sequence32, Sequence33, Sequence34, Sequence35],
+                                   numIter=10)
 

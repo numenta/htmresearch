@@ -81,6 +81,7 @@ class TimingADTM(object):
     self.apicalIntersect = []
     self.prevVote = 0
     self.scaleAdjustmentHistory = []
+    self.disableVoting = 0
 
 
   def resetResults(self):
@@ -124,8 +125,10 @@ class TimingADTM(object):
     self.resetResults()
 
     tempoFactor = 1
+    print('PRINTED TEMPO FACTOR',tempoFactor)
     self.prevVote = 0
     self.scaleAdjustmentHistory = []
+    self.disableVoting = 0
 
     for item in testSeq:
 
@@ -157,7 +160,8 @@ class TimingADTM(object):
         # tempoFactor = self.tempoAdjust1(tempoFactor)
         # tempoFactor = self.tempoAdjust2(tempoFactor)
         # tempoFactor = self.tempoAdjust3(tempoFactor)
-        tempoFactor = self.tempoAdjust4(tempoFactor)
+        # tempoFactor = self.tempoAdjust4(tempoFactor)
+        tempoFactor = self.tempoAdjust5(tempoFactor)
 
 
     print '{:<30s}{:<10s}'.format('Test Sequence:', testSeq)
@@ -338,7 +342,7 @@ class TimingADTM(object):
 
   def tempoAdjust4(self, tempoFactor):
     """
-    Adjust tempo by aggregating active basal cell votes for pre vs. post (like tempoAdjust2)
+    Adjust tempo by aggregating active basal cell votes for pre vs. post
     -> if vote total = 0 (tied), use result of last vote
     -> if two wrong scale decisions in a row, use max/min tempo in opposite direction
 
@@ -374,12 +378,101 @@ class TimingADTM(object):
         print 'tied: re-choose last choice'
         newScale = self.scaleAdjustmentHistory[-1]
 
+
+    if self.disableVoting == 1:
+
+      newScale = self.scaleAdjustmentHistory[-1]
+
     if len(self.scaleAdjustmentHistory) >1:
 
       if self.scaleAdjustmentHistory[-2] == self.scaleAdjustmentHistory[-1]:
 
-        newScale = (self.scaleAdjustmentHistory[-1] * self.scaleAdjustmentHistory[-1])**-2
+        prevDirection = self.scaleAdjustmentHistory[-1]
+        newScale = (prevDirection * prevDirection)**-2
         print('2 errors in a row; new scale is', tempoFactor * newScale)
+
+        self.scaleAdjustmentHistory = []
+        self.scaleAdjustmentHistory.append(prevDirection)
+        tempoFactor = tempoFactor * newScale
+        return tempoFactor
+
+    self.scaleAdjustmentHistory.append(newScale)
+    tempoFactor = tempoFactor * newScale
+    print tempoFactor
+    return tempoFactor
+
+  def tempoAdjust5(self, tempoFactor):
+    """
+    Adjust tempo by aggregating active basal cell votes for pre vs. post
+    -> if vote total = 0 (tied), use result of last vote
+    -> if two wrong scale decisions in a row IN THE SAME DIRECTION,
+        => use max/min tempo in opposite direction AND
+        => disable voting
+
+    -> if two wrong scale decisions in a row IN DIFFERENT DIRECTIONS,
+        =>  forcibly choose scale update in the first direction
+
+    :param tempoFactor: scaling signal to MC clock from last sequence item
+    :return: adjusted scaling signal
+    """
+
+    if self.disableVoting == 0:
+
+      late_votes = (len(self.adtm.getNextBasalPredictedCells()) - len(self.apicalIntersect)) * -1
+      early_votes = len(self.apicalIntersect)
+      votes = late_votes + early_votes
+      print('vote tally', votes)
+
+      if votes > 0:
+        newScale = 0.5
+        print 'speed up'
+
+      elif votes < 0:
+        newScale = 2
+        print 'slow down'
+
+      elif votes == 0:
+
+        if not self.scaleAdjustmentHistory:
+          print 'pick randomly'
+          if random.random() > 0.5:
+            newScale = 0.5
+            print 'random pick: speed up'
+          else:
+            newScale = 2
+            print 'random pick: slow down'
+
+        else:
+          print 'tied: re-choose last choice'
+          newScale = self.scaleAdjustmentHistory[-1]
+
+      if len(self.scaleAdjustmentHistory) == 1:
+
+        if newScale != self.scaleAdjustmentHistory[-1]:
+          newScale = self.scaleAdjustmentHistory[-1]
+
+          print('force re-choosing of last choice')
+
+
+      if len(self.scaleAdjustmentHistory) > 1:
+
+        if self.scaleAdjustmentHistory[-2] == self.scaleAdjustmentHistory[-1]:
+          prevDirection = self.scaleAdjustmentHistory[-1]
+          newScale = (prevDirection * prevDirection) ** -2
+          print('2 errors in a row; new scale is', tempoFactor * newScale)
+
+          self.scaleAdjustmentHistory = []
+          self.disableVoting = 1
+          print('VOTING IS DISABLED')
+
+          self.scaleAdjustmentHistory.append(prevDirection)
+          tempoFactor = tempoFactor * newScale
+          return tempoFactor
+
+
+    if self.disableVoting == 1:
+
+      newScale = self.scaleAdjustmentHistory[-1]
 
     self.scaleAdjustmentHistory.append(newScale)
     tempoFactor = tempoFactor * newScale
