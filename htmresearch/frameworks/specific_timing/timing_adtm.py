@@ -35,7 +35,7 @@ class TimingADTM(object):
   """
 
   def __init__(self, numColumns, numActiveCells, numTimeColumns,
-               numActiveTimeCells, numTimeSteps):
+               numActiveTimeCells, numTimeSteps, tempoMethod='tempoAdjust5'):
 
     """
     :param numColumns: Number of minicolumns
@@ -78,6 +78,7 @@ class TimingADTM(object):
     self.results['basal_predicted_cells'] = []
     self.results['apical_predicted_cells'] = []
 
+    self.tempoMethod = tempoMethod
     self.apicalIntersect = []
     self.prevVote = 0
     self.scaleAdjustmentHistory = []
@@ -154,14 +155,22 @@ class TimingADTM(object):
       self.results['apical_predicted_cells'].append(self.adtm.getNextApicalPredictedCells())
       self.results['predicted_cells'].append(self.adtm.getNextPredictedCells())
 
-      #if (not self.adtm.getNextApicalPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
       if (not self.adtm.getNextPredictedCells().any()) & (self.adtm.getNextBasalPredictedCells().any()):
 
-        # tempoFactor = self.tempoAdjust1(tempoFactor)
-        # tempoFactor = self.tempoAdjust2(tempoFactor)
-        # tempoFactor = self.tempoAdjust3(tempoFactor)
-        # tempoFactor = self.tempoAdjust4(tempoFactor)
-        tempoFactor = self.tempoAdjust5(tempoFactor)
+        if self.tempoMethod == 'tempoAdjust1':
+          tempoFactor = self.tempoAdjust1(tempoFactor)
+
+        elif self.tempoMethod == 'tempoAdjust2':
+          tempoFactor = self.tempoAdjust2(tempoFactor)
+
+        elif self.tempoMethod == 'tempoAdjust3':
+          tempoFactor = self.tempoAdjust3(tempoFactor)
+
+        elif self.tempoMethod == 'tempoAdjust4':
+          tempoFactor = self.tempoAdjust4(tempoFactor)
+
+        elif self.tempoMethod == 'tempoAdjust5':
+          tempoFactor = self.tempoAdjust5(tempoFactor)
 
 
     print '{:<30s}{:<10s}'.format('Test Sequence:', testSeq)
