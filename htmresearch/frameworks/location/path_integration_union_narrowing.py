@@ -25,14 +25,56 @@ of unions of locations that are specific to objects.
 """
 
 import abc
+import math
 import random
+from collections import defaultdict
 
 import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
   ApicalTiebreakPairMemory)
 from htmresearch.algorithms.column_pooler import ColumnPooler
-from htmresearch.algorithms.location_modules import Superficial2DLocationModule
+from htmresearch.algorithms.location_modules import (
+  Superficial2DLocationModule, ThresholdedGaussian2DLocationModule)
+
+
+RAT_BUMP_SIGMA = 0.18172
+
+
+def createRatModule(inverseReadoutResolution, scale, enlargeModuleFactor=1.,
+                    **kwargs):
+  """
+  @param inverseReadoutResolution (int or float)
+  Equivalent to 1/readoutResolution, but specified this way as a convenience
+  (because it's easier and less ambiguous to type 3 than to type 0.3333333). The
+  readout resolution specifies the diameter of the circle of phases in the
+  rhombus encoded by a bump. So when a bump of activity is converted into a set
+  of active cells, this circle of active cells will have a diameter of at least
+  this amount.
+
+  @param enlargeModuleFactor (float)
+  A multiplicative factor that's used to simulate the effect of having a larger
+  module, keeping the bump size fixed but making the module larger, so that the
+  bump is smaller relative to the size of the module. Equivalently, this shrinks
+  the bump, increases the precision of the readout, adds more cells, and
+  increases the scale so that the bump is the same size when overlayed on the
+  real world.
+  """
+
+  # Give the module enough precision in its learning so that the bump is the
+  # specified diameter when properly accounting for uncertainty.
+  learningCellsPerAxis = int(math.ceil(2*inverseReadoutResolution*enlargeModuleFactor))
+
+  readoutResolution = 1. / (enlargeModuleFactor*inverseReadoutResolution)
+  activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
+    learningCellsPerAxis, RAT_BUMP_SIGMA, readoutResolution)
+
+  return ThresholdedGaussian2DLocationModule(
+    cellsPerAxis=learningCellsPerAxis,
+    activeFiringRate=activeFiringRate,
+    bumpSigma=RAT_BUMP_SIGMA,
+    scale=scale*enlargeModuleFactor,
+    **kwargs)
 
 
 class PIUNCorticalColumn(object):
@@ -45,7 +87,7 @@ class PIUNCorticalColumn(object):
   arrives, call sensoryCompute.
   """
 
-  def __init__(self, locationConfigs, L4Overrides=None):
+  def __init__(self, locationConfigs, L4Overrides=None, useGaussian=False):
     """
     @param L4Overrides (dict)
     Custom parameters for L4
@@ -53,23 +95,32 @@ class PIUNCorticalColumn(object):
     @param locationConfigs (sequence of dicts)
     Parameters for the location modules
     """
+    L4cellCount = 150*16
+    if useGaussian:
+      self.L6aModules = [
+        createRatModule(
+          anchorInputSize=L4cellCount,
+          **config)
+        for config in locationConfigs]
+    else:
+      self.L6aModules = [
+        Superficial2DLocationModule(
+          anchorInputSize=L4cellCount,
+          **config)
+        for config in locationConfigs]
+
     L4Params = {
       "columnCount": 150,
       "cellsPerColumn": 16,
       "basalInputSize": (len(locationConfigs) *
-                         sum(np.prod(config["cellDimensions"])
-                             for config in locationConfigs))
+                         sum(module.numberOfCells()
+                             for module in self.L6aModules))
     }
+
     if L4Overrides is not None:
       L4Params.update(L4Overrides)
-
     self.L4 = ApicalTiebreakPairMemory(**L4Params)
 
-    self.L6aModules = [
-      Superficial2DLocationModule(
-        anchorInputSize=self.L4.numberOfCells(),
-        **config)
-      for config in locationConfigs]
 
 
   def movementCompute(self, displacement, noiseFactor = 0, moduleNoiseFactor = 0):
@@ -114,6 +165,7 @@ class PIUNCorticalColumn(object):
     inputParams = {
       "activeColumns": activeMinicolumns,
       "basalInput": self.getLocationRepresentation(),
+      "basalGrowthCandidates": self.getLearnableLocationRepresentation(),
       "learn": learn
     }
     self.L4.compute(**inputParams)
@@ -168,6 +220,39 @@ class PIUNCorticalColumn(object):
     return activeCells
 
 
+  def getLearnableLocationRepresentation(self):
+    """
+    Get the cells in the location layer that should be associated with the
+    sensory input layer representation. In some models, this is identical to the
+    active cells. In others, it's a subset.
+    """
+    learnableCells = np.array([], dtype="uint32")
+
+    totalPrevCells = 0
+    for module in self.L6aModules:
+      learnableCells = np.append(learnableCells,
+                                 module.getLearnableCells() + totalPrevCells)
+      totalPrevCells += module.numberOfCells()
+
+    return learnableCells
+
+
+  def getSensoryAssociatedLocationRepresentation(self):
+    """
+    Get the location cells in the location layer that were driven by the input
+    layer (or, during learning, were associated with this input.)
+    """
+    cells = np.array([], dtype="uint32")
+
+    totalPrevCells = 0
+    for module in self.L6aModules:
+      cells = np.append(cells,
+                        module.sensoryAssociatedCells + totalPrevCells)
+      totalPrevCells += module.numberOfCells()
+
+    return cells
+
+
 
 class PIUNExperiment(object):
   """
@@ -202,10 +287,12 @@ class PIUNExperiment(object):
     self.numActiveMinicolumns = numActiveMinicolumns
 
     # Use these for classifying SDRs and for testing whether they're correct.
-    self.locationRepresentations = {
-      # Example:
-      # (objectName, featureIndex): [0, 26, 54, 77, 101, ...]
-    }
+    # Allow storing multiple representations, in case the experiment learns
+    # multiple points on a single feature. (We could switch to indexing these by
+    # objectName, featureIndex, coordinates.)
+    # Example:
+    # (objectName, featureIndex): [(0, 26, 54, 77, 101, ...), ...]
+    self.locationRepresentations = defaultdict(list)
     self.inputRepresentations = {
       # Example:
       # (objectName, featureIndex, featureName): [0, 26, 54, 77, 101, ...]
@@ -276,22 +363,18 @@ class PIUNExperiment(object):
       for iFeature, feature in enumerate(objectDescription["features"]):
         self._move(feature, randomLocation=randomLocation, useNoise=useNoise)
         featureSDR = self.features[feature["name"]]
-        for _ in xrange(1):
-          self._sense(featureSDR, learn=True, waitForSettle=False)
+        self._sense(featureSDR, learn=True, waitForSettle=False)
 
-        if (objectDescription["name"], iFeature) not in self.locationRepresentations:
-          self.locationRepresentations[(objectDescription["name"], iFeature)] = []
-
+        locationRepresentation = self.column.getSensoryAssociatedLocationRepresentation()
         self.locationRepresentations[(objectDescription["name"],
-                                      iFeature)].append(
-                                        self.column.getLocationRepresentation())
+                                      iFeature)].append(locationRepresentation)
         self.inputRepresentations[(objectDescription["name"],
                                    iFeature, feature["name"])] = (
-                                     self.column.getSensoryRepresentation())
+                                     self.column.L4.getWinnerCells())
+
+        self.representationSet.add(tuple(locationRepresentation))
 
     self.learnedObjects.append(objectDescription)
-
-    self.representationSet.add(tuple(self.column.getLocationRepresentation()))
 
 
   def inferObjectWithRandomMovements(self,
@@ -342,13 +425,19 @@ class PIUNExperiment(object):
         featureSDR = self.features[feature["name"]]
         self._sense(featureSDR, learn=False, waitForSettle=False)
 
-        representation = self.column.getLocationRepresentation()
+        # Use the sensory-activated cells to detect whether the object has been
+        # recognized. In some models, this set of cells is equivalent to the
+        # active cells. In others, a set of cells around the sensory-activated
+        # cells become active. In either case, if these sensory-activated cells
+        # are correct, it implies that the input layer's representation is
+        # classifiable -- the location layer just correctly classified it.
+        representation = self.column.getSensoryAssociatedLocationRepresentation()
 
         target_representations = set(np.concatenate(
           self.locationRepresentations[
             (objectDescription["name"], iFeature)]))
         inferred = (set(representation) <=
-          target_representations)
+                    target_representations)
 
         if not inferred and tuple(representation) in self.representationSet:
           # We have converged to an incorrect representation - declare failure.
