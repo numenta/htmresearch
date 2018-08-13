@@ -20,7 +20,8 @@
 # ----------------------------------------------------------------------
 
 """
-Convergence simulations for abstract objects.
+Recognition experiments for abstract objects, using a gaussian bump grid
+cell module model.
 """
 
 import argparse
@@ -71,9 +72,7 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, numFeatures):
   return objects
 
 
-def doExperiment(locationModuleWidth,
-                 cellCoordinateOffsets,
-                 numObjects,
+def doExperiment(numObjects,
                  featuresPerObject,
                  objectWidth,
                  numFeatures,
@@ -83,16 +82,12 @@ def doExperiment(locationModuleWidth,
                  moduleNoiseFactor,
                  numModules,
                  thresholds,
-                 anchoringMethod = "narrowing"):
+                 inverseReadoutResolution,
+                 enlargeModuleFactor,
+                 bumpOverlapMethod):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
-
-  @param locationModuleWidth (int)
-  The cell dimensions of each module
-
-  @param cellCoordinateOffsets (sequence)
-  The "cellCoordinateOffsets" parameter for each module
   """
   if not os.path.exists("traces"):
     os.makedirs("traces")
@@ -113,19 +108,20 @@ def doExperiment(locationModuleWidth,
     orientation = (float(i) * perModRange) + (perModRange / 2.0)
 
     locationConfigs.append({
-      "cellsPerAxis": locationModuleWidth,
-      "scale": scale,
-      "orientation": orientation,
-      "cellCoordinateOffsets": cellCoordinateOffsets,
-      "activationThreshold": 8,
-      "initialPermanence": 1.0,
-      "connectedPermanence": 0.5,
-      "learningThreshold": 8,
-      "sampleSize": 10,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.0,
-      "anchoringMethod": anchoringMethod,
+        "scale": scale,
+        "orientation": orientation,
+        "activationThreshold": 8,
+        "initialPermanence": 1.0,
+        "connectedPermanence": 0.5,
+        "learningThreshold": 8,
+        "sampleSize": 10,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.0,
+        "inverseReadoutResolution": inverseReadoutResolution,
+        "enlargeModuleFactor": enlargeModuleFactor,
+        "bumpOverlapMethod": bumpOverlapMethod,
     })
+
   l4Overrides = {
     "initialPermanence": 1.0,
     "activationThreshold": thresholds,
@@ -135,7 +131,8 @@ def doExperiment(locationModuleWidth,
     "cellsPerColumn": 16,
   }
 
-  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides)
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
+                              useGaussian=True)
   exp = PIUNExperiment(column, featureNames=features,
                        numActiveMinicolumns=10,
                        noiseFactor=noiseFactor,
@@ -146,15 +143,13 @@ def doExperiment(locationModuleWidth,
 
   filename = os.path.join(
       SCRIPT_DIR,
-      "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
-          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
-          numObjects, numFeatures)
+      "traces/{}-resolution-{}-modules-{}-objects-{}-feats.html".format(
+          inverseReadoutResolution, numModules, numObjects, numFeatures)
   )
   rawFilename = os.path.join(
       SCRIPT_DIR,
-      "traces/{}-points-{}-cells-{}-objects-{}-feats.trace".format(
-          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
-          numObjects, numFeatures)
+      "traces/{}-resolution-{}-modules-{}-objects-{}-feats.trace".format(
+          inverseReadoutResolution, numModules, numObjects, numFeatures)
   )
 
   assert not (useTrace and useRawTrace), "Cannot use both --trace and --rawTrace"
@@ -259,10 +254,10 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
-  parser.add_argument("--locationModuleWidth", type=int, required=True)
-  parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
   parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
+  parser.add_argument("--inverseReadoutResolution", type=float, default=3)
+  parser.add_argument("--enlargeModuleFactor", type=float, nargs="+", required=False, default=1.0)
   parser.add_argument("--useTrace", action="store_true")
   parser.add_argument("--useRawTrace", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
@@ -271,19 +266,13 @@ if __name__ == "__main__":
     help=(
       "The TM prediction threshold. Defaults to int((numModules+1)*0.8)."
       "Set to 0 for the threshold to match the number of modules."))
-  parser.add_argument("--anchoringMethod", type = str, default="corners")
+  parser.add_argument("--bumpOverlapMethod", type = str, default="probabilistic")
   parser.add_argument("--resultName", type = str, default="results.json")
   parser.add_argument("--repeat", type=int, default=1)
   parser.add_argument("--appendResults", action="store_true")
   parser.add_argument("--numWorkers", type=int, default=cpu_count())
 
   args = parser.parse_args()
-
-  numOffsets = args.coordinateOffsetWidth
-  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
-
-  if "both" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "corners"]
 
 
   # Use a fixed seed unless we're appending to a file. (In that case we're
@@ -296,8 +285,6 @@ if __name__ == "__main__":
 
   runMultiprocessNoiseExperiment(
     args.resultName, args.repeat, args.numWorkers, args.appendResults,
-    locationModuleWidth=args.locationModuleWidth,
-    cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
     featuresPerObject=10,
     objectWidth=4,
@@ -308,5 +295,7 @@ if __name__ == "__main__":
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
     thresholds=args.thresholds,
-    anchoringMethod=args.anchoringMethod,
+    inverseReadoutResolution=args.inverseReadoutResolution,
+    enlargeModuleFactor=args.enlargeModuleFactor,
+    bumpOverlapMethod=args.bumpOverlapMethod,
   )

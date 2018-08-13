@@ -43,7 +43,7 @@ class PIUNLogger(PIUNExperimentMonitor):
   Logs the state of the world and the state of each layer to a file.
   """
 
-  def __init__(self, out, exp, includeSynapses=True):
+  def __init__(self, out, exp, includeSynapses=True, learnedObjectsOverride=None):
     self.exp = exp
     self.out = out
     self.includeSynapses = includeSynapses
@@ -60,14 +60,16 @@ class PIUNLogger(PIUNExperimentMonitor):
                       "cellsPerColumn": exp.column.L4.getCellsPerColumn()}),
           file=self.out)
 
-    print(json.dumps([{"cellDimensions": module.cellDimensions.tolist(),
-                       "moduleMapDimensions": module.moduleMapDimensions.tolist(),
+    print(json.dumps([{"cellDimensions": [module.cellsPerAxis, module.cellsPerAxis],
+                       "moduleMapDimensions": [module.scale, module.scale],
                        "orientation": module.orientation}
                       for module in self.locationModules]),
           file=self.out)
 
     print("learnedObjects", file=self.out)
-    print(json.dumps(exp.learnedObjects), file=self.out)
+    print(json.dumps(exp.learnedObjects
+                     if learnedObjectsOverride is None
+                     else learnedObjectsOverride), file=self.out)
 
 
   def __enter__(self, *args):
@@ -129,8 +131,12 @@ class PIUNLogger(PIUNExperimentMonitor):
 
     cellPointsByModule = []
     for module in self.locationModules:
-      cellPoints = module.activePhases * module.cellDimensions
-      cellPointsByModule.append(cellPoints.tolist())
+      if hasattr(module, "activePhases"):
+        cellPoints = (module.activePhases *
+                      [module.cellsPerAxis, module.cellsPerAxis]).tolist()
+      else:
+        cellPoints = []
+      cellPointsByModule.append(cellPoints)
     print(json.dumps(cellPointsByModule), file=self.out)
 
     activeLocationCells = self.exp.column.getLocationRepresentation()
@@ -180,8 +186,12 @@ class PIUNLogger(PIUNExperimentMonitor):
 
     cellPointsByModule = []
     for module in self.locationModules:
-      cellPoints = module.activePhases * module.cellDimensions
-      cellPointsByModule.append(cellPoints.tolist())
+      if hasattr(module, "activePhases"):
+        cellPoints = (module.activePhases *
+                      [module.cellsPerAxis, module.cellsPerAxis]).tolist()
+      else:
+        cellPoints = []
+      cellPointsByModule.append(cellPoints)
     print(json.dumps(cellPointsByModule), file=self.out)
 
 
@@ -190,7 +200,7 @@ class PIUNLogger(PIUNExperimentMonitor):
     decodings = []
     for (objectName, iFeature), sdrs in self.locationRepresentations.iteritems():
       amountContained = np.amax([(np.intersect1d(sdr, activeLocationCells).size /
-                         float(sdr.size)) for sdr in sdrs])
+                                  float(sdr.size)) for sdr in sdrs])
       decodings.append(
         [objectName, iFeature, amountContained])
     print(json.dumps(decodings), file=self.out)

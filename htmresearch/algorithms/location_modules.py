@@ -32,6 +32,448 @@ from htmresearch.algorithms.multiconnections import Multiconnections
 from nupic.bindings.math import SparseMatrixConnections, Random
 
 
+class ThresholdedGaussian2DLocationModule(object):
+  """
+  A model of a grid cell module. The module has one or more Gaussian activity
+  bumps that move as the population receives motor input. When two bumps are
+  near each other, the intermediate cells have higher firing rates than they
+  would with a single bump. The cells with firing rates above a certain
+  threshold are considered "active".
+
+  We don't model the neural dynamics of path integration. When the network
+  receives a motor command, it shifts its bumps. We do this by tracking each
+  bump as floating point coordinates, and we shift the bumps with movement. This
+  model isn't attempting to explain how path integration works. It's attempting
+  to show how a population of cells that can path integrate are useful in a
+  larger network.
+
+  The cells are distributed uniformly through the rhombus, packed in the optimal
+  hexagonal arrangement. During learning, the cell nearest to the current phase
+  is associated with the sensed feature.
+
+  This class doesn't choose working parameters for you. You need to give it a
+  coherent mix of cellsPerAxis, activeFiringRate, and bumpSigma that:
+   1. Ensure at least one cell fires at each location
+   2. Use a large enough set of active cells that inference accounts for
+      uncertainty in the learned locations.
+  Use chooseReliableActiveFiringRate() to get good parameters.
+  """
+
+  def __init__(self,
+               cellsPerAxis,
+               scale,
+               orientation,
+               anchorInputSize,
+               activeFiringRate,
+               bumpSigma,
+               activationThreshold=10,
+               initialPermanence=0.21,
+               connectedPermanence=0.50,
+               learningThreshold=10,
+               sampleSize=20,
+               permanenceIncrement=0.1,
+               permanenceDecrement=0.0,
+               maxSynapsesPerSegment=-1,
+               bumpOverlapMethod="probabilistic",
+               seed=42):
+    """
+    Uses hexagonal firing fields.
+
+    @param cellsPerAxis (int)
+    Determines the number of cells. Determines how space is divided between the
+    cells.
+
+    @param scale (float)
+    Determines the amount of world space covered by all of the cells combined.
+    In grid cell terminology, this is equivalent to the "scale" of a module.
+
+    @param orientation (float)
+    The rotation of this map, measured in radians.
+
+    @param anchorInputSize (int)
+    The number of input bits in the anchor input.
+
+    @param activeFiringRate (float)
+    Between 0.0 and 1.0. A cell is considered active if its firing rate is at
+    least this value.
+
+    @param bumpSigma (float)
+    Specifies the diameter of a gaussian bump, in units of "rhombus edges". A
+    single edge of the rhombus has length 1, and this bumpSigma would typically
+    be less than 1. We often use 0.18172 as an estimate for the sigma of a rat
+    entorhinal bump.
+
+    @param bumpOverlapMethod ("probabilistic" or "sum")
+    Specifies the firing rate of a cell when it's part of two bumps.
+    """
+
+    self.cellsPerAxis = cellsPerAxis
+
+    self.scale = scale
+    self.orientation = orientation
+    # Matrix that converts a phase displacement into a normalized world
+    # displacement (not accounting for scale)
+    self.B = np.array(
+      [[math.cos(orientation), math.cos(orientation + np.radians(60.))],
+       [math.sin(orientation), math.sin(orientation + np.radians(60.))]])
+    # Matrix that converts a world displacement into a phase displacement.
+    self.A = np.linalg.inv(scale * self.B)
+
+    # Phase is measured as a number in the range [0.0, 1.0)
+    self.bumpPhases = np.empty((2,0), dtype="float")
+    self.cellsForActivePhases = np.empty(0, dtype="int")
+    self.phaseDisplacement = np.empty((0,2), dtype="float")
+
+    self.activeCells = np.empty(0, dtype="int")
+    # Analogous to "winner cells" in other parts of code.
+    self.learningCells = np.empty(0, dtype="int")
+
+    # The cells that were activated by sensory input in an inference timestep,
+    # or cells that were associated with sensory input in a learning timestep.
+    self.sensoryAssociatedCells = np.empty(0, dtype="int")
+
+    self.activeSegments = np.empty(0, dtype="uint32")
+
+    self.connections = SparseMatrixConnections(self.cellsPerAxis * self.cellsPerAxis,
+                                               anchorInputSize)
+
+    self.initialPermanence = initialPermanence
+    self.connectedPermanence = connectedPermanence
+    self.learningThreshold = learningThreshold
+    self.sampleSize = sampleSize
+    self.permanenceIncrement = permanenceIncrement
+    self.permanenceDecrement = permanenceDecrement
+    self.activationThreshold = activationThreshold
+    self.maxSynapsesPerSegment = maxSynapsesPerSegment
+
+    self.bumpSigma = bumpSigma
+    self.activeFiringRate = activeFiringRate
+    self.bumpOverlapMethod = bumpOverlapMethod
+
+    cellPhasesAxis = np.linspace(0., 1., self.cellsPerAxis, endpoint=False)
+    self.cellPhases = np.array([np.repeat(cellPhasesAxis, self.cellsPerAxis),
+                                np.tile(cellPhasesAxis, self.cellsPerAxis)])
+    # Shift the cells so that they're more intuitively arranged within the
+    # rhombus, rather than along the edges of the rhombus. This has no
+    # meaningful impact, but it makes visualizations easier to understand.
+    self.cellPhases += [[0.5/self.cellsPerAxis], [0.5/self.cellsPerAxis]]
+
+    self.rng = Random(seed)
+
+  def reset(self):
+    """
+    Clear the active cells.
+    """
+    self.bumpPhases = np.empty((2,0), dtype="float")
+    self.phaseDisplacement = np.empty((0,2), dtype="float")
+    self.cellsForActivePhases = np.empty(0, dtype="int")
+    self.activeCells = np.empty(0, dtype="int")
+    self.learningCells = np.empty(0, dtype="int")
+    self.sensoryAssociatedCells = np.empty(0, dtype="int")
+
+
+  def _computeActiveCells(self):
+    # For each cell, compute the phase displacement from each bump. Create an
+    # array of matrices, one per cell. Each column in a matrix corresponds to
+    # the phase displacement from the bump to the cell.
+    cell_bump_positivePhaseDisplacement = np.mod(
+      self.cellPhases.T[:, :, np.newaxis] - self.bumpPhases,
+      1.0)
+
+    # For each cell/bump pair, consider the phase displacement vectors reaching
+    # that cell from that bump by moving up-and-right, down-and-right,
+    # down-and-left, and up-and-left. Create a 2D array of matrices, arranged by
+    # cell then direction. Each column in a matrix corresponds to a phase
+    # displacement from the bump to the cell in a particular direction.
+    cell_direction_bump_phaseDisplacement = (
+      cell_bump_positivePhaseDisplacement[:, np.newaxis, :, :] -
+      np.array([[0, 0],
+                [0, 1],
+                [1, 0],
+                [1, 1]])[:,:,np.newaxis])
+
+    # Convert the displacement in phase to a displacement in the world, with
+    # scale normalized out. Unless the grid is a square grid, it's important to
+    # measure distances using world displacements, not the phase displacements,
+    # because two vectors with the same phase distance will typically have
+    # different world distances unless they are parallel. (Consider the fact
+    # that the two diagonals of a rhombus have different world lengths but the
+    # same phase lengths.)
+    cell_direction_bump_worldDisplacement = np.matmul(
+      self.B, cell_direction_bump_phaseDisplacement)
+
+    # Measure the length of each displacement vector. Create a 3D array of
+    # distances, organized by cell, direction, then bump.
+    cell_direction_bump_distance = np.linalg.norm(
+      cell_direction_bump_worldDisplacement, axis=-2)
+
+    # Choose the shortest distance from each cell to each bump. Create a 2D
+    # array of distances, organized by cell then bump.
+    cell_bump_distance = np.amin(cell_direction_bump_distance, axis=1)
+
+    # Compute the gaussian of each of these distances.
+    cellExcitationsFromBumps = ThresholdedGaussian2DLocationModule.gaussian(
+      self.bumpSigma, cell_bump_distance)
+
+    # Combine bumps. Create an array of firing rates, organized by cell.
+    if self.bumpOverlapMethod == "probabilistic":
+      # Think of a bump as a probability distribution, with each cell's firing
+      # rate encoding its relative probability that it's the correct
+      # location. For bump A,
+      #   P(A = cell x)
+      # is encoded by cell x's firing rate.
+      #
+      # In this interpretation, a union of bumps A, B, ... is not a probability
+      # distribution, rather it is a set of independent events. When multiple
+      # bumps overlap, the cell's firing rate should encode its relative
+      # probability that it's correct in *any* bump. So it encodes:
+      #   P((A = cell x) or (B = cell x) or ...)
+      # and so this is equivalent to:
+      #   1 - P((A != cell x) and (B != cell x) and ...)
+      # We treat the events as independent, so this is equal to:
+      #   1 - P(A != cell x) * P(B != cell x) * ...
+      #
+      # With this approach, as more and more bumps overlap, a cell's firing rate
+      # increases, but not as quickly as it would with a sum.
+      cellExcitations = 1. - np.prod(1. - cellExcitationsFromBumps, axis=1)
+    elif self.bumpOverlapMethod == "sum":
+      # Sum the firing rates. The probabilistic interpretation: this treats a
+      # union as a set of equally probable events of which only one is true.
+      cellExcitations = np.sum(cellExcitationsFromBumps, axis=1)
+    else:
+      raise ValueError("Unrecognized bump overlap strategy",
+                       self.bumpOverlapMethod)
+
+    self.activeCells = np.where(cellExcitations >= self.activeFiringRate)[0]
+    self.learningCells = np.where(cellExcitations == cellExcitations.max())[0]
+
+
+  def activateRandomLocation(self):
+    """
+    Set the location to a random point.
+    """
+    self.bumpPhases = np.array([np.random.random(2)]).T
+    self._computeActiveCells()
+
+
+  def movementCompute(self, displacement, noiseFactor = 0):
+    """
+    Shift the current active cells by a vector.
+
+    @param displacement (pair of floats)
+    A translation vector [di, dj].
+    """
+
+    if noiseFactor != 0:
+      displacement = copy.deepcopy(displacement)
+      xnoise = np.random.normal(0, noiseFactor)
+      ynoise = np.random.normal(0, noiseFactor)
+      displacement[0] += xnoise
+      displacement[1] += ynoise
+
+    # Calculate delta in the module's coordinates.
+    phaseDisplacement = np.matmul(self.A, displacement)
+
+    # Shift the active coordinates.
+    np.add(self.bumpPhases, phaseDisplacement[:,np.newaxis], out=self.bumpPhases)
+
+    # In Python, (x % 1.0) can return 1.0 because of floating point goofiness.
+    # Generally this doesn't cause problems, it's just confusing when you're
+    # debugging.
+    np.round(self.bumpPhases, decimals=9, out=self.bumpPhases)
+    np.mod(self.bumpPhases, 1.0, out=self.bumpPhases)
+
+    self._computeActiveCells()
+    self.phaseDisplacement = phaseDisplacement
+
+
+  def _sensoryComputeInferenceMode(self, anchorInput):
+    """
+    Infer the location from sensory input. Activate any cells with enough active
+    synapses to this sensory input. Deactivate all other cells.
+
+    @param anchorInput (numpy array)
+    A sensory input. This will often come from a feature-location pair layer.
+    """
+    if len(anchorInput) == 0:
+      return
+
+    overlaps = self.connections.computeActivity(anchorInput,
+                                                self.connectedPermanence)
+    activeSegments = np.where(overlaps >= self.activationThreshold)[0]
+
+    sensorySupportedCells = np.unique(
+      self.connections.mapSegmentsToCells(activeSegments))
+
+    self.bumpPhases = self.cellPhases[:,sensorySupportedCells]
+    self._computeActiveCells()
+    self.activeSegments = activeSegments
+    self.sensoryAssociatedCells = sensorySupportedCells
+
+
+  def _sensoryComputeLearningMode(self, anchorInput):
+    """
+    Associate this location with a sensory input. Subsequently, anchorInput will
+    activate the current location during anchor().
+
+    @param anchorInput (numpy array)
+    A sensory input. This will often come from a feature-location pair layer.
+    """
+    overlaps = self.connections.computeActivity(anchorInput,
+                                                self.connectedPermanence)
+    activeSegments = np.where(overlaps >= self.activationThreshold)[0]
+
+    potentialOverlaps = self.connections.computeActivity(anchorInput)
+    matchingSegments = np.where(potentialOverlaps >=
+                                self.learningThreshold)[0]
+
+    # Cells with a active segment: reinforce the segment
+    cellsForActiveSegments = self.connections.mapSegmentsToCells(
+      activeSegments)
+    learningActiveSegments = activeSegments[
+      np.in1d(cellsForActiveSegments, self.learningCells)]
+    remainingCells = np.setdiff1d(self.learningCells, cellsForActiveSegments)
+
+    # Remaining cells with a matching segment: reinforce the best
+    # matching segment.
+    candidateSegments = self.connections.filterSegmentsByCell(
+      matchingSegments, remainingCells)
+    cellsForCandidateSegments = (
+      self.connections.mapSegmentsToCells(candidateSegments))
+    candidateSegments = candidateSegments[
+      np.in1d(cellsForCandidateSegments, remainingCells)]
+    onePerCellFilter = np2.argmaxMulti(potentialOverlaps[candidateSegments],
+                                       cellsForCandidateSegments)
+    learningMatchingSegments = candidateSegments[onePerCellFilter]
+
+    newSegmentCells = np.setdiff1d(remainingCells, cellsForCandidateSegments)
+
+    for learningSegments in (learningActiveSegments,
+                             learningMatchingSegments):
+      self._learn(self.connections, self.rng, learningSegments,
+                  anchorInput, potentialOverlaps,
+                  self.initialPermanence, self.sampleSize,
+                  self.permanenceIncrement, self.permanenceDecrement,
+                  self.maxSynapsesPerSegment)
+
+    # Remaining cells without a matching segment: grow one.
+    numNewSynapses = len(anchorInput)
+
+    if self.sampleSize != -1:
+      numNewSynapses = min(numNewSynapses, self.sampleSize)
+
+    if self.maxSynapsesPerSegment != -1:
+      numNewSynapses = min(numNewSynapses, self.maxSynapsesPerSegment)
+
+    newSegments = self.connections.createSegments(newSegmentCells)
+
+    self.connections.growSynapsesToSample(
+      newSegments, anchorInput, numNewSynapses,
+      self.initialPermanence, self.rng)
+    self.activeSegments = activeSegments
+    self.sensoryAssociatedCells = self.learningCells
+
+
+  def sensoryCompute(self, anchorInput, anchorGrowthCandidates, learn):
+    if learn:
+      self._sensoryComputeLearningMode(anchorGrowthCandidates)
+    else:
+      self._sensoryComputeInferenceMode(anchorInput)
+
+
+  @staticmethod
+  def _learn(connections, rng, learningSegments, activeInput,
+             potentialOverlaps, initialPermanence, sampleSize,
+             permanenceIncrement, permanenceDecrement, maxSynapsesPerSegment):
+    """
+    Adjust synapse permanences, grow new synapses, and grow new segments.
+
+    @param learningActiveSegments (numpy array)
+    @param learningMatchingSegments (numpy array)
+    @param segmentsToPunish (numpy array)
+    @param activeInput (numpy array)
+    @param potentialOverlaps (numpy array)
+    """
+    # Learn on existing segments
+    connections.adjustSynapses(learningSegments, activeInput,
+                               permanenceIncrement, -permanenceDecrement)
+
+    # Grow new synapses. Calculate "maxNew", the maximum number of synapses to
+    # grow per segment. "maxNew" might be a number or it might be a list of
+    # numbers.
+    if sampleSize == -1:
+      maxNew = len(activeInput)
+    else:
+      maxNew = sampleSize - potentialOverlaps[learningSegments]
+
+    if maxSynapsesPerSegment != -1:
+      synapseCounts = connections.mapSegmentsToSynapseCounts(
+        learningSegments)
+      numSynapsesToReachMax = maxSynapsesPerSegment - synapseCounts
+      maxNew = np.where(maxNew <= numSynapsesToReachMax,
+                        maxNew, numSynapsesToReachMax)
+
+    connections.growSynapsesToSample(learningSegments, activeInput,
+                                     maxNew, initialPermanence, rng)
+
+
+  def getActiveCells(self):
+    return self.activeCells
+
+
+  def getLearnableCells(self):
+    return self.learningCells
+
+
+  def getSensoryAssociatedCells(self):
+    return self.sensoryAssociatedCells
+
+
+  def numberOfCells(self):
+    return self.cellsPerAxis * self.cellsPerAxis
+
+
+  @staticmethod
+  def chooseReliableActiveFiringRate(cellsPerAxis, bumpSigma,
+                                     minimumActiveDiameter=None):
+    """
+    When a cell is activated by sensory input, this implies that the phase is
+    within a particular small patch of the rhombus. This patch is roughly
+    equivalent to a circle of diameter (1/cellsPerAxis)(2/sqrt(3)), centered on
+    the cell. This 2/sqrt(3) accounts for the fact that when circles are packed
+    into hexagons, there are small uncovered spaces between the circles, so the
+    circles need to expand by a factor of (2/sqrt(3)) to cover this space.
+
+    This sensory input will activate the phase at the center of this cell. To
+    account for uncertainty of the actual phase that was used during learning,
+    the bump of active cells needs to be sufficiently large for this cell to
+    remain active until the bump has moved by the above diameter. So the
+    diameter of the bump (and, equivalently, the cell's firing field) needs to
+    be at least 2 of the above diameters.
+
+    @param minimumActiveDiameter (float or None)
+    If specified, this makes sure the bump of active cells is always above a
+    certain size. This is useful for testing scenarios where grid cell modules
+    can only encode location with a limited "readout resolution", matching the
+    biology.
+
+    @return
+    An "activeFiringRate" for use in the ThresholdedGaussian2DLocationModule.
+    """
+    firingFieldDiameter = 2 * (1./cellsPerAxis)*(2./math.sqrt(3))
+
+    if minimumActiveDiameter:
+      firingFieldDiameter = max(firingFieldDiameter, minimumActiveDiameter)
+
+    return ThresholdedGaussian2DLocationModule.gaussian(
+      bumpSigma, firingFieldDiameter / 2.)
+
+
+  @staticmethod
+  def gaussian(sig, d):
+    return np.exp(-np.power(d, 2.) / (2 * np.power(sig, 2.)))
+
+
 
 class Superficial2DLocationModule(object):
   """
@@ -87,8 +529,8 @@ class Superficial2DLocationModule(object):
   """
 
   def __init__(self,
-               cellDimensions,
-               moduleMapDimensions,
+               cellsPerAxis,
+               scale,
                orientation,
                anchorInputSize,
                cellCoordinateOffsets=(0.5,),
@@ -104,14 +546,13 @@ class Superficial2DLocationModule(object):
                rotationMatrix = None,
                seed=42):
     """
-    @param cellDimensions (tuple(int, int))
+    @param cellsPerAxis (int)
     Determines the number of cells. Determines how space is divided between the
     cells.
 
-    @param moduleMapDimensions (tuple(float, float))
+    @param scale (float)
     Determines the amount of world space covered by all of the cells combined.
     In grid cell terminology, this is equivalent to the "scale" of a module.
-    A module with a scale of "5cm" would have moduleMapDimensions=(5.0, 5.0).
 
     @param orientation (float)
     The rotation of this map, measured in radians.
@@ -129,8 +570,10 @@ class Superficial2DLocationModule(object):
     coordinates: [2.2, 3.2], [2.2, 3.8], [2.8, 3.2], [2.8, 3.8]
     """
 
-    self.cellDimensions = np.asarray(cellDimensions, dtype="int")
-    self.moduleMapDimensions = np.asarray(moduleMapDimensions, dtype="float")
+    self.cellsPerAxis = cellsPerAxis
+    self.cellDimensions = np.asarray([cellsPerAxis, cellsPerAxis], dtype="int")
+    self.scale = scale
+    self.moduleMapDimensions = np.asarray([scale, scale], dtype="float")
     self.phasesPerUnitDistance = 1.0 / self.moduleMapDimensions
 
     if rotationMatrix is None:
@@ -155,9 +598,14 @@ class Superficial2DLocationModule(object):
     self.phaseDisplacement = np.empty((0,2), dtype="float")
 
     self.activeCells = np.empty(0, dtype="int")
+
+    # The cells that were activated by sensory input in an inference timestep,
+    # or cells that were associated with sensory input in a learning timestep.
+    self.sensoryAssociatedCells = np.empty(0, dtype="int")
+
     self.activeSegments = np.empty(0, dtype="uint32")
 
-    self.connections = SparseMatrixConnections(np.prod(cellDimensions),
+    self.connections = SparseMatrixConnections(np.prod(self.cellDimensions),
                                                anchorInputSize)
 
     self.initialPermanence = initialPermanence
@@ -182,6 +630,7 @@ class Superficial2DLocationModule(object):
     self.phaseDisplacement = np.empty((0,2), dtype="float")
     self.cellsForActivePhases = np.empty(0, dtype="int")
     self.activeCells = np.empty(0, dtype="int")
+    self.sensoryAssociatedCells = np.empty(0, dtype="int")
 
 
   def _computeActiveCells(self):
@@ -293,6 +742,7 @@ class Superficial2DLocationModule(object):
 
     self._computeActiveCells()
     self.activeSegments = activeSegments
+    self.sensoryAssociatedCells = sensorySupportedCells
 
 
   def _sensoryComputeLearningMode(self, anchorInput):
@@ -355,6 +805,7 @@ class Superficial2DLocationModule(object):
       newSegments, anchorInput, numNewSynapses,
       self.initialPermanence, self.rng)
     self.activeSegments = activeSegments
+    self.sensoryAssociatedCells = self.activeCells
 
 
   def sensoryCompute(self, anchorInput, anchorGrowthCandidates, learn):
@@ -402,6 +853,14 @@ class Superficial2DLocationModule(object):
 
   def getActiveCells(self):
     return self.activeCells
+
+
+  def getLearnableCells(self):
+    return self.activeCells
+
+
+  def getSensoryAssociatedCells(self):
+    return self.sensoryAssociatedCells
 
 
   def numberOfCells(self):
