@@ -88,9 +88,6 @@ def doExperiment(numObjects,
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
-
-  @param cellsPerAxis (int)
-  The cell dimensions of each module
   """
   if not os.path.exists("traces"):
     os.makedirs("traces")

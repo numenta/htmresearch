@@ -71,7 +71,7 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, numFeatures):
   return objects
 
 
-def doExperiment(cellsPerAxis,
+def doExperiment(locationModuleWidth,
                  cellCoordinateOffsets,
                  numObjects,
                  featuresPerObject,
@@ -88,7 +88,7 @@ def doExperiment(cellsPerAxis,
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
 
-  @param cellsPerAxis (int)
+  @param locationModuleWidth (int)
   The cell dimensions of each module
 
   @param cellCoordinateOffsets (sequence)
@@ -113,7 +113,7 @@ def doExperiment(cellsPerAxis,
     orientation = (float(i) * perModRange) + (perModRange / 2.0)
 
     locationConfigs.append({
-      "cellsPerAxis": cellsPerAxis,
+      "cellsPerAxis": locationModuleWidth,
       "scale": scale,
       "orientation": orientation,
       "cellCoordinateOffsets": cellCoordinateOffsets,
@@ -296,7 +296,7 @@ if __name__ == "__main__":
 
   runMultiprocessNoiseExperiment(
     args.resultName, args.repeat, args.numWorkers, args.appendResults,
-    cellsPerAxis=args.locationModuleWidth,
+    locationModuleWidth=args.locationModuleWidth,
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
     featuresPerObject=10,
