@@ -379,6 +379,7 @@ class PIUNExperiment(object):
 
   def inferObjectWithRandomMovements(self,
                                      objectDescription,
+                                     numSensations=None,
                                      randomLocation=False,
                                      checkFalseConvergence=True):
     """
@@ -391,6 +392,11 @@ class PIUNExperiment(object):
      "features": [{"top": 0, "left": 0, "width": 10, "height": 10, "name": "A"},
                   {"top": 0, "left": 10, "width": 10, "height": 10, "name": "B"}]}
 
+    @param numSensations (int or None)
+    Set this to run the network for a fixed number of sensations. Otherwise this
+    method will run until the object is recognized or until maxTraversals is
+    reached.
+
     @return (bool)
     True if inference succeeded
     """
@@ -400,11 +406,12 @@ class PIUNExperiment(object):
       monitor.beforeInferObject(objectDescription)
 
     currentStep = 0
+    finished = False
     inferred = False
+    inferredStep = None
     prevTouchSequence = None
 
     for _ in xrange(self.maxTraversals):
-
       # Choose touch sequence.
       while True:
         touchSequence = range(len(objectDescription["features"]))
@@ -425,104 +432,38 @@ class PIUNExperiment(object):
         featureSDR = self.features[feature["name"]]
         self._sense(featureSDR, learn=False, waitForSettle=False)
 
-        # Use the sensory-activated cells to detect whether the object has been
-        # recognized. In some models, this set of cells is equivalent to the
-        # active cells. In others, a set of cells around the sensory-activated
-        # cells become active. In either case, if these sensory-activated cells
-        # are correct, it implies that the input layer's representation is
-        # classifiable -- the location layer just correctly classified it.
-        representation = self.column.getSensoryAssociatedLocationRepresentation()
+        if not inferred:
+          # Use the sensory-activated cells to detect whether the object has been
+          # recognized. In some models, this set of cells is equivalent to the
+          # active cells. In others, a set of cells around the sensory-activated
+          # cells become active. In either case, if these sensory-activated cells
+          # are correct, it implies that the input layer's representation is
+          # classifiable -- the location layer just correctly classified it.
+          representation = self.column.getSensoryAssociatedLocationRepresentation()
+          target_representations = set(np.concatenate(
+            self.locationRepresentations[
+              (objectDescription["name"], iFeature)]))
+          inferred = (set(representation) <= target_representations)
+          if inferred:
+            inferredStep = currentStep
 
-        target_representations = set(np.concatenate(
-          self.locationRepresentations[
-            (objectDescription["name"], iFeature)]))
-        inferred = (set(representation) <=
-                    target_representations)
+          if not inferred and tuple(representation) in self.representationSet:
+            # We have converged to an incorrect representation - declare failure.
+            print("Converged to an incorrect representation!")
+            return None
 
-        if not inferred and tuple(representation) in self.representationSet:
-          # We have converged to an incorrect representation - declare failure.
-          print("Converged to an incorrect representation!")
-          return None
+        finished = ((inferred and numSensations is None) or
+                    (numSensations is not None and currentStep == numSensations))
 
-        if inferred:
+        if finished:
           break
 
       prevTouchSequence = touchSequence
 
-      if inferred:
+      if finished:
         break
 
-    return currentStep if inferred else None
-
-
-  def inferObjectWithRandomMovementsNoStopping(
-      self,
-      objectDescription,
-      steps,
-      randomLocation=False,
-      checkFalseConvergence=True):
-    """
-    Attempt to recognize the specified object with the network. Randomly move
-    the sensor over the object until the object is recognized.
-
-    @param objectDescription (dict)
-    For example:
-    {"name": "Object 1",
-     "features": [{"top": 0, "left": 0, "width": 10, "height": 10, "name": "A"},
-                  {"top": 0, "left": 10, "width": 10, "height": 10, "name": "B"}]}
-
-    @return (bool)
-    True if inference succeeded
-    """
-    self.reset()
-
-    for monitor in self.monitors.values():
-      monitor.beforeInferObject(objectDescription)
-
-    currentStep = 0
-    inferred = None
-    prevTouchSequence = None
-
-
-    for _ in xrange(self.maxTraversals):
-
-      # Choose touch sequence.
-      while True:
-        touchSequence = range(len(objectDescription["features"]))
-        random.shuffle(touchSequence)
-
-        # Make sure the first touch will cause a movement.
-        if (prevTouchSequence is not None and
-            touchSequence[0] == prevTouchSequence[-1]):
-          continue
-
-        break
-
-      for iFeature in touchSequence:
-        currentStep += 1
-        feature = objectDescription["features"][iFeature]
-        self._move(feature, randomLocation=randomLocation)
-
-        featureSDR = self.features[feature["name"]]
-        self._sense(featureSDR, learn=False, waitForSettle=False)
-
-        representation = self.column.getLocationRepresentation()
-
-        target_representations = set(np.concatenate(
-          self.locationRepresentations[
-            (objectDescription["name"], iFeature)]))
-        if not inferred and (set(representation) <= target_representations):
-          inferred = currentStep
-
-        if currentStep == steps:
-          break
-
-      prevTouchSequence = touchSequence
-
-      if currentStep == steps:
-        break
-
-    return inferred
+    return inferredStep
 
 
   def _move(self, feature, randomLocation = False, useNoise = True):

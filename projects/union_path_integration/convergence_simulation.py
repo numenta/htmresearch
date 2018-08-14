@@ -32,7 +32,6 @@ from multiprocessing import cpu_count, Pool
 from copy import copy
 import time
 import json
-import StringIO
 
 import numpy as np
 
@@ -82,7 +81,10 @@ def doExperiment(locationModuleWidth,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
+                 numSensations,
                  thresholds,
+                 seed1,
+                 seed2,
                  anchoringMethod = "narrowing"):
   """
   Learn a set of objects. Then try to recognize each object. Output an
@@ -96,6 +98,12 @@ def doExperiment(locationModuleWidth,
   """
   if not os.path.exists("traces"):
     os.makedirs("traces")
+
+  if seed1 != -1:
+    np.random.seed(seed1)
+
+  if seed2 != -1:
+    random.seed(seed2)
 
   features = [str(i) for i in xrange(numFeatures)]
   objects = generateObjects(numObjects, featuresPerObject, objectWidth,
@@ -144,48 +152,44 @@ def doExperiment(locationModuleWidth,
   for objectDescription in objects:
     exp.learnObject(objectDescription)
 
-  filename = os.path.join(
-      SCRIPT_DIR,
-      "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
-          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
-          numObjects, numFeatures)
-  )
-  rawFilename = os.path.join(
-      SCRIPT_DIR,
-      "traces/{}-points-{}-cells-{}-objects-{}-feats.trace".format(
-          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
-          numObjects, numFeatures)
-  )
-
-  assert not (useTrace and useRawTrace), "Cannot use both --trace and --rawTrace"
-
   convergence = collections.defaultdict(int)
-  if useTrace:
-    with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=True):
-        print "Logging to", filename
-        for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
-          convergence[steps] += 1
-          if steps is None:
-            print 'Failed to infer object "{}"'.format(objectDescription["name"])
-  elif useRawTrace:
-    with io.open(rawFilename, "w", encoding="utf8") as fileOut:
-      strOut = StringIO.StringIO()
-      with rawTrace(strOut, exp, includeSynapses=False):
-        print "Logging to", filename
-        for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
-          convergence[steps] += 1
-          if steps is None:
-            print 'Failed to infer object "{}"'.format(objectDescription["name"])
-      fileOut.write(unicode(strOut.getvalue()))
-  else:
+
+  try:
+    if useTrace:
+      filename = os.path.join(
+        SCRIPT_DIR,
+        "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
+          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
+          numObjects, numFeatures)
+      )
+      traceFileOut = io.open(filename, "w", encoding="utf8")
+      traceHandle = trace(traceFileOut, exp, includeSynapses=True)
+      print "Logging to", filename
+
+    if useRawTrace:
+      rawFilename = os.path.join(
+        SCRIPT_DIR,
+        "traces/{}-points-{}-cells-{}-objects-{}-feats.trace".format(
+          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
+          numObjects, numFeatures)
+      )
+      rawTraceFileOut = open(rawFilename, "w")
+      rawTraceHandle = rawTrace(rawTraceFileOut, exp, includeSynapses=False)
+      print "Logging to", rawFilename
+
     for objectDescription in objects:
-      steps = exp.inferObjectWithRandomMovements(objectDescription)
+      steps = exp.inferObjectWithRandomMovements(objectDescription, numSensations)
       convergence[steps] += 1
       if steps is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
+  finally:
+    if useTrace:
+      traceHandle.__exit__()
+      traceFileOut.close()
+
+    if useRawTrace:
+      rawTraceHandle.__exit__()
+      rawTraceFileOut.close()
 
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
@@ -195,6 +199,7 @@ def doExperiment(locationModuleWidth,
 
 def experimentWrapper(args):
   return doExperiment(**args)
+
 
 def runMultiprocessNoiseExperiment(resultName, repeat, numWorkers,
                                    appendResults, **kwargs):
@@ -266,6 +271,9 @@ if __name__ == "__main__":
   parser.add_argument("--useTrace", action="store_true")
   parser.add_argument("--useRawTrace", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
+  parser.add_argument("--numSensations", type=int, default=-1)
+  parser.add_argument("--seed1", type=int, default=-1)
+  parser.add_argument("--seed2", type=int, default=-1)
   parser.add_argument(
     "--thresholds", type=int, default=None,
     help=(
@@ -285,15 +293,6 @@ if __name__ == "__main__":
   if "both" in args.anchoringMethod:
     args.anchoringMethod = ["narrowing", "corners"]
 
-
-  # Use a fixed seed unless we're appending to a file. (In that case we're
-  # probably running and rerunning the script to get smoother data, and we want
-  # to get different results.)
-  if not args.appendResults:
-    np.random.seed(865486387)
-    random.seed(357627)
-
-
   runMultiprocessNoiseExperiment(
     args.resultName, args.repeat, args.numWorkers, args.appendResults,
     locationModuleWidth=args.locationModuleWidth,
@@ -307,6 +306,10 @@ if __name__ == "__main__":
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
+    numSensations=(args.numSensations if args.numSensations != -1
+                   else None),
     thresholds=args.thresholds,
     anchoringMethod=args.anchoringMethod,
+    seed1=args.seed1,
+    seed2=args.seed2,
   )

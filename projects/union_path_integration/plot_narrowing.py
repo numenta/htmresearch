@@ -41,7 +41,7 @@ def chart():
   # Convergence vs. number of objects, comparing # unique features
   #
   # Generated with:
-  #   python narrowing_simulation.py --numObjects 100 --numUniqueFeatures 40 --locationModuleWidth 10 --useRawTrace
+  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 40 --locationModuleWidth 10 --numSensations 10 --seed1 100 --seed2 357627 --useRawTrace
 
   data = {}
   with open("traces/4-points-100-cells-100-objects-40-feats.trace", "r") as f:
@@ -112,7 +112,9 @@ def chart():
   #plt.xlabel("Steps")
   #plt.ylabel("Cells")
 
-  plt.savefig(os.path.join(CHART_DIR, "location_narrowing.pdf"))
+  filename = os.path.join(CHART_DIR, "location_narrowing.pdf")
+  print "Saving", filename
+  plt.savefig(filename)
 
 
 if __name__ == "__main__":
