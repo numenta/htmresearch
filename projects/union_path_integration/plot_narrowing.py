@@ -34,7 +34,7 @@ TRACE_DIR = os.path.join(CWD, "traces")
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def examplesChart(objectNumbers=(15, 11, 12), finishingSteps=(2, 1, 4)):
+def examplesChart(objectNumbers):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -45,19 +45,23 @@ def examplesChart(objectNumbers=(15, 11, 12), finishingSteps=(2, 1, 4)):
 
   with open("results/narrowing_40_feats_100_objects.json", "r") as f:
     experiments = json.load(f)
-  data = dict((int(k), v)
-              for k, v in experiments[0][1]["locationLayerTimelineByObject"].iteritems())
+  locationLayerTimelineByObject = dict(
+    (int(k), v)
+    for k, v in experiments[0][1]["locationLayerTimelineByObject"].iteritems())
+  inferredStepByObject = dict(
+    (int(k), v)
+    for k, v in experiments[0][1]["inferredStepByObject"].iteritems())
 
   numSteps = 9
   numModules = 4
   numCells = 100
-  numObjs = 3
+  numObjs = len(objectNumbers)
   width = 15
 
-  fig, axes = plt.subplots(numModules, numObjs)
+  fig, axes = plt.subplots(numModules, numObjs, figsize=(2*numObjs, 5))
   for i, obj in enumerate(objectNumbers):
     plotData = np.ones((numCells * numModules, numSteps*width, 3), dtype=np.float32)
-    for step, modules in enumerate(data[obj]):
+    for step, modules in enumerate(locationLayerTimelineByObject[obj]):
       if step >= numSteps:
         continue
       for module in xrange(numModules):
@@ -67,7 +71,9 @@ def examplesChart(objectNumbers=(15, 11, 12), finishingSteps=(2, 1, 4)):
         plotData[cells, stepStart:stepStop, :] = [0, 0, 0]
 
     for m in xrange(numModules):
-      axes[m, i].add_patch(matplotlib.patches.Rectangle((finishingSteps[i] * width, -1), width, numModules * numCells + 2, color="red", fill=False))
+      axes[m, i].add_patch(matplotlib.patches.Rectangle(
+        ((inferredStepByObject[obj] - 1) * width, -1), width,
+        numModules * numCells + 2, color="red", fill=False))
       axes[m, i].set_yticks([])
       if m == 0:
         axes[m, i].set_title("Object {}".format(i + 1))
@@ -140,7 +146,7 @@ def aggregateChart(inFilename, objectCounts = (50, 100, 150)):
 
 
 if __name__ == "__main__":
-  examplesChart()
+  examplesChart((15, 11, 12))
   aggregateChart(
     "results/narrowing_40_feats_{}_objects.json",
     objectCounts=[50, 75, 100, 125],

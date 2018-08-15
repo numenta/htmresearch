@@ -463,6 +463,9 @@ class PIUNExperiment(object):
       if finished:
         break
 
+    for monitor in self.monitors.values():
+      monitor.afterInferObject(objectDescription, inferredStep)
+
     return inferredStep
 
 
@@ -582,6 +585,7 @@ class PIUNExperimentMonitor(object):
   def beforeSense(self, featureSDR): pass
   def beforeSensoryRepetition(self): pass
   def beforeInferObject(self, obj): pass
+  def afterInferObject(self, obj, inferredStep): pass
   def afterReset(self): pass
   def afterLocationChanged(self, locationOnObject): pass
   def afterLocationInitialize(self): pass

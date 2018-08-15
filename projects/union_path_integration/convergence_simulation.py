@@ -74,6 +74,7 @@ class PIUNCellActivityTracer(PIUNExperimentMonitor):
   def __init__(self, exp):
     self.exp = exp
     self.locationLayerTimelineByObject = {}
+    self.inferredStepByObject = {}
     self.currentObjectName = None
 
   def afterLocationAnchor(self, **kwargs):
@@ -84,6 +85,9 @@ class PIUNCellActivityTracer(PIUNExperimentMonitor):
   def beforeInferObject(self, obj):
     self.currentObjectName = obj["name"]
     self.locationLayerTimelineByObject[obj["name"]] = []
+
+  def afterInferObject(self, obj, inferredStep):
+    self.inferredStepByObject[obj["name"]] = inferredStep
 
 
 
@@ -220,6 +224,7 @@ def doExperiment(locationModuleWidth,
     return {
       "convergence": convergence,
       "locationLayerTimelineByObject": cellActivityTracer.locationLayerTimelineByObject,
+      "inferredStepByObject": cellActivityTracer.inferredStepByObject,
     }
   else:
     return convergence
