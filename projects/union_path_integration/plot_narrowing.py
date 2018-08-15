@@ -34,52 +34,28 @@ TRACE_DIR = os.path.join(CWD, "traces")
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def chart():
+def examplesChart(objectNumbers=(15, 11, 12), finishingSteps=(2, 1, 4)):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
   # Convergence vs. number of objects, comparing # unique features
   #
   # Generated with:
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 40 --locationModuleWidth 10 --numSensations 10 --seed1 100 --seed2 357627 --useRawTrace
+  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 40 --locationModuleWidth 10 --numSensations 9 --seed1 100 --seed2 357627 --logCellActivity --resultName results/narrowing_40_feats_100_objects.json
 
-  data = {}
-  with open("traces/4-points-100-cells-100-objects-40-feats.trace", "r") as f:
-    obj = None
-    # List of steps. Steps are lists of location modules. Location moduels are lists of active cells.
-    locReprs = []
+  with open("results/narrowing_40_feats_100_objects.json", "r") as f:
+    experiments = json.load(f)
+  data = dict((int(k), v)
+              for k, v in experiments[0][1]["locationLayerTimelineByObject"].iteritems())
 
-    while True:
-      try:
-        line = f.next().strip()
-      except StopIteration:
-        break
-      if line == "currentObject":
-        # Close out previous object
-        if obj is not None:
-          data[int(obj["name"])] = locReprs
-
-        # Start new object
-        locReprs = []
-        obj = json.loads(f.next().strip())
-      elif line == "locationLayer":
-        locationCells = json.loads(f.next().strip())
-        locReprs.append([module[0] for module in locationCells])
-  if obj is not None and len(locReprs) > 0:
-    data[int(obj["name"])] = locReprs
-
-  numSteps = 10
+  numSteps = 9
   numModules = 4
   numCells = 100
   numObjs = 3
   width = 15
 
   fig, axes = plt.subplots(numModules, numObjs)
-  finishingSteps = [2, 1, 4]
-  #for i, obj in enumerate((4, 9, 10)):
-  #for i, obj in enumerate((9, 29, 42)):
-  for i, obj in enumerate((15, 11, 12)):
-  #for i, obj in enumerate(xrange(10, 20)):
+  for i, obj in enumerate(objectNumbers):
     plotData = np.ones((numCells * numModules, numSteps*width, 3), dtype=np.float32)
     for step, modules in enumerate(data[obj]):
       if step >= numSteps:
@@ -117,5 +93,55 @@ def chart():
   plt.savefig(filename)
 
 
+def aggregateChart(inFilename, objectCounts = (50, 100, 150)):
+  if not os.path.exists(CHART_DIR):
+    os.makedirs(CHART_DIR)
+
+  markers = ["*", "x", "o", "P"]
+
+  plt.figure(figsize=(5,4.5))
+
+  for numObjects, marker in zip(objectCounts, markers):
+    with open(inFilename.format(numObjects), "r") as f:
+      experiments = json.load(f)
+
+    timestepsByObject = [
+      timesteps
+      for k, timesteps in experiments[0][1]["locationLayerTimelineByObject"].iteritems()]
+
+    numCells = 100
+    numSteps = 9
+
+    x = np.arange(1, numSteps + 1)
+    y = np.zeros((9), dtype="float")
+    for iTimestep, timestepByObject in enumerate(zip(*timestepsByObject)):
+      totalActive = 0
+      potentialActive = 0
+      for activeCellsByModule in timestepByObject:
+        for activeCells in activeCellsByModule:
+          totalActive += len(activeCells)
+          potentialActive += numCells
+
+      if iTimestep < numSteps:
+        y[iTimestep] = totalActive / float(potentialActive)
+
+    plt.plot(x, y, "{}-".format(marker), label="{} learned objects".format(numObjects))
+
+  plt.xlabel("Number of sensations")
+  plt.ylabel("Cell activation density")
+  plt.ylim(0.0, 0.3)
+  plt.legend()
+
+  plt.tight_layout()
+
+  filename = os.path.join(CHART_DIR, "location_narrowing_aggregated.pdf")
+  print "Saving", filename
+  plt.savefig(filename)
+
+
 if __name__ == "__main__":
-  chart()
+  examplesChart()
+  aggregateChart(
+    "results/narrowing_40_feats_{}_objects.json",
+    objectCounts=[50, 75, 100, 125],
+  )
