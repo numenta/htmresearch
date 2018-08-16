@@ -36,7 +36,7 @@ import json
 import numpy as np
 
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
-  PIUNCorticalColumn, PIUNExperiment)
+  PIUNCorticalColumn, PIUNExperiment, PIUNExperimentMonitor)
 from two_layer_tracing import PIUNVisualizer as trace
 from two_layer_tracing import PIUNLogger as rawTrace
 
@@ -70,6 +70,27 @@ def generateObjects(numObjects, featuresPerObject, objectWidth, numFeatures):
   return objects
 
 
+class PIUNCellActivityTracer(PIUNExperimentMonitor):
+  def __init__(self, exp):
+    self.exp = exp
+    self.locationLayerTimelineByObject = {}
+    self.inferredStepByObject = {}
+    self.currentObjectName = None
+
+  def afterLocationAnchor(self, **kwargs):
+    self.locationLayerTimelineByObject[self.currentObjectName].append(
+      [module.sensoryAssociatedCells.tolist()
+       for module in self.exp.column.L6aModules])
+
+  def beforeInferObject(self, obj):
+    self.currentObjectName = obj["name"]
+    self.locationLayerTimelineByObject[obj["name"]] = []
+
+  def afterInferObject(self, obj, inferredStep):
+    self.inferredStepByObject[obj["name"]] = inferredStep
+
+
+
 def doExperiment(locationModuleWidth,
                  cellCoordinateOffsets,
                  numObjects,
@@ -78,6 +99,7 @@ def doExperiment(locationModuleWidth,
                  numFeatures,
                  useTrace,
                  useRawTrace,
+                 logCellActivity,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
@@ -177,6 +199,10 @@ def doExperiment(locationModuleWidth,
       rawTraceHandle = rawTrace(rawTraceFileOut, exp, includeSynapses=False)
       print "Logging to", rawFilename
 
+    if logCellActivity:
+      cellActivityTracer = PIUNCellActivityTracer(exp)
+      exp.addMonitor(cellActivityTracer)
+
     for objectDescription in objects:
       steps = exp.inferObjectWithRandomMovements(objectDescription, numSensations)
       convergence[steps] += 1
@@ -194,7 +220,14 @@ def doExperiment(locationModuleWidth,
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
 
-  return(convergence)
+  if logCellActivity:
+    return {
+      "convergence": convergence,
+      "locationLayerTimelineByObject": cellActivityTracer.locationLayerTimelineByObject,
+      "inferredStepByObject": cellActivityTracer.inferredStepByObject,
+    }
+  else:
+    return convergence
 
 
 def experimentWrapper(args):
@@ -270,6 +303,7 @@ if __name__ == "__main__":
   parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
   parser.add_argument("--useTrace", action="store_true")
   parser.add_argument("--useRawTrace", action="store_true")
+  parser.add_argument("--logCellActivity", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
   parser.add_argument("--numSensations", type=int, default=-1)
   parser.add_argument("--seed1", type=int, default=-1)
@@ -303,6 +337,7 @@ if __name__ == "__main__":
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
     useRawTrace=args.useRawTrace,
+    logCellActivity=args.logCellActivity,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
