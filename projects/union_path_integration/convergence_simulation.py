@@ -146,7 +146,7 @@ def doExperiment(locationModuleWidth,
     locationConfigs.append({
       "cellsPerAxis": locationModuleWidth,
       "scale": scale,
-      "orientation": orientation,
+      "orientation": np.radians(orientation),
       "cellCoordinateOffsets": cellCoordinateOffsets,
       "activationThreshold": 8,
       "initialPermanence": 1.0,

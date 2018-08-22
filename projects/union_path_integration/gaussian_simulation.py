@@ -109,7 +109,7 @@ def doExperiment(numObjects,
 
     locationConfigs.append({
         "scale": scale,
-        "orientation": orientation,
+        "orientation": np.radians(orientation),
         "activationThreshold": 8,
         "initialPermanence": 1.0,
         "connectedPermanence": 0.5,
