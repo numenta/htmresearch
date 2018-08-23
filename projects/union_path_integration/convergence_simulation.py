@@ -322,8 +322,8 @@ def runExperiments(experiments, resultName, numWorkers=-1, appendResults=False):
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--numObjects", type=int, nargs="+", required=True)
-  parser.add_argument("--numUniqueFeatures", type=int, required=True)
-  parser.add_argument("--locationModuleWidth", type=int, required=True)
+  parser.add_argument("--numUniqueFeatures", type=int, nargs="+", required=True)
+  parser.add_argument("--locationModuleWidth", type=int, nargs="+", required=True)
   parser.add_argument("--bumpType", type=str, nargs="+", default="square",
                       help="Set to 'square' or 'gaussian'")
   parser.add_argument("--coordinateOffsetWidth", type=int, default=2)

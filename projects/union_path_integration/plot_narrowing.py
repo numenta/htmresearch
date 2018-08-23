@@ -39,11 +39,6 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
-  # Convergence vs. number of objects, comparing # unique features
-  #
-  # Generated with:
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 40 --locationModuleWidth 10 --numSensations 9 --seed1 42 --seed2 42 --logCellActivity --resultName results/narrowing_40_feats.json
-
   with open(inFilename, "r") as f:
     experiments = json.load(f)
   for exp in experiments:
