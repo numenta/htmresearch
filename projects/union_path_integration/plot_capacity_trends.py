@@ -21,6 +21,7 @@
 
 """Plot capacity trend charts."""
 
+import argparse
 from collections import defaultdict
 import json
 import math
@@ -38,10 +39,39 @@ CHART_DIR = os.path.join(CWD, "charts")
 
 
 
-def createChart(varyNumModulesFilename, varyCellsPerModuleFilename, varyNumFeaturesFilename,
-                outFilename):
+def createChart(inFilename, outFilename):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
+
+
+  capacitiesByParams = defaultdict(list)
+  moduleCounts = set()
+  allCellCounts = set()
+  allFeatureCounts = set()
+  with open(inFilename, "r") as f:
+    experiments = json.load(f)
+  for exp in experiments:
+    numModules = exp[0]["numModules"]
+    thresholds = exp[0]["thresholds"]
+    locationModuleWidth = exp[0]["locationModuleWidth"]
+    numUniqueFeatures = exp[0]["numFeatures"]
+
+    cellsPerModule = locationModuleWidth*locationModuleWidth
+
+    moduleCounts.add(numModules)
+    allCellCounts.add(cellsPerModule)
+    allFeatureCounts.add(numUniqueFeatures)
+
+    params = (numModules, cellsPerModule, thresholds, numUniqueFeatures)
+    capacitiesByParams[params].append(exp[1]["numObjects"])
+
+  moduleCounts = sorted(moduleCounts)
+  allCellCounts = sorted(allCellCounts)
+  allFeatureCounts = sorted(allFeatureCounts)
+
+  meanCapacityByParams = {}
+  for params, capacities in capacitiesByParams.iteritems():
+    meanCapacityByParams[params] = sum(capacities) / float(len(capacities))
 
 
   fig, (ax1, ax2, ax3) = plt.subplots(figsize=(6.5,2.4), ncols=3)
@@ -49,26 +79,15 @@ def createChart(varyNumModulesFilename, varyCellsPerModuleFilename, varyNumFeatu
   #
   # NUMBER OF MODULES
   #
-  capacitiesByNumModules = defaultdict(list)
-  moduleCounts = set()
-  with open(varyNumModulesFilename, "r") as f:
-    experiments = json.load(f)
-  for exp in experiments:
-    numModules = exp[0]["numModules"]
-    thresholds = exp[0]["thresholds"]
-    capacitiesByNumModules[(thresholds, numModules)].append(exp[1]["numObjects"])
-    moduleCounts.add(numModules)
-
-  meanCapacityByNumModules = {}
-  for params, capacities in capacitiesByNumModules.iteritems():
-    meanCapacityByNumModules[params] = sum(capacities) / float(len(capacities))
-
-
-  moduleCounts = sorted(moduleCounts)
+  cellsPerModule = 100
+  numUniqueFeatures = 100
   markers = ["o", "D"]
   markerSizes = [4.0, 4.0]
   for thresholds, marker, markerSize in zip([-1, 0], markers, markerSizes):
-    ax1.plot(moduleCounts, [meanCapacityByNumModules[(thresholds, numModules)]
+    ax1.plot(moduleCounts, [meanCapacityByParams[(numModules,
+                                                  cellsPerModule,
+                                                  thresholds,
+                                                  numUniqueFeatures)]
                             for numModules in moduleCounts],
              "{}-".format(marker), color="C0", markersize=markerSize)
 
@@ -88,23 +107,13 @@ def createChart(varyNumModulesFilename, varyCellsPerModuleFilename, varyNumFeatu
   #
   # CELLS PER MODULE
   #
-  capacitiesByCellsPerModule = defaultdict(list)
-  allCellCounts = set()
-  with open(varyCellsPerModuleFilename, "r") as f:
-    experiments = json.load(f)
-  for exp in experiments:
-    locationModuleWidth = exp[0]["locationModuleWidth"]
-    cellsPerModule = locationModuleWidth*locationModuleWidth
-    capacitiesByCellsPerModule[cellsPerModule].append(exp[1]["numObjects"])
-    allCellCounts.add(cellsPerModule)
-
-  meanCapacityByCellsPerModule = {}
-  for params, capacities in capacitiesByCellsPerModule.iteritems():
-    meanCapacityByCellsPerModule[params] = sum(capacities) / float(len(capacities))
-
-  allCellCounts = sorted(allCellCounts)
-
-  ax2.plot(allCellCounts, [meanCapacityByCellsPerModule[cellsPerModule]
+  numModules = 10
+  thresholds = -1
+  numUniqueFeatures = 100
+  ax2.plot(allCellCounts, [meanCapacityByParams[(numModules,
+                                                 cellsPerModule,
+                                                 thresholds,
+                                                 numUniqueFeatures)]
                            for cellsPerModule in allCellCounts],
            "o-", color="C0", markersize=4.0)
 
@@ -116,23 +125,14 @@ def createChart(varyNumModulesFilename, varyCellsPerModuleFilename, varyNumFeatu
   #
   # NUMBER OF UNIQUE FEATURES
   #
-  capacitiesByNumFeatures = defaultdict(list)
-  allFeatureCounts = set()
-  with open(varyNumFeaturesFilename, "r") as f:
-    experiments = json.load(f)
-  for exp in experiments:
-    numUniqueFeatures = exp[0]["numFeatures"]
-    capacitiesByNumFeatures[numUniqueFeatures].append(exp[1]["numObjects"])
-    allFeatureCounts.add(numUniqueFeatures)
-
-  meanCapacityByNumFeatures = {}
-  for params, capacities in capacitiesByNumFeatures.iteritems():
-    meanCapacityByNumFeatures[params] = sum(capacities) / float(len(capacities))
-
-  allFeatureCounts = sorted(allFeatureCounts)
-
-  ax3.plot(allFeatureCounts, [meanCapacityByNumFeatures[cellsPerModule]
-                              for cellsPerModule in allFeatureCounts],
+  numModules = 10
+  cellsPerModule = 100
+  thresholds = -1
+  ax3.plot(allFeatureCounts, [meanCapacityByParams[(numModules,
+                                                    cellsPerModule,
+                                                    thresholds,
+                                                    numUniqueFeatures)]
+                              for numUniqueFeatures in allFeatureCounts],
            "o-", color="C1", markersize=4.0)
 
   ax3.set_xlabel("Number of\nUnique Features", fontsize=12)
@@ -148,7 +148,9 @@ def createChart(varyNumModulesFilename, varyCellsPerModuleFilename, varyNumFeatu
 
 
 if __name__ == "__main__":
-  createChart("results/capacity_100_feats_100_cpm.json",
-              "results/capacity_100_feats_10_modules.json",
-              "results/capacity_10_modules_100_cpm.json",
-              "capacity_threeCharts.pdf")
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--inFile", type=str, required=True)
+  parser.add_argument("--outFile", type=str, required=True)
+  args = parser.parse_args()
+
+  createChart(args.inFile, args.outFile)

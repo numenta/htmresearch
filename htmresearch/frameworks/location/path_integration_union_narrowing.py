@@ -42,7 +42,7 @@ RAT_BUMP_SIGMA = 0.18172
 
 
 def createRatModule(inverseReadoutResolution, scale, enlargeModuleFactor=1.,
-                    **kwargs):
+                    fixedScale=False, **kwargs):
   """
   @param inverseReadoutResolution (int or float)
   Equivalent to 1/readoutResolution, but specified this way as a convenience
@@ -59,21 +59,29 @@ def createRatModule(inverseReadoutResolution, scale, enlargeModuleFactor=1.,
   the bump, increases the precision of the readout, adds more cells, and
   increases the scale so that the bump is the same size when overlayed on the
   real world.
+
+  @param fixedScale (bool)
+  By default, the enlargeModuleFactor will increase the scale, effectively
+  holding the bump size constant relative to physical space. Set this to True to
+  hold the scale constant, so enlarging the module causes the bump size to
+  shrink relative to physical space.
   """
 
   # Give the module enough precision in its learning so that the bump is the
   # specified diameter when properly accounting for uncertainty.
   learningCellsPerAxis = int(math.ceil(2*inverseReadoutResolution*enlargeModuleFactor))
 
+  bumpSigma = RAT_BUMP_SIGMA / enlargeModuleFactor
+
   readoutResolution = 1. / (enlargeModuleFactor*inverseReadoutResolution)
   activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
-    learningCellsPerAxis, RAT_BUMP_SIGMA, readoutResolution)
+    learningCellsPerAxis, bumpSigma, readoutResolution)
 
   return ThresholdedGaussian2DLocationModule(
     cellsPerAxis=learningCellsPerAxis,
     activeFiringRate=activeFiringRate,
-    bumpSigma=RAT_BUMP_SIGMA,
-    scale=scale*enlargeModuleFactor,
+    bumpSigma=bumpSigma,
+    scale=(scale if fixedScale else scale*enlargeModuleFactor),
     **kwargs)
 
 

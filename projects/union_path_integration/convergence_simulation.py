@@ -40,35 +40,10 @@ from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment, PIUNExperimentMonitor)
 from two_layer_tracing import PIUNVisualizer as trace
 from two_layer_tracing import PIUNLogger as rawTrace
+from htmresearch.frameworks.location.object_generation import generateObjects
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
-
-def generateObjects(numObjects, featuresPerObject, objectWidth, numFeatures):
-  assert featuresPerObject <= (objectWidth ** 2)
-  featureScale = 20
-
-  objectMap = {}
-  for i in xrange(numObjects):
-    obj = np.zeros((objectWidth ** 2,), dtype=np.int32)
-    obj.fill(-1)
-    obj[:featuresPerObject] = np.random.randint(numFeatures, size=featuresPerObject, dtype=np.int32)
-    np.random.shuffle(obj)
-    objectMap[i] = obj.reshape((4, 4))
-
-  objects = []
-  for o in xrange(numObjects):
-    features = []
-    for x in xrange(objectWidth):
-      for y in xrange(objectWidth):
-        feat = objectMap[o][x][y]
-        if feat == -1:
-          continue
-        features.append({"left": y*featureScale, "top": x*featureScale,
-                         "width": featureScale, "height": featureScale,
-                         "name": str(feat)})
-    objects.append({"name": str(o), "features": features})
-  return objects
 
 
 class PIUNCellActivityTracer(PIUNExperimentMonitor):
@@ -93,14 +68,17 @@ class PIUNCellActivityTracer(PIUNExperimentMonitor):
 
 
 def doExperiment(locationModuleWidth,
+                 bumpType,
                  cellCoordinateOffsets,
                  numObjects,
                  featuresPerObject,
                  objectWidth,
                  numFeatures,
+                 featureDistribution,
                  useTrace,
                  useRawTrace,
                  logCellActivity,
+                 logNumFeatureOccurrences,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
@@ -108,7 +86,7 @@ def doExperiment(locationModuleWidth,
                  thresholds,
                  seed1,
                  seed2,
-                 anchoringMethod = "narrowing"):
+                 anchoringMethod):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -130,7 +108,13 @@ def doExperiment(locationModuleWidth,
 
   features = [str(i) for i in xrange(numFeatures)]
   objects = generateObjects(numObjects, featuresPerObject, objectWidth,
-                            numFeatures)
+                            numFeatures, featureDistribution)
+
+  if logNumFeatureOccurrences:
+    featureOccurrences = collections.Counter(feat["name"]
+                                             for obj in objects
+                                             for feat in obj["features"])
+    occurrencesConvergenceLog = []
 
   locationConfigs = []
   scale = 40.0
@@ -139,15 +123,14 @@ def doExperiment(locationModuleWidth,
     thresholds = int(math.ceil(numModules*0.8))
   elif thresholds == 0:
     thresholds = numModules
-  perModRange = float(90.0 / float(numModules))
+  perModRange = float((90.0 if bumpType == "square" else 60.0) /
+                      float(numModules))
   for i in xrange(numModules):
     orientation = (float(i) * perModRange) + (perModRange / 2.0)
 
-    locationConfigs.append({
-      "cellsPerAxis": locationModuleWidth,
+    config = {
       "scale": scale,
       "orientation": np.radians(orientation),
-      "cellCoordinateOffsets": cellCoordinateOffsets,
       "activationThreshold": 8,
       "initialPermanence": 1.0,
       "connectedPermanence": 0.5,
@@ -155,8 +138,29 @@ def doExperiment(locationModuleWidth,
       "sampleSize": 10,
       "permanenceIncrement": 0.1,
       "permanenceDecrement": 0.0,
-      "anchoringMethod": anchoringMethod,
-    })
+    }
+
+    if bumpType == "square":
+      config["cellsPerAxis"] = locationModuleWidth
+      config["cellCoordinateOffsets"] = cellCoordinateOffsets
+      config["anchoringMethod"] = anchoringMethod
+    elif bumpType == "gaussian":
+      # This is a bridge to the Gaussian module's API. Given a resolution of
+      # 1/3, it will create a module with 6x6 cells with a bump spanning ~2x2
+      # cells. With this bridge, if locationModuleWidth is 6, then the
+      # enlargeModuleFactor will be 1.0 and this will be an approximation of a
+      # rat grid cell module. If locationModuleWidth is larger than 6, this will
+      # grow the module via the enlargeModuleFactor, holding the bump size fixed
+      # at ~2x2 cells.
+      config["inverseReadoutResolution"] = 3
+      config["enlargeModuleFactor"] = float(locationModuleWidth) / 6
+      config["bumpOverlapMethod"] = "probabilistic"
+      config["fixedScale"] = True
+    else:
+      raise ValueError("Invalid bumpType", bumpType)
+
+    locationConfigs.append(config)
+
   l4Overrides = {
     "initialPermanence": 1.0,
     "activationThreshold": thresholds,
@@ -166,7 +170,8 @@ def doExperiment(locationModuleWidth,
     "cellsPerColumn": 16,
   }
 
-  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides)
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
+                              useGaussian=(bumpType == "gaussian"))
   exp = PIUNExperiment(column, featureNames=features,
                        numActiveMinicolumns=10,
                        noiseFactor=noiseFactor,
@@ -205,9 +210,17 @@ def doExperiment(locationModuleWidth,
       exp.addMonitor(cellActivityTracer)
 
     for objectDescription in objects:
-      steps = exp.inferObjectWithRandomMovements(objectDescription, numSensations)
-      convergence[steps] += 1
-      if steps is None:
+
+      numSensationsToInference = exp.inferObjectWithRandomMovements(
+        objectDescription, numSensations)
+
+      if logNumFeatureOccurrences:
+        objectFeatureOccurrences = sorted(featureOccurrences[feat["name"]]
+                                          for feat in objectDescription["features"])
+        occurrencesConvergenceLog.append(
+          (objectFeatureOccurrences, numSensationsToInference))
+      convergence[numSensationsToInference] += 1
+      if numSensationsToInference is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
   finally:
     if useTrace:
@@ -221,14 +234,19 @@ def doExperiment(locationModuleWidth,
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
 
+  result = {
+    "convergence": convergence,
+  }
+
   if logCellActivity:
-    return {
-      "convergence": convergence,
-      "locationLayerTimelineByObject": cellActivityTracer.locationLayerTimelineByObject,
-      "inferredStepByObject": cellActivityTracer.inferredStepByObject,
-    }
-  else:
-    return convergence
+    result["locationLayerTimelineByObject"] = (
+      cellActivityTracer.locationLayerTimelineByObject)
+    result["inferredStepByObject"] = cellActivityTracer.inferredStepByObject
+
+  if logNumFeatureOccurrences:
+    result["occurrencesConvergenceLog"] = occurrencesConvergenceLog
+
+  return result
 
 
 def experimentWrapper(args):
@@ -259,6 +277,13 @@ def runMultiprocessNoiseExperiment(resultName, repeat, numWorkers,
     for _ in xrange(repeat):
       newExperiments.append(copy(experiment))
   experiments = newExperiments
+
+  return runExperiments(experiments, resultName, numWorkers, appendResults)
+
+
+def runExperiments(experiments, resultName, numWorkers=-1, appendResults=False):
+  if numWorkers == -1:
+    numWorkers = cpu_count()
 
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
@@ -299,12 +324,15 @@ if __name__ == "__main__":
   parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
   parser.add_argument("--locationModuleWidth", type=int, required=True)
+  parser.add_argument("--bumpType", type=str, nargs="+", default="square",
+                      help="Set to 'square' or 'gaussian'")
   parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
   parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
   parser.add_argument("--useTrace", action="store_true")
   parser.add_argument("--useRawTrace", action="store_true")
   parser.add_argument("--logCellActivity", action="store_true")
+  parser.add_argument("--logNumFeatureOccurrences", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
   parser.add_argument("--numSensations", type=int, default=-1)
   parser.add_argument("--seed1", type=int, default=-1)
@@ -314,6 +342,9 @@ if __name__ == "__main__":
     help=(
       "The TM prediction threshold. Defaults to ceil(numModules*0.8)."
       "Set to 0 for the threshold to match the number of modules."))
+  parser.add_argument("--featuresPerObject", type=int, nargs="+", default=10)
+  parser.add_argument("--featureDistribution", type = str, nargs="+",
+                      default="AllFeaturesEqual_Replacement")
   parser.add_argument("--anchoringMethod", type = str, default="corners")
   parser.add_argument("--resultName", type = str, default="results.json")
   parser.add_argument("--repeat", type=int, default=1)
@@ -331,14 +362,17 @@ if __name__ == "__main__":
   runMultiprocessNoiseExperiment(
     args.resultName, args.repeat, args.numWorkers, args.appendResults,
     locationModuleWidth=args.locationModuleWidth,
+    bumpType=args.bumpType,
     cellCoordinateOffsets=cellCoordinateOffsets,
     numObjects=args.numObjects,
-    featuresPerObject=10,
+    featuresPerObject=args.featuresPerObject,
+    featureDistribution=args.featureDistribution,
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
     useRawTrace=args.useRawTrace,
     logCellActivity=args.logCellActivity,
+    logNumFeatureOccurrences=args.logNumFeatureOccurrences,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,

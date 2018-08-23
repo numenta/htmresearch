@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines
 import numpy as np
 
-import ambiguity_index
+from htmresearch.frameworks.location import ambiguity_index
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
