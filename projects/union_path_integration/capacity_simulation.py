@@ -36,10 +36,11 @@ import json
 
 import numpy as np
 
+from htmresearch.frameworks.location.object_generation import generateObjects
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment, PIUNExperimentMonitor)
-from two_layer_tracing import PIUNVisualizer as trace
-from htmresearch.frameworks.location.object_generation import generateObjects
+from htmresearch.frameworks.location.two_layer_tracing import (
+  PIUNVisualizer as trace)
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 

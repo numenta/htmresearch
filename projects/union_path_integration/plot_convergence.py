@@ -53,9 +53,9 @@ def chart():
     yData = collections.defaultdict(list)
     for exp in convVsObjects:
       numObjects = int(str(exp[0]["numObjects"]))
-      if "null" in exp[1].keys():
+      if "null" in exp[1]["convergence"].keys():
         continue
-      results = exp[1].items()
+      results = exp[1]["convergence"].items()
       total = 0
       count = 0
       for i, j in results:
@@ -107,7 +107,7 @@ def chart():
 
   #  yData = collections.defaultdict(list)
   #  for exp in convVsObjs:
-  #    results = exp[1].items()
+  #    results = exp[1]["convergence"].items()
   #    total = 0
   #    count = 0
   #    for i, j in results:
@@ -155,7 +155,7 @@ def chart():
 
     yData = collections.defaultdict(list)
     for exp in convVsMods100:
-      results = exp[1].items()
+      results = exp[1]["convergence"].items()
       total = 0
       count = 0
       for i, j in results:
@@ -220,7 +220,7 @@ def chart():
     cum = 0
     for i in xrange(40):
       step = i + 1
-      count = exp[1].get(str(step), 0)
+      count = exp[1]["convergence"].get(str(step), 0)
       yData[step].append(count)
 
   x = [i+1 for i in xrange(numSteps)]
@@ -250,7 +250,7 @@ def chart():
     cum = 0
     for i in xrange(40):
       step = i + 1
-      count = exp[1].get(str(step), 0)
+      count = exp[1]["convergence"].get(str(step), 0)
       yData[step].append(count)
 
   x = [i+1 for i in xrange(numSteps)]
@@ -280,7 +280,7 @@ def chart():
     cum = 0
     for i in xrange(40):
       step = i + 1
-      count = exp[1].get(str(step), 0)
+      count = exp[1]["convergence"].get(str(step), 0)
       yData[step].append(count)
 
   x = [i+1 for i in xrange(numSteps)]

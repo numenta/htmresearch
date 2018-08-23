@@ -27,6 +27,7 @@ cell module model.
 import argparse
 import collections
 import io
+import math
 import os
 import random
 from multiprocessing import cpu_count, Pool
@@ -39,8 +40,8 @@ import numpy as np
 
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
-from two_layer_tracing import PIUNVisualizer as trace
-from two_layer_tracing import PIUNLogger as rawTrace
+from htmresearch.frameworks.location.two_layer_tracing import (
+  PIUNVisualizer as trace)
 from htmresearch.frameworks.location.object_generation import generateObjects
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
@@ -52,7 +53,6 @@ def doExperiment(numObjects,
                  numFeatures,
                  featureDistribution,
                  useTrace,
-                 useRawTrace,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
@@ -124,51 +124,36 @@ def doExperiment(numObjects,
   for objectDescription in objects:
     exp.learnObject(objectDescription)
 
-  filename = os.path.join(
-      SCRIPT_DIR,
-      "traces/{}-resolution-{}-modules-{}-objects-{}-feats.html".format(
-          inverseReadoutResolution, numModules, numObjects, numFeatures)
-  )
-  rawFilename = os.path.join(
-      SCRIPT_DIR,
-      "traces/{}-resolution-{}-modules-{}-objects-{}-feats.trace".format(
-          inverseReadoutResolution, numModules, numObjects, numFeatures)
-  )
-
-  assert not (useTrace and useRawTrace), "Cannot use both --trace and --rawTrace"
-
   convergence = collections.defaultdict(int)
-  if useTrace:
-    with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=True):
-        print "Logging to", filename
-        for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
-          convergence[steps] += 1
-          if steps is None:
-            print 'Failed to infer object "{}"'.format(objectDescription["name"])
-  elif useRawTrace:
-    with io.open(rawFilename, "w", encoding="utf8") as fileOut:
-      strOut = StringIO.StringIO()
-      with rawTrace(strOut, exp, includeSynapses=False):
-        print "Logging to", filename
-        for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
-          convergence[steps] += 1
-          if steps is None:
-            print 'Failed to infer object "{}"'.format(objectDescription["name"])
-      fileOut.write(unicode(strOut.getvalue()))
-  else:
+  try:
+    if useTrace:
+      filename = os.path.join(
+        SCRIPT_DIR,
+        "traces/{}-resolution-{}-modules-{}-objects-{}-feats.html".format(
+          inverseReadoutResolution, numModules, numObjects, numFeatures)
+      )
+      traceFileOut = io.open(filename, "w", encoding="utf8")
+      traceHandle = trace(traceFileOut, exp, includeSynapses=True)
+      print "Logging to", filename
+
     for objectDescription in objects:
       steps = exp.inferObjectWithRandomMovements(objectDescription)
       convergence[steps] += 1
       if steps is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
+  finally:
+    if useTrace:
+      traceHandle.__exit__()
+      traceFileOut.close()
 
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
 
-  return(convergence)
+  result = {
+    "convergence": convergence,
+  }
+
+  return result
 
 
 def experimentWrapper(args):
@@ -242,7 +227,6 @@ if __name__ == "__main__":
   parser.add_argument("--inverseReadoutResolution", type=float, default=3)
   parser.add_argument("--enlargeModuleFactor", type=float, nargs="+", required=False, default=1.0)
   parser.add_argument("--useTrace", action="store_true")
-  parser.add_argument("--useRawTrace", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
   parser.add_argument("--seed1", type=int, default=-1)
   parser.add_argument("--seed2", type=int, default=-1)
@@ -271,7 +255,6 @@ if __name__ == "__main__":
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
-    useRawTrace=args.useRawTrace,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
