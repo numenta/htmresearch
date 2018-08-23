@@ -34,8 +34,6 @@ import numpy as np
 
 import scipy.special
 
-import ambiguity_index
-
 CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
 

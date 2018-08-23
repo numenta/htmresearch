@@ -54,37 +54,38 @@ def getExperiments(bumpType):
   return (
     # Baseline
     [experiment(bumpType, numObjects=numObjects)
-     for numObjects in [50, 100, 150, 200, 250, 300, 350, 400]]
+     for numObjects in range(50, (401 if bumpType == "square" else 301), 50)]
 
     # Baseline, 40 unique features
     +
     [experiment(bumpType, numObjects=numObjects, numFeatures=40)
-     for numObjects in [50, 100, 150, 200, 250]]
+     for numObjects in range(50, (251 if bumpType == "square" else 151), 50)]
 
     # Baseline, 5 features per object
     +
     [experiment(bumpType, numObjects=numObjects, featuresPerObject=5)
-     for numObjects in [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600,
-                        650, 700]]
+     for numObjects in range(50, (701 if bumpType == "square" else 501), 50)]
 
     # Baseline, no replacement
     +
     [experiment(bumpType, numObjects=numObjects,
                 featureDistribution="AllFeaturesEqual_NoReplacement")
-     for numObjects in [50, 100, 150, 200, 225, 250, 275, 300, 350]]
+     for numObjects in ([50, 100, 150, 200, 225, 250, 275, 300, 350]
+                        if bumpType == "square"
+                        else [50, 75, 100, 125, 150, 175])]
 
     # Baseline, but with two pools
     +
     [experiment(bumpType, numObjects=numObjects,
                 featureDistribution="TwoPools_Replacement")
-     for numObjects in [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550]]
+     for numObjects in range(50, (551 if bumpType == "square" else 451), 50)]
 
     # Two pools, structured
     +
     [experiment(bumpType, numObjects=numObjects,
                 featureDistribution="TwoPools_Structured")
-     for numObjects in [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600,
-                        650, 700, 750, 800, 850, 900, 950, 1000]]
+     for numObjects in range(50, (1001 if bumpType == "square" else 701),
+                             50)]
   )
 
 if __name__ == "__main__":
