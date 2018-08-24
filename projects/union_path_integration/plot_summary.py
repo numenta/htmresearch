@@ -75,8 +75,7 @@ def createCharts(inFilename, outFilename,
   locs, labels = ambiguity_index.getTotalExpectedOccurrencesTicks_2_5(
       ambiguity_index.numOtherOccurrencesOfMostUniqueFeature_lowerBound50_100features_10locationsPerObject)
 
-  ax2_color = 'gray'
-  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(6, 8), nrows=2, sharex=True)
+  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(5, 7.5), nrows=2, sharex=True)
 
   #
   # CAPACITY
@@ -92,7 +91,7 @@ def createCharts(inFilename, outFilename,
 
   colors = ("C0", "C1", "C2")
   markers = ("o", "o", "o")
-  markerSizes = (2, 4, 6)
+  markerSizes = (1.5, 3, 4.5)
   for moduleWidth, color in reversed(zip(moduleWidths, colors)):
     for numModules, marker, markerSize in zip(moduleCounts, markers, markerSizes):
       resultsByNumObjects = capacityResults[(moduleWidth, numModules)]
@@ -118,8 +117,6 @@ def createCharts(inFilename, outFilename,
   ax2Capacity.set_xticks(locs)
   ax2Capacity.set_xticklabels(labels)
   ax2Capacity.set_xlim(axCapacity.get_xlim())
-  ax2Capacity.xaxis.label.set_color(ax2_color)
-  ax2Capacity.tick_params(axis='x', colors=ax2_color)
 
   #
   # RECOGNITION TIME
@@ -132,9 +129,6 @@ def createCharts(inFilename, outFilename,
   # ax2RecognitionTime.xaxis.tick_bottom()
   # ax2RecognitionTime.xaxis.set_label_position('bottom')
 
-  colors = ("C0", "C1", "C2")
-  markers = ("o", "o", "o")
-  markerSizes = (2, 4, 6)
   for moduleWidth, color in reversed(zip(moduleWidths, colors)):
     for numModules, marker, markerSize in zip(moduleCounts, markers, markerSizes):
       resultsByNumObjects = recognitionTimeResults[(moduleWidth, numModules)]
@@ -167,10 +161,15 @@ def createCharts(inFilename, outFilename,
   axRecognitionTime.set_ylabel("Median # sensations before recognition")
   ax2RecognitionTime.set_xlabel("Median # locations recalled by an object's rarest feature", labelpad=8)
 
-  # Carefully use whitespace in title to shift the entries in the legend to
-  # align with the previous legend.
-  leg = axRecognitionTime.legend(loc="upper right", title="Cells per module:       ",
-                   bbox_to_anchor=(1.035, 1.0),
+  ax2RecognitionTime.set_xticks(locs)
+  ax2RecognitionTime.set_xticklabels(labels)
+  ax2RecognitionTime.set_xlim(axRecognitionTime.get_xlim())
+
+  plt.tight_layout()
+
+
+  leg = axRecognitionTime.legend(loc="upper right", title="Cells per\n module",
+                   # bbox_to_anchor=(1.035, 1.0),
                    frameon=False,
                    handles=[matplotlib.lines.Line2D([], [], color=color)
                             for color in colors],
@@ -179,8 +178,8 @@ def createCharts(inFilename, outFilename,
   axRecognitionTime.add_artist(leg)
 
 
-  leg = axRecognitionTime.legend(loc="center right", title="Number of modules:",
-                   bbox_to_anchor=(1.0, 0.5),
+  leg = axRecognitionTime.legend(loc="lower right", title=" Number of \n   modules",
+                   # bbox_to_anchor=(1.0, 0.5),
                    frameon=False,
                    handles=[matplotlib.lines.Line2D([], [],
                                                     marker=marker,
@@ -188,13 +187,6 @@ def createCharts(inFilename, outFilename,
                                                     color="black")
                             for marker, markerSize in zip(markers, markerSizes)],
                    labels=moduleCounts)
-
-  ax2RecognitionTime.set_xticks(locs)
-  ax2RecognitionTime.set_xticklabels(labels)
-  ax2RecognitionTime.xaxis.label.set_color(ax2_color)
-  ax2RecognitionTime.tick_params(axis='x', colors=ax2_color)
-
-  plt.tight_layout()
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath

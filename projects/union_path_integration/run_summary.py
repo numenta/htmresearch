@@ -67,7 +67,7 @@ def getExperiments(bumpType):
     +
     [experiment(bumpType, locationModuleWidth=14, numObjects=numObjects,
                 numModules=numModules)
-     for numObjects in [3] + range(20, (601 if bumpType == "square" else 421),
+     for numObjects in [3] + range(20, (681 if bumpType == "square" else 421),
                                    20)
      for numModules in [5, 10, 15]]
   )

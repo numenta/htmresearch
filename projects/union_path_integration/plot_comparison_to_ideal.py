@@ -60,6 +60,8 @@ def createChart(inFilename, outFilename, locationModuleWidths):
   with open("results/bof.json", "r") as f:
     bofResults = json.load(f)
 
+  plt.figure(figsize=(5,4))
+
   for yData, label, fmt in [(resultsByParams[locationModuleWidth],
                              "{}x{} Cells Per Module".format(locationModuleWidth,
                                                              locationModuleWidth),
@@ -78,7 +80,7 @@ def createChart(inFilename, outFilename, locationModuleWidths):
         print yData
         counts = yData[str(step)]
       cum += float(sum(counts))
-      y.append(100.0 * cum / tot)
+      y.append(cum / tot)
     std = [np.std(yData[step]) for step in x]
     yBelow = [yi - stdi for yi, stdi in zip(y, std)]
     yAbove = [yi + stdi for yi, stdi in zip(y, std)]
@@ -89,8 +91,8 @@ def createChart(inFilename, outFilename, locationModuleWidths):
     #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
 
-  for results, label, fmt in [(idealResults, "Ideal Observer", "x--"),
-                              (bofResults, "Bag of Features", "d--")]:
+  for results, label, fmt, markersize in [(idealResults, "Ideal Observer", "x--", 10),
+                                          (bofResults, "Bag of Features", "d--", None)]:
     x = [i+1 for i in xrange(numSteps)]
     y = []
     std = [np.std(results.get(str(steps), [0])) for steps in x]
@@ -100,21 +102,22 @@ def createChart(inFilename, outFilename, locationModuleWidths):
       counts = results.get(str(steps), [])
       if len(counts) > 0:
         cum += float(sum(counts))
-      y.append(100.0 * cum / tot)
+      y.append(cum / tot)
     yBelow = [yi - stdi for yi, stdi in zip(y, std)]
     yAbove = [yi + stdi for yi, stdi in zip(y, std)]
     plt.plot(
-        x, y, fmt, label=label,
+        x, y, fmt, label=label, markersize=markersize
     )
     #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Formatting
   plt.xlabel("Number of Sensations")
   plt.ylabel("Cumulative Accuracy")
-  plt.legend(loc="center right")
-  plt.xticks([(i+1)*2 for i in xrange(6)])
 
   plt.tight_layout()
+  plt.xticks([(i+1)*2 for i in xrange(6)])
+  plt.legend(loc="center right", fontsize="small", framealpha=1.0,
+             bbox_to_anchor=(1.05, 0.36))
 
   outFilePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", outFilePath

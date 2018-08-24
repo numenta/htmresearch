@@ -74,7 +74,7 @@ def createChart(inFilename, outFilename):
     meanCapacityByParams[params] = sum(capacities) / float(len(capacities))
 
 
-  fig, (ax1, ax2, ax3) = plt.subplots(figsize=(6.5,2.4), ncols=3)
+  fig, (ax1, ax2, ax3) = plt.subplots(figsize=(6,2.2), ncols=3)
 
   #
   # NUMBER OF MODULES
@@ -91,9 +91,9 @@ def createChart(inFilename, outFilename):
                             for numModules in moduleCounts],
              "{}-".format(marker), color="C0", markersize=markerSize)
 
-  ax1.text(2, 670, "Threshold:")
-  ax1.text(32, 600, "$ n $")
-  ax1.text(24, 200, "$ \\lceil n * 0.8 \\rceil $")
+  ax1.text(1, 685, "Threshold:")
+  ax1.text(32, 590, "$ n $")
+  ax1.text(23, 200, "$ \\lceil n * 0.8 \\rceil $")
 
   ax1.set_xlabel("Number of\nModules", fontsize=12)
   ax1.set_ylabel("Capacity", fontsize=12)

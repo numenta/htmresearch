@@ -141,7 +141,7 @@ def aggregateChart(inFilename, outFilename, objectCounts):
     plt.plot(x, y, "{}-".format(marker), label="{} learned objects".format(numObjects))
 
   plt.xlabel("Number of sensations")
-  plt.ylabel("Cell activation density")
+  plt.ylabel("Mean cell activation density")
   plt.ylim(0.0, 0.3)
   plt.legend()
 

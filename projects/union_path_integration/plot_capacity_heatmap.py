@@ -27,6 +27,7 @@ import json
 import os
 
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 import numpy as np
 import scipy.optimize
 
@@ -53,17 +54,20 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
   for params, capacities in capacitiesByParams.iteritems():
     meanCapacityByParams[params] = sum(capacities) / float(len(capacities))
 
-
-  xlabels = [str(v) for v in cellCounts]
-  ylabels = [str(v) for v in featureCounts]
+  xlabels = [str(v) for v in featureCounts]
+  ylabels = [str(v) for v in reversed(cellCounts)]
 
   plotData = np.empty((len(cellCounts), len(featureCounts)), dtype="float")
-  for i, cellsPerModule in enumerate(cellCounts):
+  for i, cellsPerModule in enumerate(reversed(cellCounts)):
     for j, numUniqueFeatures in enumerate(featureCounts):
       plotData[i, j] = meanCapacityByParams[(cellsPerModule, numUniqueFeatures)]
 
-  fig, ax = plt.subplots()
-  plt.imshow(plotData)
+  fig, ax = plt.subplots(figsize=(5,5))
+
+  # Customize vmax so that the colors stay suffiently dark so that the white
+  # text is readable.
+  plt.imshow(plotData,
+             norm=colors.LogNorm(vmin=plotData.min(), vmax=plotData.max()*3.0))
 
   ax.invert_yaxis()
   ax.set_xticks(np.arange(len(xlabels)))
@@ -93,6 +97,8 @@ if __name__ == "__main__":
   parser.add_argument("--outFile", type=str, required=True)
   args = parser.parse_args()
 
+  counts = [w**2 for w in [6, 8, 10, 14, 17, 20]]
+
   chart2(args.inFile, args.outFile,
-         cellCounts=[100, 196, 289, 400],
-         featureCounts=[100, 200, 300, 400])
+         cellCounts=counts,
+         featureCounts=counts)

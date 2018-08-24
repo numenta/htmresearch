@@ -49,11 +49,14 @@ def experiment(bumpType, locationModuleWidth=10, numFeatures=100):
 
 
 def getExperiments(bumpType):
+  locationModuleWidths = [6, 8, 10, 14, 17, 20]
+  featureCounts = [w**2 for w in locationModuleWidths]
+
   return (
     [experiment(bumpType, locationModuleWidth=locationModuleWidth,
                 numFeatures=numFeatures)
-     for locationModuleWidth in [10, 14, 17, 20]
-     for numFeatures in [100, 200, 300, 400]]
+     for locationModuleWidth in locationModuleWidths
+     for numFeatures in featureCounts]
   )
 
 
