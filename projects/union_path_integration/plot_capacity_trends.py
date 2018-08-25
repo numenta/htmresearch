@@ -45,6 +45,7 @@ def createChart(inFilename, outFilename):
 
 
   capacitiesByParams = defaultdict(list)
+  codesAreUnique = defaultdict(lambda: True)
   moduleCounts = set()
   allCellCounts = set()
   allFeatureCounts = set()
@@ -63,6 +64,8 @@ def createChart(inFilename, outFilename):
     allFeatureCounts.add(numUniqueFeatures)
 
     params = (numModules, cellsPerModule, thresholds, numUniqueFeatures)
+    if "allLocationsAreUnique" in exp[1]:
+      codesAreUnique[params] = codesAreUnique[params] and exp[1]["allLocationsAreUnique"]
     capacitiesByParams[params].append(exp[1]["numObjects"])
 
   moduleCounts = sorted(moduleCounts)
@@ -81,15 +84,30 @@ def createChart(inFilename, outFilename):
   #
   cellsPerModule = 100
   numUniqueFeatures = 100
-  markers = ["o", "D"]
-  markerSizes = [4.0, 4.0]
+  markers = ["o", "*"]
+  markerSizes = [4.0, 5.0]
   for thresholds, marker, markerSize in zip([-1, 0], markers, markerSizes):
-    ax1.plot(moduleCounts, [meanCapacityByParams[(numModules,
-                                                  cellsPerModule,
-                                                  thresholds,
-                                                  numUniqueFeatures)]
-                            for numModules in moduleCounts],
-             "{}-".format(marker), color="C0", markersize=markerSize)
+    y = [meanCapacityByParams[(numModules,
+                               cellsPerModule,
+                               thresholds,
+                               numUniqueFeatures)]
+         for numModules in moduleCounts]
+    ax1.plot(moduleCounts, y, "{}-".format(marker), color="C0",
+             markersize=markerSize,
+             markevery=[i
+                        for i, numModules in enumerate(moduleCounts)
+                        if codesAreUnique[(numModules,
+                                           cellsPerModule,
+                                           thresholds,
+                                           numUniqueFeatures)]])
+
+    ax1.plot(moduleCounts, y, "x", markersize=6, markeredgewidth=2, color="red",
+             markevery=[i
+                        for i, numModules in enumerate(moduleCounts)
+                        if not codesAreUnique[(numModules,
+                                               cellsPerModule,
+                                               thresholds,
+                                               numUniqueFeatures)]])
 
   ax1.text(1, 685, "Threshold:")
   ax1.text(32, 590, "$ n $")

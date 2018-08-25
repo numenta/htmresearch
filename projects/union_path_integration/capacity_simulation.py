@@ -181,6 +181,7 @@ def doExperiment(locationModuleWidth,
 
   numObjects = 0
   accuracy = None
+  allLocationsAreUnique = None
   occurrencesConvergenceLog = []
 
   increment = initialIncrement
@@ -201,8 +202,11 @@ def doExperiment(locationModuleWidth,
                          noiseFactor=noiseFactor,
                          moduleNoiseFactor=moduleNoiseFactor)
 
+    currentLocsUnique = True
+
     for objectDescription in objects:
-      exp.learnObject(objectDescription)
+      objLocsUnique = exp.learnObject(objectDescription)
+      currentLocsUnique = currentLocsUnique and objLocsUnique
 
     numFailures = 0
 
@@ -234,6 +238,7 @@ def doExperiment(locationModuleWidth,
     if numFailures < numFailuresAllowed:
       numObjects = currentNumObjects
       accuracy = float(currentNumObjects - numFailures) / currentNumObjects
+      allLocationsAreUnique = currentLocsUnique
     else:
       foundUpperBound = True
 
@@ -252,6 +257,7 @@ def doExperiment(locationModuleWidth,
   result = {
     "numObjects": numObjects,
     "accuracy": accuracy,
+    "allLocationsAreUnique": allLocationsAreUnique,
   }
 
   print result

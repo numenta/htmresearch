@@ -55,10 +55,10 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
     meanCapacityByParams[params] = sum(capacities) / float(len(capacities))
 
   xlabels = [str(v) for v in featureCounts]
-  ylabels = [str(v) for v in reversed(cellCounts)]
+  ylabels = [str(v) for v in cellCounts]
 
   plotData = np.empty((len(cellCounts), len(featureCounts)), dtype="float")
-  for i, cellsPerModule in enumerate(reversed(cellCounts)):
+  for i, cellsPerModule in enumerate(cellCounts):
     for j, numUniqueFeatures in enumerate(featureCounts):
       plotData[i, j] = meanCapacityByParams[(cellsPerModule, numUniqueFeatures)]
 
@@ -69,13 +69,13 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
   plt.imshow(plotData,
              norm=colors.LogNorm(vmin=plotData.min(), vmax=plotData.max()*3.0))
 
-  ax.invert_yaxis()
+  ax.xaxis.set_label_position('top')
+  ax.xaxis.tick_top()
   ax.set_xticks(np.arange(len(xlabels)))
   ax.set_yticks(np.arange(len(ylabels)))
   ax.set_xticklabels(xlabels)
   ax.set_yticklabels(ylabels)
-  plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
-           rotation_mode="anchor")
+  plt.setp(ax.get_xticklabels(), rotation=45, ha="left", rotation_mode="anchor")
 
   for i in xrange(len(ylabels)):
     for j in xrange(len(xlabels)):

@@ -359,9 +359,16 @@ class PIUNExperiment(object):
     {"name": "Object 1",
      "features": [{"top": 0, "left": 0, "width": 10, "height": 10, "name": "A"},
                   {"top": 0, "left": 10, "width": 10, "height": 10, "name": "B"}]}
+
+    @return locationsAreUnique (bool)
+    True if this object was assigned a unique set of locations. False if a
+    location on this object has the same location representation as another
+    location somewhere else.
     """
     self.reset()
     self.column.activateRandomLocation()
+
+    locationsAreUnique = True
 
     if randomLocation or useNoise:
       numIters = noisyTrainingTime
@@ -380,9 +387,15 @@ class PIUNExperiment(object):
                                    iFeature, feature["name"])] = (
                                      self.column.L4.getWinnerCells())
 
+        locationTuple = tuple(locationRepresentation)
+        locationsAreUnique = (locationsAreUnique and
+                              locationTuple not in self.representationSet)
+
         self.representationSet.add(tuple(locationRepresentation))
 
     self.learnedObjects.append(objectDescription)
+
+    return locationsAreUnique
 
 
   def inferObjectWithRandomMovements(self,

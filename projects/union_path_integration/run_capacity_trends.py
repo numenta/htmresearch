@@ -52,12 +52,12 @@ def experiment(bumpType, numModules=10, locationModuleWidth=10,
 def getExperiments(bumpType):
   return (
     [experiment(bumpType, numModules=numModules, thresholds=thresholds)
-     for numModules in [5, 10, 15, 20, 25, 30, 35, 40]
+     for numModules in [1, 5, 10, 15, 20, 25, 30, 35, 40]
      for thresholds in [-1, 0]]
 
     +
     [experiment(bumpType, locationModuleWidth=locationModuleWidth)
-     for locationModuleWidth in [6, 8, 9, 10, 11, 12, 13, 14]]
+     for locationModuleWidth in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]
 
     +
     [experiment(bumpType, numFeatures=numUniqueFeatures)
