@@ -20,12 +20,14 @@
 # ----------------------------------------------------------------------
 
 """
-Convergence simulations for abstract objects.
+Recognition experiments for abstract objects, using a gaussian bump grid
+cell module model.
 """
 
 import argparse
 import collections
 import io
+import math
 import os
 import random
 from multiprocessing import cpu_count, Pool
@@ -36,100 +38,73 @@ import StringIO
 
 import numpy as np
 
-np.random.seed(865486387)
-random.seed(357627)
-
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
-from two_layer_tracing import PIUNVisualizer as trace
-from two_layer_tracing import PIUNLogger as rawTrace
+from htmresearch.frameworks.location.two_layer_tracing import (
+  PIUNVisualizer as trace)
+from htmresearch.frameworks.location.object_generation import generateObjects
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
-def generateObjects(numObjects, featuresPerObject, objectWidth, numFeatures):
-  assert featuresPerObject <= (objectWidth ** 2)
-  featureScale = 20
-
-  np.random.seed(numObjects)
-  objectMap = {}
-  for i in xrange(numObjects):
-    obj = np.zeros((objectWidth ** 2,), dtype=np.int32)
-    obj.fill(-1)
-    obj[:featuresPerObject] = np.random.randint(numFeatures, size=featuresPerObject, dtype=np.int32)
-    np.random.shuffle(obj)
-    objectMap[i] = obj.reshape((4, 4))
-
-  objects = []
-  for o in xrange(numObjects):
-    features = []
-    for x in xrange(objectWidth):
-      for y in xrange(objectWidth):
-        feat = objectMap[o][x][y]
-        if feat == -1:
-          continue
-        features.append({"left": y*featureScale, "top": x*featureScale,
-                         "width": featureScale, "height": featureScale,
-                         "name": str(feat)})
-    objects.append({"name": str(o), "features": features})
-  return objects
-
-
-def doExperiment(cellDimensions,
-                 cellCoordinateOffsets,
-                 numObjects,
+def doExperiment(numObjects,
                  featuresPerObject,
                  objectWidth,
                  numFeatures,
+                 featureDistribution,
                  useTrace,
-                 useRawTrace,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
                  thresholds,
-                 anchoringMethod = "narrowing"):
+                 inverseReadoutResolution,
+                 enlargeModuleFactor,
+                 bumpOverlapMethod,
+                 seed1,
+                 seed2):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
-
-  @param cellDimensions (pair)
-  The cell dimensions of each module
-
-  @param cellCoordinateOffsets (sequence)
-  The "cellCoordinateOffsets" parameter for each module
   """
   if not os.path.exists("traces"):
     os.makedirs("traces")
 
+  if seed1 != -1:
+    np.random.seed(seed1)
+
+  if seed2 != -1:
+    random.seed(seed2)
+
   features = [str(i) for i in xrange(numFeatures)]
   objects = generateObjects(numObjects, featuresPerObject, objectWidth,
-                            numFeatures)
+                            numFeatures, featureDistribution)
 
   locationConfigs = []
   scale = 40.0
 
-  if thresholds is None:
-    thresholds = int(((numModules + 1)*0.8))
+  if thresholds == -1:
+    thresholds = int(math.ceil(numModules*0.8))
   elif thresholds == 0:
     thresholds = numModules
-  perModRange = float(90.0 / float(numModules))
+  perModRange = float(60.0 / float(numModules))
   for i in xrange(numModules):
     orientation = (float(i) * perModRange) + (perModRange / 2.0)
 
     locationConfigs.append({
-      "cellDimensions": cellDimensions,
-      "moduleMapDimensions": (scale, scale),
-      "orientation": orientation,
-      "cellCoordinateOffsets": cellCoordinateOffsets,
-      "activationThreshold": 8,
-      "initialPermanence": 1.0,
-      "connectedPermanence": 0.5,
-      "learningThreshold": 8,
-      "sampleSize": 10,
-      "permanenceIncrement": 0.1,
-      "permanenceDecrement": 0.0,
-      "anchoringMethod": anchoringMethod,
+        "scale": scale,
+        "orientation": np.radians(orientation),
+        "activationThreshold": 8,
+        "initialPermanence": 1.0,
+        "connectedPermanence": 0.5,
+        "learningThreshold": 8,
+        "sampleSize": 10,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.0,
+        "inverseReadoutResolution": inverseReadoutResolution,
+        "enlargeModuleFactor": enlargeModuleFactor,
+        "bumpOverlapMethod": bumpOverlapMethod,
     })
+
   l4Overrides = {
     "initialPermanence": 1.0,
     "activationThreshold": thresholds,
@@ -139,7 +114,8 @@ def doExperiment(cellDimensions,
     "cellsPerColumn": 16,
   }
 
-  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides)
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
+                              useGaussian=True)
   exp = PIUNExperiment(column, featureNames=features,
                        numActiveMinicolumns=10,
                        noiseFactor=noiseFactor,
@@ -148,61 +124,43 @@ def doExperiment(cellDimensions,
   for objectDescription in objects:
     exp.learnObject(objectDescription)
 
-  filename = os.path.join(
-      SCRIPT_DIR,
-      "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
-          len(cellCoordinateOffsets)**2, np.prod(cellDimensions),
-          numObjects, numFeatures)
-  )
-  rawFilename = os.path.join(
-      SCRIPT_DIR,
-      "traces/{}-points-{}-cells-{}-objects-{}-feats.trace".format(
-          len(cellCoordinateOffsets)**2, np.prod(cellDimensions),
-          numObjects, numFeatures)
-  )
-
-  assert not (useTrace and useRawTrace), "Cannot use both --trace and --rawTrace"
-
   convergence = collections.defaultdict(int)
-  if useTrace:
-    with io.open(filename, "w", encoding="utf8") as fileOut:
-      with trace(fileOut, exp, includeSynapses=True):
-        print "Logging to", filename
-        for objectDescription in objects:
-          random.seed(int(objectDescription["name"]))
-          steps = exp.inferObjectWithRandomMovements(objectDescription)
-          convergence[steps] += 1
-          if steps is None:
-            print 'Failed to infer object "{}"'.format(objectDescription["name"])
-  elif useRawTrace:
-    with io.open(rawFilename, "w", encoding="utf8") as fileOut:
-      strOut = StringIO.StringIO()
-      with rawTrace(strOut, exp, includeSynapses=False):
-        print "Logging to", filename
-        for objectDescription in objects:
-          steps = exp.inferObjectWithRandomMovementsNoStopping(objectDescription, steps=10)
-          convergence[steps] += 1
-          if steps is None:
-            print 'Failed to infer object "{}"'.format(objectDescription["name"])
-      fileOut.write(unicode(strOut.getvalue()))
-  else:
-    print "Logging to", filename
+  try:
+    if useTrace:
+      filename = os.path.join(
+        SCRIPT_DIR,
+        "traces/{}-resolution-{}-modules-{}-objects-{}-feats.html".format(
+          inverseReadoutResolution, numModules, numObjects, numFeatures)
+      )
+      traceFileOut = io.open(filename, "w", encoding="utf8")
+      traceHandle = trace(traceFileOut, exp, includeSynapses=True)
+      print "Logging to", filename
+
     for objectDescription in objects:
       steps = exp.inferObjectWithRandomMovements(objectDescription)
       convergence[steps] += 1
       if steps is None:
         print 'Failed to infer object "{}"'.format(objectDescription["name"])
+  finally:
+    if useTrace:
+      traceHandle.__exit__()
+      traceFileOut.close()
 
   for step, num in sorted(convergence.iteritems()):
     print "{}: {}".format(step, num)
 
-  return(convergence)
+  result = {
+    "convergence": convergence,
+  }
+
+  return result
 
 
 def experimentWrapper(args):
   return doExperiment(**args)
 
-def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
+def runMultiprocessNoiseExperiment(resultName, repeat, numWorkers,
+                                   appendResults, **kwargs):
   """
   :param kwargs: Pass lists to distribute as lists, lists that should be passed intact as tuples.
   :return: results, in the format [(arguments, results)].  Also saved to json at resultName, in the same format.
@@ -226,7 +184,6 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
       newExperiments.append(copy(experiment))
   experiments = newExperiments
 
-  numWorkers = cpu_count()
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
     rs = pool.map_async(experimentWrapper, experiments, chunksize=1)
@@ -241,11 +198,21 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
   else:
     result = []
     for arg in experiments:
-      result.append(doExperiment(arg))
+      result.append(doExperiment(**arg))
 
   # Save results for later use
   results = [(arg,res) for arg, res in zip(experiments, result)]
+
+  if appendResults:
+    try:
+      with open(os.path.join(SCRIPT_DIR, resultName), "r") as f:
+        existingResults = json.load(f)
+        results = existingResults + results
+    except IOError:
+      pass
+
   with open(os.path.join(SCRIPT_DIR, resultName),"wb") as f:
+    print "Writing results to {}".format(resultName)
     json.dump(results,f)
 
   return results
@@ -253,45 +220,48 @@ def runMultiprocessNoiseExperiment(resultName, repeat, **kwargs):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--numObjects", type=int, required=True)
+  parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, required=True)
-  parser.add_argument("--locationModuleWidth", type=int, required=True)
-  parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
-  parser.add_argument("--noiseFactor", type=float, required=False, default = 0)
-  parser.add_argument("--moduleNoiseFactor", type=float, required=False, default=0)
+  parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
+  parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
+  parser.add_argument("--inverseReadoutResolution", type=float, default=3)
+  parser.add_argument("--enlargeModuleFactor", type=float, nargs="+", required=False, default=1.0)
   parser.add_argument("--useTrace", action="store_true")
-  parser.add_argument("--useRawTrace", action="store_true")
-  parser.add_argument("--numModules", type=int, default=20)
+  parser.add_argument("--numModules", type=int, nargs="+", default=[20])
+  parser.add_argument("--seed1", type=int, default=-1)
+  parser.add_argument("--seed2", type=int, default=-1)
   parser.add_argument(
-    "--thresholds", type=int, default=None,
+    "--thresholds", type=int, default=-1,
     help=(
-      "The TM prediction threshold. Defaults to int((numModules+1)*0.8)."
+      "The TM prediction threshold. Defaults to ceil(numModules*0.8)."
       "Set to 0 for the threshold to match the number of modules."))
-  parser.add_argument("--anchoringMethod", type = str, default="corners")
+  parser.add_argument("--featuresPerObject", type=int, nargs="+", default=10)
+  parser.add_argument("--featureDistribution", type = str, nargs="+",
+                      default="AllFeaturesEqual_Replacement")
+  parser.add_argument("--bumpOverlapMethod", type = str, default="probabilistic")
   parser.add_argument("--resultName", type = str, default="results.json")
   parser.add_argument("--repeat", type=int, default=1)
+  parser.add_argument("--appendResults", action="store_true")
+  parser.add_argument("--numWorkers", type=int, default=cpu_count())
 
   args = parser.parse_args()
 
-  numOffsets = args.coordinateOffsetWidth
-  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
 
-  if "both" in args.anchoringMethod:
-    args.anchoringMethod = ["narrowing", "reanchoring"]
-
-
-  doExperiment(
-    cellDimensions=(args.locationModuleWidth, args.locationModuleWidth),
-    cellCoordinateOffsets=cellCoordinateOffsets,
+  runMultiprocessNoiseExperiment(
+    args.resultName, args.repeat, args.numWorkers, args.appendResults,
     numObjects=args.numObjects,
-    featuresPerObject=10,
+    featuresPerObject=args.featuresPerObject,
+    featureDistribution=args.featureDistribution,
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
-    useRawTrace=args.useRawTrace,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
     thresholds=args.thresholds,
-    anchoringMethod=args.anchoringMethod,
+    inverseReadoutResolution=args.inverseReadoutResolution,
+    enlargeModuleFactor=args.enlargeModuleFactor,
+    bumpOverlapMethod=args.bumpOverlapMethod,
+    seed1=args.seed1,
+    seed2=args.seed2,
   )

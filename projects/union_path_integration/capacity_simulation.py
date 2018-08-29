@@ -20,11 +20,11 @@
 # ----------------------------------------------------------------------
 
 """
-Convergence simulations for abstract objects.
+Measure how many objects the model can learn and recognize with sufficient
+accuracy.
 """
 
 import argparse
-import collections
 import io
 import math
 import os
@@ -40,7 +40,7 @@ from htmresearch.frameworks.location.object_generation import generateObjects
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment, PIUNExperimentMonitor)
 from htmresearch.frameworks.location.two_layer_tracing import (
-  PIUNVisualizer as trace, PIUNLogger as rawTrace)
+  PIUNVisualizer as trace)
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -70,32 +70,49 @@ class PIUNCellActivityTracer(PIUNExperimentMonitor):
 def doExperiment(locationModuleWidth,
                  bumpType,
                  cellCoordinateOffsets,
-                 numObjects,
+                 initialIncrement,
+                 minAccuracy,
+                 capacityResolution,
+                 capacityPercentageResolution,
                  featuresPerObject,
                  objectWidth,
                  numFeatures,
                  featureDistribution,
                  useTrace,
-                 useRawTrace,
-                 logCellActivity,
-                 logNumFeatureOccurrences,
                  noiseFactor,
                  moduleNoiseFactor,
                  numModules,
-                 numSensations,
                  thresholds,
                  seed1,
                  seed2,
                  anchoringMethod):
   """
-  Learn a set of objects. Then try to recognize each object. Output an
-  interactive visualization.
+  Finds the capacity of the specified model and object configuration. The
+  algorithm has two stages. First it finds an upper bound for the capacity by
+  repeatedly incrementing the number of objects by initialIncrement. After it
+  finds a number of objects that is above capacity, it begins the second stage:
+  performing a binary search over the number of objects to find an exact
+  capacity.
 
-  @param locationModuleWidth (int)
-  The cell dimensions of each module
+  @param initialIncrement (int)
+  For example, if this number is 128, this method will test 128 objects, then
+  256, and so on, until it finds an upper bound, then it will narrow in on the
+  breaking point. This number can't be incorrect, but the simulation will be
+  inefficient if it's too low or too high.
 
-  @param cellCoordinateOffsets (sequence)
-  The "cellCoordinateOffsets" parameter for each module
+  @param capacityResolution (int)
+  The resolution of the capacity. If capacityResolution=1, this method will find
+  the exact capacity. If the capacityResolution is higher, the method will
+  return a capacity that is potentially less than the actual capacity.
+
+  @param capacityPercentageResolution (float)
+  An alternate way of specifying the resolution. For example, if
+  capacityPercentageResolution=0.01, if the actual capacity is 3020 and this
+  method has reached 3000, it will stop searching, because the next increment
+  will be less than 1% of 3000.
+
+  @param minAccuracy (float)
+  The recognition success rate that the model must achieve.
   """
   if not os.path.exists("traces"):
     os.makedirs("traces")
@@ -107,20 +124,12 @@ def doExperiment(locationModuleWidth,
     random.seed(seed2)
 
   features = [str(i) for i in xrange(numFeatures)]
-  objects = generateObjects(numObjects, featuresPerObject, objectWidth,
-                            numFeatures, featureDistribution)
-
-  if logNumFeatureOccurrences:
-    featureOccurrences = collections.Counter(feat["name"]
-                                             for obj in objects
-                                             for feat in obj["features"])
-    occurrencesConvergenceLog = []
 
   locationConfigs = []
   scale = 40.0
 
   if thresholds == -1:
-    thresholds = int(math.ceil(numModules*0.8))
+    thresholds = int(math.ceil(numModules * 0.8))
   elif thresholds == 0:
     thresholds = numModules
   perModRange = float((90.0 if bumpType == "square" else 60.0) /
@@ -170,82 +179,88 @@ def doExperiment(locationModuleWidth,
     "cellsPerColumn": 16,
   }
 
-  column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
-                              useGaussian=(bumpType == "gaussian"))
-  exp = PIUNExperiment(column, featureNames=features,
-                       numActiveMinicolumns=10,
-                       noiseFactor=noiseFactor,
-                       moduleNoiseFactor=moduleNoiseFactor)
+  numObjects = 0
+  accuracy = None
+  allLocationsAreUnique = None
+  occurrencesConvergenceLog = []
 
-  for objectDescription in objects:
-    exp.learnObject(objectDescription)
+  increment = initialIncrement
+  foundUpperBound = False
 
-  convergence = collections.defaultdict(int)
+  while True:
+    currentNumObjects = numObjects + increment
+    numFailuresAllowed = currentNumObjects * (1 - minAccuracy)
+    print "Testing", currentNumObjects
 
-  try:
-    if useTrace:
-      filename = os.path.join(
-        SCRIPT_DIR,
-        "traces/{}-points-{}-cells-{}-objects-{}-feats.html".format(
-          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
-          numObjects, numFeatures)
-      )
-      traceFileOut = io.open(filename, "w", encoding="utf8")
-      traceHandle = trace(traceFileOut, exp, includeSynapses=True)
-      print "Logging to", filename
+    objects = generateObjects(currentNumObjects, featuresPerObject, objectWidth,
+                              numFeatures, featureDistribution)
 
-    if useRawTrace:
-      rawFilename = os.path.join(
-        SCRIPT_DIR,
-        "traces/{}-points-{}-cells-{}-objects-{}-feats.trace".format(
-          len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
-          numObjects, numFeatures)
-      )
-      rawTraceFileOut = open(rawFilename, "w")
-      rawTraceHandle = rawTrace(rawTraceFileOut, exp, includeSynapses=False)
-      print "Logging to", rawFilename
+    column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
+                                useGaussian=(bumpType == "gaussian"))
+    exp = PIUNExperiment(column, featureNames=features,
+                         numActiveMinicolumns=10,
+                         noiseFactor=noiseFactor,
+                         moduleNoiseFactor=moduleNoiseFactor)
 
-    if logCellActivity:
-      cellActivityTracer = PIUNCellActivityTracer(exp)
-      exp.addMonitor(cellActivityTracer)
+    currentLocsUnique = True
 
     for objectDescription in objects:
+      objLocsUnique = exp.learnObject(objectDescription)
+      currentLocsUnique = currentLocsUnique and objLocsUnique
 
-      numSensationsToInference = exp.inferObjectWithRandomMovements(
-        objectDescription, numSensations)
+    numFailures = 0
 
-      if logNumFeatureOccurrences:
-        objectFeatureOccurrences = sorted(featureOccurrences[feat["name"]]
-                                          for feat in objectDescription["features"])
-        occurrencesConvergenceLog.append(
-          (objectFeatureOccurrences, numSensationsToInference))
-      convergence[numSensationsToInference] += 1
-      if numSensationsToInference is None:
-        print 'Failed to infer object "{}"'.format(objectDescription["name"])
-  finally:
-    if useTrace:
-      traceHandle.__exit__()
-      traceFileOut.close()
+    try:
+      if useTrace:
+        filename = os.path.join(
+          SCRIPT_DIR,
+          "traces/capacity-{}-points-{}-cells-{}-objects-{}-feats.html".format(
+            len(cellCoordinateOffsets)**2, exp.column.L6aModules[0].numberOfCells(),
+            currentNumObjects, numFeatures)
+        )
+        traceFileOut = io.open(filename, "w", encoding="utf8")
+        traceHandle = trace(traceFileOut, exp, includeSynapses=False)
+        print "Logging to", filename
 
-    if useRawTrace:
-      rawTraceHandle.__exit__()
-      rawTraceFileOut.close()
+      for objectDescription in objects:
+        numSensationsToInference = exp.inferObjectWithRandomMovements(
+            objectDescription)
+        if numSensationsToInference is None:
+          numFailures += 1
 
-  for step, num in sorted(convergence.iteritems()):
-    print "{}: {}".format(step, num)
+          if numFailures > numFailuresAllowed:
+            break
+    finally:
+      if useTrace:
+        traceHandle.__exit__()
+        traceFileOut.close()
+
+    if numFailures < numFailuresAllowed:
+      numObjects = currentNumObjects
+      accuracy = float(currentNumObjects - numFailures) / currentNumObjects
+      allLocationsAreUnique = currentLocsUnique
+    else:
+      foundUpperBound = True
+
+    if foundUpperBound:
+      increment /= 2
+
+      goalResolution = capacityResolution
+
+      if capacityPercentageResolution > 0:
+        goalResolution = min(goalResolution,
+                             capacityPercentageResolution*numObjects)
+
+      if increment < goalResolution:
+        break
 
   result = {
-    "convergence": convergence,
+    "numObjects": numObjects,
+    "accuracy": accuracy,
+    "allLocationsAreUnique": allLocationsAreUnique,
   }
 
-  if logCellActivity:
-    result["locationLayerTimelineByObject"] = (
-      cellActivityTracer.locationLayerTimelineByObject)
-    result["inferredStepByObject"] = cellActivityTracer.inferredStepByObject
-
-  if logNumFeatureOccurrences:
-    result["occurrencesConvergenceLog"] = occurrencesConvergenceLog
-
+  print result
   return result
 
 
@@ -321,24 +336,23 @@ def runExperiments(experiments, resultName, numWorkers=-1, appendResults=False):
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, nargs="+", required=True)
   parser.add_argument("--locationModuleWidth", type=int, nargs="+", required=True)
   parser.add_argument("--bumpType", type=str, nargs="+", default="square",
                       help="Set to 'square' or 'gaussian'")
+  parser.add_argument("--initialIncrement", type=int, default=128)
+  parser.add_argument("--capacityResolution", type=int, default=1)
+  parser.add_argument("--capacityPercentageResolution", type=float, default=-1)
+  parser.add_argument("--minAccuracy", type=float, default=0.9)
   parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
   parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)
   parser.add_argument("--moduleNoiseFactor", type=float, nargs="+", required=False, default=0)
   parser.add_argument("--useTrace", action="store_true")
-  parser.add_argument("--useRawTrace", action="store_true")
-  parser.add_argument("--logCellActivity", action="store_true")
-  parser.add_argument("--logNumFeatureOccurrences", action="store_true")
   parser.add_argument("--numModules", type=int, nargs="+", default=[20])
-  parser.add_argument("--numSensations", type=int, default=-1)
   parser.add_argument("--seed1", type=int, default=-1)
   parser.add_argument("--seed2", type=int, default=-1)
   parser.add_argument(
-    "--thresholds", type=int, default=-1,
+    "--thresholds", type=int, default=-1, nargs="+",
     help=(
       "The TM prediction threshold. Defaults to ceil(numModules*0.8)."
       "Set to 0 for the threshold to match the number of modules."))
@@ -354,7 +368,8 @@ if __name__ == "__main__":
   args = parser.parse_args()
 
   numOffsets = args.coordinateOffsetWidth
-  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001 for i in xrange(numOffsets)])
+  cellCoordinateOffsets = tuple([i * (0.998 / (numOffsets-1)) + 0.001
+                                 for i in xrange(numOffsets)])
 
   if "both" in args.anchoringMethod:
     args.anchoringMethod = ["narrowing", "corners"]
@@ -364,20 +379,18 @@ if __name__ == "__main__":
     locationModuleWidth=args.locationModuleWidth,
     bumpType=args.bumpType,
     cellCoordinateOffsets=cellCoordinateOffsets,
-    numObjects=args.numObjects,
+    initialIncrement=args.initialIncrement,
+    minAccuracy=args.minAccuracy,
+    capacityResolution=args.capacityResolution,
+    capacityPercentageResolution=args.capacityPercentageResolution,
     featuresPerObject=args.featuresPerObject,
     featureDistribution=args.featureDistribution,
     objectWidth=4,
     numFeatures=args.numUniqueFeatures,
     useTrace=args.useTrace,
-    useRawTrace=args.useRawTrace,
-    logCellActivity=args.logCellActivity,
-    logNumFeatureOccurrences=args.logNumFeatureOccurrences,
     noiseFactor=args.noiseFactor,
     moduleNoiseFactor=args.moduleNoiseFactor,
     numModules=args.numModules,
-    numSensations=(args.numSensations if args.numSensations != -1
-                   else None),
     thresholds=args.thresholds,
     anchoringMethod=args.anchoringMethod,
     seed1=args.seed1,

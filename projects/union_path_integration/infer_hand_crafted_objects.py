@@ -33,7 +33,8 @@ import numpy as np
 
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   PIUNCorticalColumn, PIUNExperiment)
-from two_layer_tracing import PIUNVisualizer as trace
+from htmresearch.frameworks.location.two_layer_tracing import (
+  PIUNVisualizer as trace)
 
 
 OBJECTS = [
@@ -69,7 +70,7 @@ OBJECTS = [
 ]
 
 
-def doExperiment(cellDimensions, cellCoordinateOffsets):
+def doPointsExperiment(cellDimensions, cellCoordinateOffsets):
   """
   Learn a set of objects. Then try to recognize each object. Output an
   interactive visualization.
@@ -92,13 +93,26 @@ def doExperiment(cellDimensions, cellCoordinateOffsets):
       orientation = random.choice([orientation, -orientation])
 
       locationConfigs.append({
-        "cellDimensions": cellDimensions,
-        "moduleMapDimensions": (scale, scale),
+        "cellsPerAxis": cellDimensions[0],
+        "scale": scale,
         "orientation": orientation,
+        "activationThreshold": 8,
+        "initialPermanence": 1.0,
+        "connectedPermanence": 0.5,
+        "learningThreshold": 8,
+        "sampleSize": 10,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.0,
         "cellCoordinateOffsets": cellCoordinateOffsets,
       })
 
-  column = PIUNCorticalColumn(locationConfigs)
+  L4Overrides = {
+    "activationThreshold": 15,
+    "minThreshold": 15,
+    "initialPermanence": 1.0,
+  }
+
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides, useGaussian=False)
   exp = PIUNExperiment(column, featureNames=("A", "B"))
 
   for objectDescription in OBJECTS:
@@ -117,12 +131,65 @@ def doExperiment(cellDimensions, cellCoordinateOffsets):
 
 
 
+def doGaussianExperiment(inverseReadoutResolution):
+  """
+  Learn a set of objects. Then try to recognize each object. Output an
+  interactive visualization.
+
+  @param cellDimensions (pair)
+  The cell dimensions of each module
+  """
+  if not os.path.exists("traces"):
+    os.makedirs("traces")
+
+  locationConfigs = []
+  for i in xrange(5):
+    scale = 10.0 * (math.sqrt(2) ** i)
+
+    for _ in xrange(4):
+      orientation = np.radians(random.gauss(7.5, 7.5))
+      orientation = random.choice([orientation, -orientation])
+
+      locationConfigs.append({
+        "scale": scale,
+        "inverseReadoutResolution": inverseReadoutResolution,
+        "orientation": orientation,
+        "activationThreshold": 8,
+        "initialPermanence": 1.0,
+        "connectedPermanence": 0.5,
+        "learningThreshold": 8,
+        "sampleSize": 10,
+        "permanenceIncrement": 0.1,
+        "permanenceDecrement": 0.0,
+      })
+
+  L4Overrides = {
+    "activationThreshold": 15,
+    "minThreshold": 15,
+    "initialPermanence": 1.0,
+  }
+
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides, useGaussian=True)
+  exp = PIUNExperiment(column, featureNames=("A", "B"))
+
+  for objectDescription in OBJECTS:
+    exp.learnObject(objectDescription)
+
+  filename = "traces/gaussian-{}-resolution.html".format(
+    np.prod(inverseReadoutResolution))
+
+  with io.open(filename, "w", encoding="utf8") as fileOut:
+    with trace(fileOut, exp, includeSynapses=True):
+      print "Logging to", filename
+      for objectDescription in OBJECTS:
+        succeeded = exp.inferObjectWithRandomMovements(objectDescription)
+        if not succeeded:
+          print 'Failed to infer object "{}"'.format(objectDescription["name"])
+
+
+
 if __name__ == "__main__":
-  doExperiment(cellDimensions=(5, 5),
-               cellCoordinateOffsets=(0.5,))
+  doPointsExperiment(cellDimensions=(10, 10),
+                     cellCoordinateOffsets=(0.05, 0.5, 0.95))
 
-  doExperiment(cellDimensions=(5, 5),
-               cellCoordinateOffsets=(0.05, 0.5, 0.95))
-
-  doExperiment(cellDimensions=(10, 10),
-               cellCoordinateOffsets=(0.05, 0.5, 0.95))
+  doGaussianExperiment(inverseReadoutResolution=8)
