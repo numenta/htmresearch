@@ -25,7 +25,7 @@ from collections import defaultdict
 import json
 import os
 
-import ambiguity_index
+from htmresearch.frameworks.location import ambiguity_index
 
 import matplotlib.lines
 import matplotlib.pyplot as plt
@@ -54,7 +54,7 @@ def varyResolution_varyNumModules(inFilenames, outFilename,
       resolution = exp[0]["inverseReadoutResolution"]
 
       results = []
-      for numSensationsStr, numOccurrences in exp[1].items():
+      for numSensationsStr, numOccurrences in exp[1]["convergence"].items():
         if numSensationsStr == "null":
           results += [np.inf] * numOccurrences
         else:
@@ -157,7 +157,7 @@ def varyModuleSize_varyResolution(inFilenames, outFilename,
       resolution = exp[0]["inverseReadoutResolution"]
 
       results = []
-      for numSensationsStr, numOccurrences in exp[1].items():
+      for numSensationsStr, numOccurrences in exp[1]["convergence"].items():
         if numSensationsStr == "null":
           results += [np.inf] * numOccurrences
         else:
@@ -268,7 +268,7 @@ def varyModuleSize_varyNumModules(inFilenames, outFilename,
       numModules = exp[0]["numModules"]
 
       results = []
-      for numSensationsStr, numOccurrences in exp[1].items():
+      for numSensationsStr, numOccurrences in exp[1]["convergence"].items():
         if numSensationsStr == "null":
           results += [np.inf] * numOccurrences
         else:

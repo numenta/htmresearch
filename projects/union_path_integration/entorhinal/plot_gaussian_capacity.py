@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import matplotlib.lines
 import numpy as np
 
-import ambiguity_index
+from htmresearch.frameworks.location import ambiguity_index
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
@@ -62,7 +62,7 @@ def varyResolution_varyNumModules(inFilenames, outFilename,
       numObjects = exp[0]["numObjects"]
       resolution = exp[0]["inverseReadoutResolution"]
 
-      failed = exp[1].get("null", 0)
+      failed = exp[1]["convergence"].get("null", 0)
       allResults[(numModules, resolution)][numObjects].append(
         1.0 - (float(failed) / float(numObjects)))
 
@@ -139,7 +139,7 @@ def varyModuleSize_varyResolution(inFilenames, outFilename,
       numObjects = exp[0]["numObjects"]
       resolution = exp[0]["inverseReadoutResolution"]
 
-      failed = exp[1].get("null", 0)
+      failed = exp[1]["convergence"].get("null", 0)
       allResults[(enlargeModuleFactor, resolution)][numObjects].append(
         1.0 - (float(failed) / float(numObjects)))
 
@@ -235,7 +235,7 @@ def varyModuleSize_varyNumModules(inFilenames, outFilename,
       numObjects = exp[0]["numObjects"]
       numModules = exp[0]["numModules"]
 
-      failed = exp[1].get("null", 0)
+      failed = exp[1]["convergence"].get("null", 0)
       allResults[(enlargeModuleFactor, numModules)][numObjects].append(
         1.0 - (float(failed) / float(numObjects)))
 

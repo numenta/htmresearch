@@ -54,7 +54,7 @@ def chart():
       numObjects = exp[0]["numObjects"]
       #if numObjects > 2601:
       #  continue
-      failed = exp[1].get("null", 0)
+      failed = exp[1]["convergence"].get("null", 0)
       expResults.append((
         numObjects,
         1.0 - (float(failed) / float(numObjects))
@@ -95,7 +95,7 @@ def chart():
     expResults = []
     for exp in experiments:
       numObjects = exp[0]["numObjects"]
-      failed = exp[1].get("null", 0)
+      failed = exp[1]["convergence"].get("null", 0)
       expResults.append((
         numObjects,
         1.0 - (float(failed) / float(numObjects))

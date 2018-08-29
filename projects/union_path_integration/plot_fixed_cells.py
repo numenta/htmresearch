@@ -77,7 +77,7 @@ def chart():
         k = (modSize, numFeatures)
         numObjects = exp[0]["numObjects"]
 
-        failed = exp[1].get("null", 0)
+        failed = exp[1]["convergence"].get("null", 0)
         accuracy = (float(numObjects) - float(failed)) / float(numObjects)
 
         accuracies[modules].append((numObjects, accuracy))

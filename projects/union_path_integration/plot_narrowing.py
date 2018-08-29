@@ -21,6 +21,7 @@
 
 """Plot location module representations during narrowing."""
 
+import argparse
 import collections
 import json
 import os
@@ -34,23 +35,22 @@ TRACE_DIR = os.path.join(CWD, "traces")
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def examplesChart(objectNumbers):
+def examplesChart(inFilename, outFilename, objectCount, objectNumbers):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
-  # Convergence vs. number of objects, comparing # unique features
-  #
-  # Generated with:
-  #   python convergence_simulation.py --numObjects 100 --numUniqueFeatures 40 --locationModuleWidth 10 --numSensations 9 --seed1 100 --seed2 357627 --logCellActivity --resultName results/narrowing_40_feats_100_objects.json
-
-  with open("results/narrowing_40_feats_100_objects.json", "r") as f:
+  with open(inFilename, "r") as f:
     experiments = json.load(f)
-  locationLayerTimelineByObject = dict(
-    (int(k), v)
-    for k, v in experiments[0][1]["locationLayerTimelineByObject"].iteritems())
-  inferredStepByObject = dict(
-    (int(k), v)
-    for k, v in experiments[0][1]["inferredStepByObject"].iteritems())
+  for exp in experiments:
+    numObjects = exp[0]["numObjects"]
+    if numObjects == objectCount:
+      locationLayerTimelineByObject = dict(
+        (int(k), v)
+        for k, v in exp[1]["locationLayerTimelineByObject"].iteritems())
+      inferredStepByObject = dict(
+        (int(k), v)
+        for k, v in exp[1]["inferredStepByObject"].iteritems())
+      break
 
   numSteps = 9
   numModules = 4
@@ -71,9 +71,10 @@ def examplesChart(objectNumbers):
         plotData[cells, stepStart:stepStop, :] = [0, 0, 0]
 
     for m in xrange(numModules):
-      axes[m, i].add_patch(matplotlib.patches.Rectangle(
-        ((inferredStepByObject[obj] - 1) * width, -1), width,
-        numModules * numCells + 2, color="red", fill=False))
+      if inferredStepByObject[obj] is not None:
+        axes[m, i].add_patch(matplotlib.patches.Rectangle(
+          ((inferredStepByObject[obj] - 1) * width, -1), width,
+          numModules * numCells + 2, color="red", fill=False))
       axes[m, i].set_yticks([])
       if m == 0:
         axes[m, i].set_title("Object {}".format(i + 1))
@@ -94,12 +95,12 @@ def examplesChart(objectNumbers):
   #plt.xlabel("Steps")
   #plt.ylabel("Cells")
 
-  filename = os.path.join(CHART_DIR, "location_narrowing.pdf")
+  filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename
   plt.savefig(filename)
 
 
-def aggregateChart(inFilename, objectCounts = (50, 100, 150)):
+def aggregateChart(inFilename, outFilename, objectCounts):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -107,13 +108,19 @@ def aggregateChart(inFilename, objectCounts = (50, 100, 150)):
 
   plt.figure(figsize=(5,4.5))
 
+  resultsByNumObjects = {}
+  with open(inFilename, "r") as f:
+    experiments = json.load(f)
+  for exp in experiments:
+    numObjects = exp[0]["numObjects"]
+    resultsByNumObjects[numObjects] = exp[1]["locationLayerTimelineByObject"]
+
   for numObjects, marker in zip(objectCounts, markers):
-    with open(inFilename.format(numObjects), "r") as f:
-      experiments = json.load(f)
+    results = resultsByNumObjects[numObjects]
 
     timestepsByObject = [
       timesteps
-      for k, timesteps in experiments[0][1]["locationLayerTimelineByObject"].iteritems()]
+      for k, timesteps in results.iteritems()]
 
     numCells = 100
     numSteps = 9
@@ -134,20 +141,30 @@ def aggregateChart(inFilename, objectCounts = (50, 100, 150)):
     plt.plot(x, y, "{}-".format(marker), label="{} learned objects".format(numObjects))
 
   plt.xlabel("Number of sensations")
-  plt.ylabel("Cell activation density")
+  plt.ylabel("Mean cell activation density")
   plt.ylim(0.0, 0.3)
   plt.legend()
 
   plt.tight_layout()
 
-  filename = os.path.join(CHART_DIR, "location_narrowing_aggregated.pdf")
+  filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename
   plt.savefig(filename)
 
 
 if __name__ == "__main__":
-  examplesChart((15, 11, 12))
-  aggregateChart(
-    "results/narrowing_40_feats_{}_objects.json",
-    objectCounts=[50, 75, 100, 125],
-  )
+  parser = argparse.ArgumentParser()
+  parser.add_argument("--inFile", type=str, required=True)
+  parser.add_argument("--outFile1", type=str, required=True)
+  parser.add_argument("--outFile2", type=str, required=True)
+  parser.add_argument("--exampleObjectCount", type=int, default=100)
+  parser.add_argument("--aggregateObjectCounts", type=int, nargs="+", default=[50, 75, 100, 125])
+  parser.add_argument("--exampleObjectNumbers", type=int, nargs="+", default=-1)
+  args = parser.parse_args()
+
+  exampleObjectNumbers = (args.exampleObjectNumbers
+                          if args.exampleObjectNumbers != -1 else
+                          range(args.exampleObjectCount))
+
+  examplesChart(args.inFile, args.outFile1, args.exampleObjectCount, exampleObjectNumbers)
+  aggregateChart(args.inFile, args.outFile2, args.aggregateObjectCounts)
