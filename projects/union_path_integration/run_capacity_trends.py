@@ -52,8 +52,16 @@ def experiment(bumpType, numModules=10, locationModuleWidth=10,
 def getExperiments(bumpType):
   return (
     [experiment(bumpType, numModules=numModules, thresholds=thresholds)
-     for numModules in [1, 5, 10, 15, 20, 25, 30, 35, 40]
+     for numModules in [5, 10, 15, 20, 25, 30, 35, 40]
      for thresholds in [-1, 0]]
+
+    # Only test numModules=1 with a 100% threshold.
+    # With the usual 80% threshold, it rounds up to 100% and is equivalent.
+    # The results can be confusing, because with some parameters a single module
+    # with 100% threshold has higher capacity than 5 modules with a 80%
+    # threshold.
+    +
+    [experiment(bumpType, numModules=1, thresholds=0)]
 
     +
     [experiment(bumpType, locationModuleWidth=locationModuleWidth)

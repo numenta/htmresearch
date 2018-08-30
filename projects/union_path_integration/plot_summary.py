@@ -38,7 +38,7 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def createCharts(inFilename, outFilename,
+def createCharts(inFilename, outFilename, squeezeLegend,
                  moduleWidths=(6, 10, 14),
                  moduleCounts=(5, 10, 15),
                  maxNumObjectsByParams={},
@@ -167,26 +167,47 @@ def createCharts(inFilename, outFilename,
 
   plt.tight_layout()
 
+  if squeezeLegend:
+    leg = axRecognitionTime.legend(loc="upper right", title="Cells per\n module",
+                     # bbox_to_anchor=(1.035, 1.0),
+                     frameon=False,
+                     handles=[matplotlib.lines.Line2D([], [], color=color)
+                              for color in colors],
+                     labels=["{}x{}".format(moduleWidth, moduleWidth)
+                             for moduleWidth in moduleWidths])
+    axRecognitionTime.add_artist(leg)
 
-  leg = axRecognitionTime.legend(loc="upper right", title="Cells per\n module",
-                   # bbox_to_anchor=(1.035, 1.0),
-                   frameon=False,
-                   handles=[matplotlib.lines.Line2D([], [], color=color)
-                            for color in colors],
-                   labels=["{}x{}".format(moduleWidth, moduleWidth)
-                           for moduleWidth in moduleWidths])
-  axRecognitionTime.add_artist(leg)
+
+    leg = axRecognitionTime.legend(loc="lower right", title=" Number of \n   modules",
+                     # bbox_to_anchor=(1.0, 0.5),
+                     frameon=False,
+                     handles=[matplotlib.lines.Line2D([], [],
+                                                      marker=marker,
+                                                      markersize=markerSize,
+                                                      color="black")
+                              for marker, markerSize in zip(markers, markerSizes)],
+                     labels=moduleCounts)
+  else:
+    leg = axRecognitionTime.legend(loc="upper right", title="Cells per module:       ",
+                     bbox_to_anchor=(1.035, 1.0),
+                     frameon=False,
+                     handles=[matplotlib.lines.Line2D([], [], color=color)
+                              for color in colors],
+                     labels=["{}x{}".format(moduleWidth, moduleWidth)
+                             for moduleWidth in moduleWidths])
+    axRecognitionTime.add_artist(leg)
 
 
-  leg = axRecognitionTime.legend(loc="lower right", title=" Number of \n   modules",
-                   # bbox_to_anchor=(1.0, 0.5),
-                   frameon=False,
-                   handles=[matplotlib.lines.Line2D([], [],
-                                                    marker=marker,
-                                                    markersize=markerSize,
-                                                    color="black")
-                            for marker, markerSize in zip(markers, markerSizes)],
-                   labels=moduleCounts)
+    leg = axRecognitionTime.legend(loc="center right", title="Number of modules:",
+                     bbox_to_anchor=(1.0, 0.5),
+                     frameon=False,
+                     handles=[matplotlib.lines.Line2D([], [],
+                                                      marker=marker,
+                                                      markersize=markerSize,
+                                                      color="black")
+                              for marker, markerSize in zip(markers, markerSizes)],
+                     labels=moduleCounts)
+
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath
@@ -198,6 +219,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)
+  parser.add_argument("--squeezeLegend", action="store_true")
   args = parser.parse_args()
 
-  createCharts(args.inFile, args.outFile)
+  createCharts(args.inFile, args.outFile, args.squeezeLegend)
