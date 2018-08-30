@@ -32,14 +32,15 @@ import matplotlib.pyplot as plt
 import matplotlib.lines
 import numpy as np
 
-import ambiguity_index
+from htmresearch.frameworks.location import ambiguity_index
 
 CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
 
 
 
-def createChart(inFilename, outFilename):
+def createChart(inFilename, outFilename, modulesYmax, label1Position,
+                label2Position, label3Position):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -87,36 +88,42 @@ def createChart(inFilename, outFilename):
   markers = ["o", "*"]
   markerSizes = [4.0, 5.0]
   for thresholds, marker, markerSize in zip([-1, 0], markers, markerSizes):
-    y = [meanCapacityByParams[(numModules,
-                               cellsPerModule,
-                               thresholds,
-                               numUniqueFeatures)]
-         for numModules in moduleCounts]
-    ax1.plot(moduleCounts, y, "{}-".format(marker), color="C0",
+    x = []
+    y = []
+    for numModules in moduleCounts:
+      params = (numModules, cellsPerModule, thresholds, numUniqueFeatures)
+      if params in meanCapacityByParams:
+        x.append(numModules)
+        y.append(meanCapacityByParams[params])
+
+    ax1.plot(x, y, "{}-".format(marker), color="C0",
              markersize=markerSize,
              markevery=[i
-                        for i, numModules in enumerate(moduleCounts)
+                        for i, numModules in enumerate(x)
                         if codesAreUnique[(numModules,
                                            cellsPerModule,
                                            thresholds,
                                            numUniqueFeatures)]])
 
-    ax1.plot(moduleCounts, y, "x", markersize=6, markeredgewidth=2, color="red",
+    ax1.plot(x, y, "x", markersize=6, markeredgewidth=2, color="red",
              markevery=[i
-                        for i, numModules in enumerate(moduleCounts)
+                        for i, numModules in enumerate(x)
                         if not codesAreUnique[(numModules,
                                                cellsPerModule,
                                                thresholds,
                                                numUniqueFeatures)]])
 
-  ax1.text(1, 685, "Threshold:")
-  ax1.text(32, 590, "$ n $")
-  ax1.text(23, 200, "$ \\lceil n * 0.8 \\rceil $")
+  ax1.text(label1Position[0], label1Position[1], "Threshold:")
+  ax1.text(label2Position[0], label2Position[1], "$ n $")
+  ax1.text(label3Position[0], label3Position[1], "$ \\lceil n * 0.8 \\rceil $")
 
   ax1.set_xlabel("Number of\nModules", fontsize=12)
   ax1.set_ylabel("Capacity", fontsize=12)
   ax1.set_xlim(0, ax1.get_xlim()[1])
-  ax1.set_ylim(0, ax1.get_ylim()[1])
+  ax1.set_ylim(0,
+               (modulesYmax
+                if modulesYmax is not None
+                else ax1.get_ylim()[1]))
   xticks = [0] + moduleCounts
   ax1.set_xticks(xticks)
   ax1.set_xticklabels([(x if x % 10 == 0 else "")
@@ -169,6 +176,11 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)
+  parser.add_argument("--modulesYmax", type=float, default=None)
+  parser.add_argument("--label1Position", type=float, nargs=2, default=(1, 685))
+  parser.add_argument("--label2Position", type=float, nargs=2, default=(32, 590))
+  parser.add_argument("--label3Position", type=float, nargs=2, default=(23, 200))
   args = parser.parse_args()
 
-  createChart(args.inFile, args.outFile)
+  createChart(args.inFile, args.outFile, args.modulesYmax, args.label1Position,
+              args.label2Position, args.label3Position)

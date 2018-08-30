@@ -78,7 +78,7 @@ def getExperiments(bumpType):
     +
     [experiment(bumpType, numObjects=numObjects,
                 featureDistribution="TwoPools_Replacement")
-     for numObjects in range(50, (551 if bumpType == "square" else 451), 50)]
+     for numObjects in range(50, (551 if bumpType == "square" else 401), 50)]
 
     # Two pools, structured
     +
