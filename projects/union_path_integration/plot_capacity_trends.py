@@ -78,7 +78,7 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
     meanCapacityByParams[params] = sum(capacities) / float(len(capacities))
 
 
-  fig, (ax1, ax2, ax3) = plt.subplots(figsize=(6,2.2), ncols=3)
+  fig, (ax1, ax2, ax3) = plt.subplots(figsize=(6.0, 2.2), ncols=3)
 
   #
   # NUMBER OF MODULES

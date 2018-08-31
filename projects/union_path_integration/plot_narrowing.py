@@ -62,7 +62,7 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleC
   if scrambleCells:
     np.random.shuffle(cellSortOrder)
 
-  fig, axes = plt.subplots(numModules, numObjs, figsize=(2*numObjs, 5))
+  fig, axes = plt.subplots(numModules, numObjs, figsize=(2.0*numObjs, 4.8))
   for i, obj in enumerate(objectNumbers):
     plotData = np.ones((numCells * numModules, numSteps*width, 3), dtype=np.float32)
     for step, modules in enumerate(locationLayerTimelineByObject[obj]):
@@ -81,16 +81,16 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleC
           numModules * numCells + 2, color="red", fill=False))
       axes[m, i].set_yticks([])
       if m == 0:
-        axes[m, i].set_title("Object {}".format(i + 1))
+        axes[m, i].set_title("Object {}".format(i + 1), fontsize=14)
       if m == 3:
         axes[m, i].set_xticks(np.arange(10) * width + (width / 2))
-        axes[m, i].set_xticklabels([str(v+1) for v in np.arange(10)])
-        axes[m, i].set(xlabel="Sensations")
+        axes[m, i].set_xticklabels([str(v+1) for v in np.arange(10)], fontsize=8)
+        axes[m, i].set_xlabel("Sensation", fontsize=12)
       else:
         axes[m, i].set_xticks([])
         axes[m, i].set_xticklabels([])
       if i == 0:
-        axes[m, i].set(ylabel="Module {}".format(m))
+        axes[m, i].set_ylabel("Module {}".format(m), fontsize=12)
       #axesm, ii].set_ylim((0, 501))
 
       moduleData = plotData[m*numCells:(m+1)*numCells]
@@ -98,9 +98,8 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleC
 
       axes[m, i].imshow(moduleData, interpolation="none")
 
-  #plt.set(xlabel="Steps", ylabel="Cells")
-  #plt.xlabel("Steps")
-  #plt.ylabel("Cells")
+  # This seems to add way too much spacing, don't use it for this
+  #plt.tight_layout()
 
   filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename
@@ -113,7 +112,7 @@ def aggregateChart(inFilename, outFilename, objectCounts, ymax):
 
   markers = ["*", "x", "o", "P"]
 
-  plt.figure(figsize=(5,4.5))
+  plt.figure(figsize=(6.0, 4.8))
 
   resultsByNumObjects = {}
   with open(inFilename, "r") as f:
@@ -147,10 +146,10 @@ def aggregateChart(inFilename, outFilename, objectCounts, ymax):
 
     plt.plot(x, y, "{}-".format(marker), label="{} learned objects".format(numObjects))
 
-  plt.xlabel("Number of sensations")
-  plt.ylabel("Mean cell activation density")
+  plt.xlabel("Number of Sensations", fontsize=12)
+  plt.ylabel("Mean Cell Activation Density", fontsize=12)
   plt.ylim(0.0, ymax)
-  plt.legend()
+  plt.legend(fontsize=10)
 
   plt.tight_layout()
 

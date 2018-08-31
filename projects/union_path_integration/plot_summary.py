@@ -75,7 +75,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
   locs, labels = ambiguity_index.getTotalExpectedOccurrencesTicks_2_5(
       ambiguity_index.numOtherOccurrencesOfMostUniqueFeature_lowerBound50_100features_10locationsPerObject)
 
-  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(5, 7.5), nrows=2, sharex=True)
+  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(6.0, 9.6), nrows=2, sharex=True)
 
   #
   # CAPACITY
@@ -110,8 +110,8 @@ def createCharts(inFilename, outFilename, squeezeLegend,
         x, y, "{}-".format(marker), color=color, linewidth=1, markersize=markerSize
       )
 
-  axCapacity.set_xlabel("# learned objects")
-  axCapacity.set_ylabel("Recognition accuracy after many sensations")
+  axCapacity.set_xlabel("Number of Learned Objects", fontsize=12)
+  axCapacity.set_ylabel("Recognition Accuracy After\nMany Sensations", fontsize=12)
   # ax2Capacity.set_xlabel("Sensory ambiguity index")
 
   ax2Capacity.set_xticks(locs)
@@ -158,8 +158,8 @@ def createCharts(inFilename, outFilename, squeezeLegend,
 
   axRecognitionTime.set_ylim(0, axRecognitionTime.get_ylim()[1])
   # axRecognitionTime.set_xlabel("# learned objects")
-  axRecognitionTime.set_ylabel("Median # sensations before recognition")
-  ax2RecognitionTime.set_xlabel("Median # locations recalled by an object's rarest feature", labelpad=8)
+  axRecognitionTime.set_ylabel("Median Number of Sensations\nTo Recognition", fontsize=12)
+  ax2RecognitionTime.set_xlabel("Median Number of Locations Recalled by\nan Object's Rarest Feature", fontsize=12, labelpad=8)
 
   ax2RecognitionTime.set_xticks(locs)
   ax2RecognitionTime.set_xticklabels(labels)
@@ -188,7 +188,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
                               for marker, markerSize in zip(markers, markerSizes)],
                      labels=moduleCounts)
   else:
-    leg = axRecognitionTime.legend(loc="upper right", title="Cells per module:       ",
+    leg = axRecognitionTime.legend(loc="upper right", title="Cells Per Module:       ",
                      bbox_to_anchor=(1.035, 1.0),
                      frameon=False,
                      handles=[matplotlib.lines.Line2D([], [], color=color)
@@ -198,8 +198,8 @@ def createCharts(inFilename, outFilename, squeezeLegend,
     axRecognitionTime.add_artist(leg)
 
 
-    leg = axRecognitionTime.legend(loc="center right", title="Number of modules:",
-                     bbox_to_anchor=(1.0, 0.5),
+    leg = axRecognitionTime.legend(loc="center right", title="Number of Modules:",
+                     bbox_to_anchor=(1.0, 0.6),
                      frameon=False,
                      handles=[matplotlib.lines.Line2D([], [],
                                                       marker=marker,
