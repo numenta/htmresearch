@@ -33,7 +33,7 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def createChart(inFilename, outFilename, locationModuleWidths):
+def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
 
   numSteps = 12
 
@@ -117,7 +117,7 @@ def createChart(inFilename, outFilename, locationModuleWidths):
   plt.tight_layout()
   plt.xticks([(i+1)*2 for i in xrange(6)])
   plt.legend(loc="center right", fontsize="small", framealpha=1.0,
-             bbox_to_anchor=(1.05, 0.36))
+             bbox_to_anchor=legendPosition)
 
   outFilePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", outFilePath
@@ -132,6 +132,7 @@ if __name__ == "__main__":
   parser.add_argument("--outFile", type=str, required=True)
   parser.add_argument("--locationModuleWidth", type=int, nargs=3,
                       default=[17, 20, 40])
+  parser.add_argument("--legendPosition", type=float, nargs=2, default=None)
   args = parser.parse_args()
 
-  createChart(args.inFile, args.outFile, args.locationModuleWidth)
+  createChart(args.inFile, args.outFile, args.locationModuleWidth, args.legendPosition)

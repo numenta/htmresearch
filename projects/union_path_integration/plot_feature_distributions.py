@@ -42,7 +42,7 @@ DETAILED_LABELS = False
 
 
 
-def createTheChart(inFilename, outFilename):
+def createTheChart(inFilename, outFilename, xlim2):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -110,7 +110,8 @@ def createTheChart(inFilename, outFilename):
   ax1.set_xlabel("# learned objects")
   ax1.set_ylabel("Recognition accuracy after many sensations")
   ax2.set_xlabel("# locations recalled by object's rarest feature")
-  ax2.set_xlim([0, 50])
+  if xlim2 is not None:
+    ax2.set_xlim([0, xlim2])
 
   plt.tight_layout()
   # ax1.legend(loc="upper right")
@@ -126,6 +127,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)
+  parser.add_argument("--xlim2", type=float, default=None)
   args = parser.parse_args()
 
-  createTheChart(args.inFile, args.outFile)
+  createTheChart(args.inFile, args.outFile, args.xlim2)

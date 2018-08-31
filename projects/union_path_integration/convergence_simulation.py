@@ -55,7 +55,7 @@ class PIUNCellActivityTracer(PIUNExperimentMonitor):
 
   def afterLocationAnchor(self, **kwargs):
     self.locationLayerTimelineByObject[self.currentObjectName].append(
-      [module.sensoryAssociatedCells.tolist()
+      [module.activeCells.tolist()
        for module in self.exp.column.L6aModules])
 
   def beforeInferObject(self, obj):

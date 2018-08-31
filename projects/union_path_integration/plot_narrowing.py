@@ -35,7 +35,7 @@ TRACE_DIR = os.path.join(CWD, "traces")
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def examplesChart(inFilename, outFilename, objectCount, objectNumbers):
+def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleCells):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -57,6 +57,10 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers):
   numCells = 100
   numObjs = len(objectNumbers)
   width = 15
+
+  cellSortOrder = np.arange(numCells)
+  if scrambleCells:
+    np.random.shuffle(cellSortOrder)
 
   fig, axes = plt.subplots(numModules, numObjs, figsize=(2*numObjs, 5))
   for i, obj in enumerate(objectNumbers):
@@ -89,7 +93,10 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers):
         axes[m, i].set(ylabel="Module {}".format(m))
       #axesm, ii].set_ylim((0, 501))
 
-      axes[m, i].imshow(plotData[m*numCells:(m+1)*numCells], interpolation="none")
+      moduleData = plotData[m*numCells:(m+1)*numCells]
+      moduleData = moduleData[cellSortOrder]
+
+      axes[m, i].imshow(moduleData, interpolation="none")
 
   #plt.set(xlabel="Steps", ylabel="Cells")
   #plt.xlabel("Steps")
@@ -100,7 +107,7 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers):
   plt.savefig(filename)
 
 
-def aggregateChart(inFilename, outFilename, objectCounts):
+def aggregateChart(inFilename, outFilename, objectCounts, ymax):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -142,7 +149,7 @@ def aggregateChart(inFilename, outFilename, objectCounts):
 
   plt.xlabel("Number of sensations")
   plt.ylabel("Mean cell activation density")
-  plt.ylim(0.0, 0.3)
+  plt.ylim(0.0, ymax)
   plt.legend()
 
   plt.tight_layout()
@@ -160,11 +167,13 @@ if __name__ == "__main__":
   parser.add_argument("--exampleObjectCount", type=int, default=100)
   parser.add_argument("--aggregateObjectCounts", type=int, nargs="+", default=[50, 75, 100, 125])
   parser.add_argument("--exampleObjectNumbers", type=int, nargs="+", default=-1)
+  parser.add_argument("--aggregateYmax", type=float, default=1.0)
+  parser.add_argument("--scrambleCells", action="store_true")
   args = parser.parse_args()
 
   exampleObjectNumbers = (args.exampleObjectNumbers
                           if args.exampleObjectNumbers != -1 else
                           range(args.exampleObjectCount))
 
-  examplesChart(args.inFile, args.outFile1, args.exampleObjectCount, exampleObjectNumbers)
-  aggregateChart(args.inFile, args.outFile2, args.aggregateObjectCounts)
+  examplesChart(args.inFile, args.outFile1, args.exampleObjectCount, exampleObjectNumbers, args.scrambleCells)
+  aggregateChart(args.inFile, args.outFile2, args.aggregateObjectCounts, args.aggregateYmax)

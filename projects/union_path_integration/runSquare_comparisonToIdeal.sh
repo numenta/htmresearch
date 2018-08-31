@@ -11,4 +11,4 @@ python ideal_sim.py &
 python bof_sim.py &
 wait
 
-python plot_comparison_to_ideal.py --inFile results/comparisonToIdeal_square.json --outFile comparisonToIdeal_square.pdf --locationModuleWidth 19 21 40
+python plot_comparison_to_ideal.py --inFile results/comparisonToIdeal_square.json --outFile comparisonToIdeal_square.pdf --locationModuleWidth 19 21 40 --legendPosition 1.05 0.36
