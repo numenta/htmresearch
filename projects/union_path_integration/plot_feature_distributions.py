@@ -42,7 +42,7 @@ DETAILED_LABELS = False
 
 
 
-def createTheChart(inFilename, outFilename, xlim2):
+def createTheChart(inFilename, outFilename1, outFilename2, xlim2):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -77,7 +77,8 @@ def createTheChart(inFilename, outFilename, xlim2):
                                 for r in results)) / len(results))
       for sampleMinimum, results in convergenceResultsByMin.iteritems())
 
-  fig, (ax1, ax2) = plt.subplots(figsize=(10, 4), ncols=2, sharey=True)
+  fig1, ax1 = plt.subplots(figsize=(6.0, 4.8))
+  fig2, ax2 = plt.subplots(figsize=(6.0, 4.8))
 
   objectSets = [
       ("AllFeaturesEqual_Replacement", 100, 10, "o", 3),
@@ -107,27 +108,34 @@ def createTheChart(inFilename, outFilename, xlim2):
     x, y = zip(*results)
     ax2.plot(x, y, "{}-".format(marker), label=label, markersize=markerSize)
 
-  ax1.set_xlabel("# learned objects")
-  ax1.set_ylabel("Recognition accuracy after many sensations")
-  ax2.set_xlabel("# locations recalled by object's rarest feature")
+  ax1.set_xlabel("Number of Learned Objects", fontsize=12)
+  ax1.set_ylabel("Recognition Accuracy\nAfter Many Sensations", fontsize=12)
+  ax2.set_xlabel("Number of Locations Recalled by\nObject's Rarest Feature", fontsize=12)
+  ax2.set_ylabel("Recognition Accuracy\nAfter Many Sensations", fontsize=12)
   if xlim2 is not None:
     ax2.set_xlim([0, xlim2])
 
-  plt.tight_layout()
-  # ax1.legend(loc="upper right")
-  ax2.legend(loc="upper right")
+  fig1.tight_layout()
+  fig2.tight_layout()
+  ax1.legend(loc="upper right", fontsize=10)
+  ax2.legend(loc="upper right", fontsize=10)
 
-  filePath = os.path.join(CHART_DIR, outFilename)
-  print "Saving", filePath
-  plt.savefig(filePath)
+  filePath1 = os.path.join(CHART_DIR, outFilename1)
+  print "Saving", filePath1
+  fig1.savefig(filePath1)
+
+  filePath2 = os.path.join(CHART_DIR, outFilename2)
+  print "Saving", filePath2
+  fig2.savefig(filePath2)
 
 
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
-  parser.add_argument("--outFile", type=str, required=True)
+  parser.add_argument("--outFile1", type=str, required=True)
+  parser.add_argument("--outFile2", type=str, required=True)
   parser.add_argument("--xlim2", type=float, default=None)
   args = parser.parse_args()
 
-  createTheChart(args.inFile, args.outFile, args.xlim2)
+  createTheChart(args.inFile, args.outFile1, args.outFile2, args.xlim2)

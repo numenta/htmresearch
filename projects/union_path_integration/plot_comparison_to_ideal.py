@@ -60,7 +60,7 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
   with open("results/bof.json", "r") as f:
     bofResults = json.load(f)
 
-  plt.figure(figsize=(5,4))
+  plt.figure(figsize=(6.0, 4.8))
 
   for yData, label, fmt in [(resultsByParams[locationModuleWidth],
                              "{}x{} Cells Per Module".format(locationModuleWidth,
@@ -111,12 +111,12 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
     #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Formatting
-  plt.xlabel("Number of Sensations")
-  plt.ylabel("Cumulative Accuracy")
+  plt.xlabel("Number of Sensations", fontsize=12)
+  plt.ylabel("Cumulative Accuracy", fontsize=12)
 
   plt.tight_layout()
   plt.xticks([(i+1)*2 for i in xrange(6)])
-  plt.legend(loc="center right", fontsize="small", framealpha=1.0,
+  plt.legend(loc="center right", fontsize=10, framealpha=1.0,
              bbox_to_anchor=legendPosition)
 
   outFilePath = os.path.join(CHART_DIR, outFilename)

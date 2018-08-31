@@ -62,7 +62,7 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
     for j, numUniqueFeatures in enumerate(featureCounts):
       plotData[i, j] = meanCapacityByParams[(cellsPerModule, numUniqueFeatures)]
 
-  fig, ax = plt.subplots(figsize=(5,5))
+  fig, ax = plt.subplots(figsize=(6.0, 6.0))
 
   # Customize vmax so that the colors stay suffiently dark so that the white
   # text is readable.
@@ -79,10 +79,10 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
 
   for i in xrange(len(ylabels)):
     for j in xrange(len(xlabels)):
-      text = ax.text(j, i, str(int(plotData[i, j])), ha="center", va="center", color="w")
+      text = ax.text(j, i, str(int(plotData[i, j])), ha="center", va="center", color="w", fontsize=12)
 
-  plt.xlabel("Number of Unique Features")
-  plt.ylabel("Cells Per Module")
+  plt.xlabel("Number of Unique Features", fontsize=12)
+  plt.ylabel("Cells Per Module", fontsize=12)
 
   fig.tight_layout()
 
