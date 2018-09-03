@@ -138,6 +138,7 @@ def doExperiment(locationModuleWidth,
     orientation = (float(i) * perModRange) + (perModRange / 2.0)
 
     config = {
+      "cellsPerAxis": locationModuleWidth,
       "scale": scale,
       "orientation": np.radians(orientation),
       "activationThreshold": 8,
@@ -150,21 +151,11 @@ def doExperiment(locationModuleWidth,
     }
 
     if bumpType == "square":
-      config["cellsPerAxis"] = locationModuleWidth
       config["cellCoordinateOffsets"] = cellCoordinateOffsets
       config["anchoringMethod"] = anchoringMethod
     elif bumpType == "gaussian":
-      # This is a bridge to the Gaussian module's API. Given a resolution of
-      # 1/3, it will create a module with 6x6 cells with a bump spanning ~2x2
-      # cells. With this bridge, if locationModuleWidth is 6, then the
-      # enlargeModuleFactor will be 1.0 and this will be an approximation of a
-      # rat grid cell module. If locationModuleWidth is larger than 6, this will
-      # grow the module via the enlargeModuleFactor, holding the bump size fixed
-      # at ~2x2 cells.
-      config["inverseReadoutResolution"] = 3
-      config["enlargeModuleFactor"] = float(locationModuleWidth) / 6
       config["bumpOverlapMethod"] = "probabilistic"
-      config["fixedScale"] = True
+      config["baselineCellsPerAxis"] = 6
     else:
       raise ValueError("Invalid bumpType", bumpType)
 
@@ -196,7 +187,7 @@ def doExperiment(locationModuleWidth,
                               numFeatures, featureDistribution)
 
     column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
-                                useGaussian=(bumpType == "gaussian"))
+                                bumpType=bumpType)
     exp = PIUNExperiment(column, featureNames=features,
                          numActiveMinicolumns=10,
                          noiseFactor=noiseFactor,

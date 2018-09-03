@@ -41,8 +41,39 @@ from htmresearch.algorithms.location_modules import (
 RAT_BUMP_SIGMA = 0.18172
 
 
-def createRatModule(inverseReadoutResolution, scale, enlargeModuleFactor=1.,
-                    fixedScale=False, **kwargs):
+def createRatModuleFromCellCount(cellsPerAxis, scale, baselineCellsPerAxis=6,
+                                 **kwargs):
+  """
+  @param baselineCellsPerAxis (int or float)
+  When cellsPerAxis == baselineCellsPerAxis, the bump of firing rates will
+  resemble a bump in rat entorhinal cortex. We'll then apply a threshold to this
+  firing rate, converting the bump into 4 - 7 active cells (It could be 2x2
+  cells, or it could be a hexagon of cells, depending on where the bump is
+  relative to the cells). As cellsPerAxis grows, the bump of firing rates and
+  bump of active cells will stay fixed relative to the cells, so they will
+  shrink relative to the module as a whole. Given this approach, the
+  baselineCellsPerAxis implies the readout resolution of a grid cell module.
+  Because the bump of thresholded active cells will always be the same size, if
+  baselineCellsPerAxis=6, that implies that the readout resolution is
+  approximately 1/3. If baselineCellsPerAxis=8, the readout resolution is
+  approximately 1/4.
+  """
+
+  bumpSigma = RAT_BUMP_SIGMA * (baselineCellsPerAxis / float(cellsPerAxis))
+  activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
+    cellsPerAxis, bumpSigma)
+
+  return ThresholdedGaussian2DLocationModule(
+    cellsPerAxis=cellsPerAxis,
+    activeFiringRate=activeFiringRate,
+    bumpSigma=bumpSigma,
+    scale=scale,
+    **kwargs)
+
+
+def createRatModuleFromReadoutResolution(inverseReadoutResolution, scale,
+                                         enlargeModuleFactor=1.,
+                                         fixedScale=False, **kwargs):
   """
   @param inverseReadoutResolution (int or float)
   Equivalent to 1/readoutResolution, but specified this way as a convenience
@@ -95,7 +126,7 @@ class PIUNCorticalColumn(object):
   arrives, call sensoryCompute.
   """
 
-  def __init__(self, locationConfigs, L4Overrides=None, useGaussian=False):
+  def __init__(self, locationConfigs, L4Overrides=None, bumpType="gaussian"):
     """
     @param L4Overrides (dict)
     Custom parameters for L4
@@ -103,19 +134,29 @@ class PIUNCorticalColumn(object):
     @param locationConfigs (sequence of dicts)
     Parameters for the location modules
     """
+    self.bumpType = bumpType
+
     L4cellCount = 150*16
-    if useGaussian:
+    if bumpType == "gaussian":
       self.L6aModules = [
-        createRatModule(
+        createRatModuleFromCellCount(
           anchorInputSize=L4cellCount,
           **config)
         for config in locationConfigs]
-    else:
+    elif bumpType == "gaussian2":
+      self.L6aModules = [
+        createRatModuleFromReadoutResolution(
+          anchorInputSize=L4cellCount,
+          **config)
+        for config in locationConfigs]
+    elif bumpType == "square":
       self.L6aModules = [
         Superficial2DLocationModule(
           anchorInputSize=L4cellCount,
           **config)
         for config in locationConfigs]
+    else:
+      raise ValueError("Invalid bumpType", bumpType)
 
     L4Params = {
       "columnCount": 150,

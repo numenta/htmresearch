@@ -112,7 +112,7 @@ def doPointsExperiment(cellDimensions, cellCoordinateOffsets):
     "initialPermanence": 1.0,
   }
 
-  column = PIUNCorticalColumn(locationConfigs, L4Overrides, useGaussian=False)
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides, bumpType="square")
   exp = PIUNExperiment(column, featureNames=("A", "B"))
 
   for objectDescription in OBJECTS:
@@ -169,7 +169,7 @@ def doGaussianExperiment(inverseReadoutResolution):
     "initialPermanence": 1.0,
   }
 
-  column = PIUNCorticalColumn(locationConfigs, L4Overrides, useGaussian=True)
+  column = PIUNCorticalColumn(locationConfigs, L4Overrides, bumpType="gaussian2")
   exp = PIUNExperiment(column, featureNames=("A", "B"))
 
   for objectDescription in OBJECTS:
