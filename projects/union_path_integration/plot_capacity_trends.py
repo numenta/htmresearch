@@ -78,7 +78,8 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
     meanCapacityByParams[params] = sum(capacities) / float(len(capacities))
 
 
-  fig, (ax1, ax2, ax3) = plt.subplots(figsize=(6.0, 2.2), ncols=3)
+  fig, (ax1, ax2, ax3) = plt.subplots(figsize=(3.25, 1.35), ncols=3,
+                                      sharey=True, tight_layout = {"pad": 0})
 
   #
   # NUMBER OF MODULES
@@ -86,7 +87,7 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
   cellsPerModule = 100
   numUniqueFeatures = 100
   markers = ["o", "*"]
-  markerSizes = [4.0, 5.0]
+  markerSizes = [2.0, 3.0]
   for thresholds, marker, markerSize in zip([-1, 0], markers, markerSizes):
     x = []
     y = []
@@ -117,17 +118,18 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
   ax1.text(label2Position[0], label2Position[1], "$ n $")
   ax1.text(label3Position[0], label3Position[1], "$ \\lceil n * 0.8 \\rceil $")
 
-  ax1.set_xlabel("Number of\nModules", fontsize=12)
-  ax1.set_ylabel("Capacity", fontsize=12)
-  ax1.set_xlim(0, ax1.get_xlim()[1])
+  ax1.set_xlabel("Number of\nModules")
+  ax1.set_ylabel("Capacity")
   ax1.set_ylim(0,
                (modulesYmax
                 if modulesYmax is not None
                 else ax1.get_ylim()[1]))
-  xticks = [0] + moduleCounts
+  xticks = range(0, max(moduleCounts) + 1, 5)
   ax1.set_xticks(xticks)
-  ax1.set_xticklabels([(x if x % 10 == 0 else "")
+  ax1.set_xticklabels([(x if x % 20 == 0 else "")
                        for x in xticks])
+  yticks = range(0, 501, 100)
+  ax1.set_yticks(yticks)
 
   #
   # CELLS PER MODULE
@@ -140,11 +142,14 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
                                                  thresholds,
                                                  numUniqueFeatures)]
                            for cellsPerModule in allCellCounts],
-           "o-", color="C0", markersize=4.0)
+           "o-", color="C0", markersize=2.0)
 
-  ax2.set_xlabel("Cells Per Module", fontsize=12)
-  ax2.set_xlim(0, ax2.get_xlim()[1])
-  ax2.set_ylim(0, ax2.get_ylim()[1])
+  ax2.set_xlabel("Cells Per\nModule")
+
+  xticks = range(0, 401, 50)
+  ax2.set_xticks(xticks)
+  ax2.set_xticklabels([(x if x % 200 == 0 else "")
+                       for x in xticks])
 
 
   #
@@ -158,14 +163,15 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
                                                     thresholds,
                                                     numUniqueFeatures)]
                               for numUniqueFeatures in allFeatureCounts],
-           "o-", color="C1", markersize=4.0)
+           "o-", color="C1", markersize=2.0)
 
-  ax3.set_xlabel("Number of\nUnique Features", fontsize=12)
-  ax3.set_xlim(0, ax3.get_xlim()[1])
-  ax3.set_ylim(0, ax3.get_ylim()[1])
+  ax3.set_xlabel("Number of\nUnique Features")
+  # ax3.set_xlim(0, ax3.get_xlim()[1])
 
-
-  plt.tight_layout()
+  xticks = range(0, 401, 50)
+  ax3.set_xticks(xticks)
+  ax3.set_xticklabels([(x if x % 200 == 0 else "")
+                       for x in xticks])
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath
@@ -173,6 +179,10 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
 
 
 if __name__ == "__main__":
+  plt.rc("font",**{"family": "sans-serif",
+                   "sans-serif": ["Arial"],
+                   "size": 8})
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)

@@ -329,7 +329,7 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--numUniqueFeatures", type=int, nargs="+", required=True)
   parser.add_argument("--locationModuleWidth", type=int, nargs="+", required=True)
-  parser.add_argument("--bumpType", type=str, nargs="+", default="square",
+  parser.add_argument("--bumpType", type=str, nargs="+", default="gaussian",
                       help="Set to 'square' or 'gaussian'")
   parser.add_argument("--initialIncrement", type=int, default=128)
   parser.add_argument("--capacityResolution", type=int, default=1)

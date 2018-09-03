@@ -5,7 +5,7 @@ set -e -x
 cd "$(dirname "$0")"
 pwd
 
-python convergence_simulation.py --numModules 10 --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 19 21 40 --resultName results/comparisonToIdeal_square.json --repeat 10
+python convergence_simulation.py --bumpType square --numModules 10 --numObjects 100 --numUniqueFeatures 10 --locationModuleWidth 19 21 40 --resultName results/comparisonToIdeal_square.json --repeat 10
 
 python ideal_sim.py &
 python bof_sim.py &

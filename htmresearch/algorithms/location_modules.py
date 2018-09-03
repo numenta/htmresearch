@@ -111,13 +111,10 @@ class ThresholdedGaussian2DLocationModule(object):
 
     self.scale = scale
     self.orientation = orientation
-    # Matrix that converts a phase displacement into a normalized world
-    # displacement (not accounting for scale)
-    self.B = np.array(
-      [[math.cos(orientation), math.cos(orientation + np.radians(60.))],
-       [math.sin(orientation), math.sin(orientation + np.radians(60.))]])
     # Matrix that converts a world displacement into a phase displacement.
-    self.A = np.linalg.inv(scale * self.B)
+    self.A = np.linalg.inv(scale * np.array(
+      [[math.cos(orientation), math.cos(orientation + np.radians(60.))],
+       [math.sin(orientation), math.sin(orientation + np.radians(60.))]]))
 
     # Phase is measured as a number in the range [0.0, 1.0)
     self.bumpPhases = np.empty((2,0), dtype="float")
@@ -173,76 +170,8 @@ class ThresholdedGaussian2DLocationModule(object):
 
 
   def _computeActiveCells(self):
-    # For each cell, compute the phase displacement from each bump. Create an
-    # array of matrices, one per cell. Each column in a matrix corresponds to
-    # the phase displacement from the bump to the cell.
-    cell_bump_positivePhaseDisplacement = np.mod(
-      self.cellPhases.T[:, :, np.newaxis] - self.bumpPhases,
-      1.0)
-
-    # For each cell/bump pair, consider the phase displacement vectors reaching
-    # that cell from that bump by moving up-and-right, down-and-right,
-    # down-and-left, and up-and-left. Create a 2D array of matrices, arranged by
-    # cell then direction. Each column in a matrix corresponds to a phase
-    # displacement from the bump to the cell in a particular direction.
-    cell_direction_bump_phaseDisplacement = (
-      cell_bump_positivePhaseDisplacement[:, np.newaxis, :, :] -
-      np.array([[0, 0],
-                [0, 1],
-                [1, 0],
-                [1, 1]])[:,:,np.newaxis])
-
-    # Convert the displacement in phase to a displacement in the world, with
-    # scale normalized out. Unless the grid is a square grid, it's important to
-    # measure distances using world displacements, not the phase displacements,
-    # because two vectors with the same phase distance will typically have
-    # different world distances unless they are parallel. (Consider the fact
-    # that the two diagonals of a rhombus have different world lengths but the
-    # same phase lengths.)
-    cell_direction_bump_worldDisplacement = np.matmul(
-      self.B, cell_direction_bump_phaseDisplacement)
-
-    # Measure the length of each displacement vector. Create a 3D array of
-    # distances, organized by cell, direction, then bump.
-    cell_direction_bump_distance = np.linalg.norm(
-      cell_direction_bump_worldDisplacement, axis=-2)
-
-    # Choose the shortest distance from each cell to each bump. Create a 2D
-    # array of distances, organized by cell then bump.
-    cell_bump_distance = np.amin(cell_direction_bump_distance, axis=1)
-
-    # Compute the gaussian of each of these distances.
-    cellExcitationsFromBumps = ThresholdedGaussian2DLocationModule.gaussian(
-      self.bumpSigma, cell_bump_distance)
-
-    # Combine bumps. Create an array of firing rates, organized by cell.
-    if self.bumpOverlapMethod == "probabilistic":
-      # Think of a bump as a probability distribution, with each cell's firing
-      # rate encoding its relative probability that it's the correct
-      # location. For bump A,
-      #   P(A = cell x)
-      # is encoded by cell x's firing rate.
-      #
-      # In this interpretation, a union of bumps A, B, ... is not a probability
-      # distribution, rather it is a set of independent events. When multiple
-      # bumps overlap, the cell's firing rate should encode its relative
-      # probability that it's correct in *any* bump. So it encodes:
-      #   P((A = cell x) or (B = cell x) or ...)
-      # and so this is equivalent to:
-      #   1 - P((A != cell x) and (B != cell x) and ...)
-      # We treat the events as independent, so this is equal to:
-      #   1 - P(A != cell x) * P(B != cell x) * ...
-      #
-      # With this approach, as more and more bumps overlap, a cell's firing rate
-      # increases, but not as quickly as it would with a sum.
-      cellExcitations = 1. - np.prod(1. - cellExcitationsFromBumps, axis=1)
-    elif self.bumpOverlapMethod == "sum":
-      # Sum the firing rates. The probabilistic interpretation: this treats a
-      # union as a set of equally probable events of which only one is true.
-      cellExcitations = np.sum(cellExcitationsFromBumps, axis=1)
-    else:
-      raise ValueError("Unrecognized bump overlap strategy",
-                       self.bumpOverlapMethod)
+    cellExcitations = ThresholdedGaussian2DLocationModule.getCellExcitations(
+      self.cellPhases, self.bumpPhases, self.bumpSigma, self.bumpOverlapMethod)
 
     self.activeCells = np.where(cellExcitations >= self.activeFiringRate)[0]
     self.learningCells = np.where(cellExcitations == cellExcitations.max())[0]
@@ -472,6 +401,83 @@ class ThresholdedGaussian2DLocationModule(object):
   @staticmethod
   def gaussian(sig, d):
     return np.exp(-np.power(d, 2.) / (2 * np.power(sig, 2.)))
+
+
+  @staticmethod
+  def getCellExcitations(cellPhases, bumpPhases, bumpSigma, bumpOverlapMethod):
+    # For each cell, compute the phase displacement from each bump. Create an
+    # array of matrices, one per cell. Each column in a matrix corresponds to
+    # the phase displacement from the bump to the cell.
+    cell_bump_positivePhaseDisplacement = np.mod(
+      cellPhases.T[:, :, np.newaxis] - bumpPhases,
+      1.0)
+
+    # For each cell/bump pair, consider the phase displacement vectors reaching
+    # that cell from that bump by moving up-and-right, down-and-right,
+    # down-and-left, and up-and-left. Create a 2D array of matrices, arranged by
+    # cell then direction. Each column in a matrix corresponds to a phase
+    # displacement from the bump to the cell in a particular direction.
+    cell_direction_bump_phaseDisplacement = (
+      cell_bump_positivePhaseDisplacement[:, np.newaxis, :, :] -
+      np.array([[0, 0],
+                [0, 1],
+                [1, 0],
+                [1, 1]])[:,:,np.newaxis])
+
+    # Convert the displacement in phase to a displacement in the world, with
+    # scale normalized out. Unless the grid is a square grid, it's important to
+    # measure distances using world displacements, not the phase displacements,
+    # because two vectors with the same phase distance will typically have
+    # different world distances unless they are parallel. (Consider the fact
+    # that the two diagonals of a rhombus have different world lengths but the
+    # same phase lengths.)
+    B = np.array([[np.cos(np.radians(0.)), np.cos(np.radians(60.))],
+                  [np.sin(np.radians(0.)), np.sin(np.radians(60.))]])
+    cell_direction_bump_worldDisplacement = np.matmul(
+      B, cell_direction_bump_phaseDisplacement)
+
+    # Measure the length of each displacement vector. Create a 3D array of
+    # distances, organized by cell, direction, then bump.
+    cell_direction_bump_distance = np.linalg.norm(
+      cell_direction_bump_worldDisplacement, axis=-2)
+
+    # Choose the shortest distance from each cell to each bump. Create a 2D
+    # array of distances, organized by cell then bump.
+    cell_bump_distance = np.amin(cell_direction_bump_distance, axis=1)
+
+    # Compute the gaussian of each of these distances.
+    cellExcitationsFromBumps = ThresholdedGaussian2DLocationModule.gaussian(
+      bumpSigma, cell_bump_distance)
+
+    # Combine bumps. Create an array of firing rates, organized by cell.
+    if bumpOverlapMethod == "probabilistic":
+      # Think of a bump as a probability distribution, with each cell's firing
+      # rate encoding its relative probability that it's the correct
+      # location. For bump A,
+      #   P(A = cell x)
+      # is encoded by cell x's firing rate.
+      #
+      # In this interpretation, a union of bumps A, B, ... is not a probability
+      # distribution, rather it is a set of independent events. When multiple
+      # bumps overlap, the cell's firing rate should encode its relative
+      # probability that it's correct in *any* bump. So it encodes:
+      #   P((A = cell x) or (B = cell x) or ...)
+      # and so this is equivalent to:
+      #   1 - P((A != cell x) and (B != cell x) and ...)
+      # We treat the events as independent, so this is equal to:
+      #   1 - P(A != cell x) * P(B != cell x) * ...
+      #
+      # With this approach, as more and more bumps overlap, a cell's firing rate
+      # increases, but not as quickly as it would with a sum.
+      cellExcitations = 1. - np.prod(1. - cellExcitationsFromBumps, axis=1)
+    elif bumpOverlapMethod == "sum":
+      # Sum the firing rates. The probabilistic interpretation: this treats a
+      # union as a set of equally probable events of which only one is true.
+      cellExcitations = np.sum(cellExcitationsFromBumps, axis=1)
+    else:
+      raise ValueError("Unrecognized bump overlap strategy", bumpOverlapMethod)
+
+    return cellExcitations
 
 
 

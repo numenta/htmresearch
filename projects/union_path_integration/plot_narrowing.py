@@ -22,7 +22,6 @@
 """Plot location module representations during narrowing."""
 
 import argparse
-import collections
 import json
 import os
 
@@ -31,11 +30,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 CWD = os.path.dirname(os.path.realpath(__file__))
-TRACE_DIR = os.path.join(CWD, "traces")
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleCells):
+def examplesChart(inFilename, outFilename, objectCount, objectNumbers,
+                  moduleNumbers, scrambleCells):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -53,23 +52,29 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleC
       break
 
   numSteps = 9
-  numModules = 4
+  numModules = 3
   numCells = 100
   numObjs = len(objectNumbers)
   width = 15
 
   cellSortOrder = np.arange(numCells)
   if scrambleCells:
+    np.random.seed(42)
     np.random.shuffle(cellSortOrder)
 
-  fig, axes = plt.subplots(numModules, numObjs, figsize=(2.0*numObjs, 4.8))
+  # Fit this number of objects to a single column of a sheet of paper
+  defaultNumObjects = 3
+
+  fig, axes = plt.subplots(numModules, numObjs,
+                           figsize=((3.25/defaultNumObjects)*numObjs, 2.8),
+  tight_layout = {"pad": 0})
   for i, obj in enumerate(objectNumbers):
     plotData = np.ones((numCells * numModules, numSteps*width, 3), dtype=np.float32)
     for step, modules in enumerate(locationLayerTimelineByObject[obj]):
       if step >= numSteps:
         continue
-      for module in xrange(numModules):
-        cells = [idx + (module * numCells) for idx in modules[module]]
+      for moduleDisplayIndex, module in enumerate(moduleNumbers):
+        cells = [idx + (moduleDisplayIndex * numCells) for idx in modules[module]["activeCells"]]
         stepStart = step * width
         stepStop = (step + 1) * width
         plotData[cells, stepStart:stepStop, :] = [0, 0, 0]
@@ -78,41 +83,39 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers, scrambleC
       if inferredStepByObject[obj] is not None:
         axes[m, i].add_patch(matplotlib.patches.Rectangle(
           ((inferredStepByObject[obj] - 1) * width, -1), width,
-          numModules * numCells + 2, color="red", fill=False))
+          numCells + 2, color="red", fill=False))
       axes[m, i].set_yticks([])
+      if m == numModules - 1:
+        axes[m, i].set_xlabel("Object {}".format(i + 1), labelpad=5)
       if m == 0:
-        axes[m, i].set_title("Object {}".format(i + 1), fontsize=14)
-      if m == 3:
+        axes[m, i].xaxis.tick_top()
+        axes[m, i].xaxis.set_label_position("top")
         axes[m, i].set_xticks(np.arange(10) * width + (width / 2))
-        axes[m, i].set_xticklabels([str(v+1) for v in np.arange(10)], fontsize=8)
-        axes[m, i].set_xlabel("Sensation", fontsize=12)
+        axes[m, i].set_xticklabels([str(v+1) for v in np.arange(10)])
+        axes[m, i].set_xlabel("Sensation", labelpad=6)
       else:
         axes[m, i].set_xticks([])
-        axes[m, i].set_xticklabels([])
       if i == 0:
-        axes[m, i].set_ylabel("Module {}".format(m), fontsize=12)
-      #axesm, ii].set_ylim((0, 501))
+        axes[m, i].set_ylabel("Module {}".format(m+1))
 
       moduleData = plotData[m*numCells:(m+1)*numCells]
       moduleData = moduleData[cellSortOrder]
 
-      axes[m, i].imshow(moduleData, interpolation="none")
+      axes[m, i].imshow(moduleData, interpolation="none", aspect="auto")
 
-  # This seems to add way too much spacing, don't use it for this
-  #plt.tight_layout()
-
+  plt.subplots_adjust(wspace=3.0)
   filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename
   plt.savefig(filename)
 
 
-def aggregateChart(inFilename, outFilename, objectCounts, ymax):
+def aggregateChart(inFilename, outFilename, objectCounts, ylim):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
   markers = ["*", "x", "o", "P"]
 
-  plt.figure(figsize=(6.0, 4.8))
+  plt.figure(figsize=(3.25, 2.5), tight_layout = {"pad": 0})
 
   resultsByNumObjects = {}
   with open(inFilename, "r") as f:
@@ -136,9 +139,9 @@ def aggregateChart(inFilename, outFilename, objectCounts, ymax):
     for iTimestep, timestepByObject in enumerate(zip(*timestepsByObject)):
       totalActive = 0
       potentialActive = 0
-      for activeCellsByModule in timestepByObject:
-        for activeCells in activeCellsByModule:
-          totalActive += len(activeCells)
+      for moduleStates in timestepByObject:
+        for moduleState in moduleStates:
+          totalActive += len(moduleState["activeCells"])
           potentialActive += numCells
 
       if iTimestep < numSteps:
@@ -146,12 +149,11 @@ def aggregateChart(inFilename, outFilename, objectCounts, ymax):
 
     plt.plot(x, y, "{}-".format(marker), label="{} learned objects".format(numObjects))
 
-  plt.xlabel("Number of Sensations", fontsize=12)
-  plt.ylabel("Mean Cell Activation Density", fontsize=12)
-  plt.ylim(0.0, ymax)
-  plt.legend(fontsize=10)
+  plt.xlabel("Number of Sensations")
+  plt.ylabel("Mean Cell Activation Density")
 
-  plt.tight_layout()
+  plt.ylim(ylim)
+  plt.legend()
 
   filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename
@@ -159,6 +161,10 @@ def aggregateChart(inFilename, outFilename, objectCounts, ymax):
 
 
 if __name__ == "__main__":
+  plt.rc("font",**{"family": "sans-serif",
+                   "sans-serif": ["Arial"],
+                   "size": 8})
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile1", type=str, required=True)
@@ -166,7 +172,8 @@ if __name__ == "__main__":
   parser.add_argument("--exampleObjectCount", type=int, default=100)
   parser.add_argument("--aggregateObjectCounts", type=int, nargs="+", default=[50, 75, 100, 125])
   parser.add_argument("--exampleObjectNumbers", type=int, nargs="+", default=-1)
-  parser.add_argument("--aggregateYmax", type=float, default=1.0)
+  parser.add_argument("--exampleModuleNumbers", type=int, nargs="+", default=range(3))
+  parser.add_argument("--aggregateYlim", type=float, nargs=2, default=(-0.05, 1.05))
   parser.add_argument("--scrambleCells", action="store_true")
   args = parser.parse_args()
 
@@ -174,5 +181,8 @@ if __name__ == "__main__":
                           if args.exampleObjectNumbers != -1 else
                           range(args.exampleObjectCount))
 
-  examplesChart(args.inFile, args.outFile1, args.exampleObjectCount, exampleObjectNumbers, args.scrambleCells)
-  aggregateChart(args.inFile, args.outFile2, args.aggregateObjectCounts, args.aggregateYmax)
+  examplesChart(args.inFile, args.outFile1, args.exampleObjectCount,
+                exampleObjectNumbers, args.exampleModuleNumbers,
+                args.scrambleCells)
+  aggregateChart(args.inFile, args.outFile2, args.aggregateObjectCounts,
+                 args.aggregateYlim)

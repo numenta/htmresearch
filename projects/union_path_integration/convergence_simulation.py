@@ -54,9 +54,15 @@ class PIUNCellActivityTracer(PIUNExperimentMonitor):
     self.currentObjectName = None
 
   def afterLocationAnchor(self, **kwargs):
+    moduleStates = [{"activeCells": module.activeCells.tolist()}
+                    for module in self.exp.column.L6aModules]
+
+    if self.exp.column.bumpType == "gaussian":
+      for iModule, module in enumerate(self.exp.column.L6aModules):
+        moduleStates[iModule]["bumps"] = module.bumpPhases.T.tolist()
+
     self.locationLayerTimelineByObject[self.currentObjectName].append(
-      [module.activeCells.tolist()
-       for module in self.exp.column.L6aModules])
+      moduleStates)
 
   def beforeInferObject(self, obj):
     self.currentObjectName = obj["name"]
@@ -229,6 +235,9 @@ def doExperiment(locationModuleWidth,
     "convergence": convergence,
   }
 
+  if bumpType == "gaussian":
+    result["bumpSigma"] = column.L6aModules[0].bumpSigma
+
   if logCellActivity:
     result["locationLayerTimelineByObject"] = (
       cellActivityTracer.locationLayerTimelineByObject)
@@ -315,7 +324,7 @@ if __name__ == "__main__":
   parser.add_argument("--numObjects", type=int, nargs="+", required=True)
   parser.add_argument("--numUniqueFeatures", type=int, nargs="+", required=True)
   parser.add_argument("--locationModuleWidth", type=int, nargs="+", required=True)
-  parser.add_argument("--bumpType", type=str, nargs="+", default="square",
+  parser.add_argument("--bumpType", type=str, nargs="+", default="gaussian",
                       help="Set to 'square' or 'gaussian'")
   parser.add_argument("--coordinateOffsetWidth", type=int, default=2)
   parser.add_argument("--noiseFactor", type=float, nargs="+", required=False, default = 0)

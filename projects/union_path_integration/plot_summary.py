@@ -40,9 +40,7 @@ CHART_DIR = os.path.join(CWD, "charts")
 
 def createCharts(inFilename, outFilename, squeezeLegend,
                  moduleWidths=(6, 10, 14),
-                 moduleCounts=(5, 10, 15),
-                 maxNumObjectsByParams={},
-                 numObjectsAllowList=None):
+                 moduleCounts=(5, 10, 15)):
   if not os.path.exists(CHART_DIR):
     os.makedirs(CHART_DIR)
 
@@ -54,9 +52,6 @@ def createCharts(inFilename, outFilename, squeezeLegend,
   for exp in experiments:
     moduleWidth = exp[0]["locationModuleWidth"]
     numObjects = exp[0]["numObjects"]
-
-    if numObjectsAllowList is not None and numObjects not in numObjectsAllowList:
-      continue
 
     numModules = exp[0]["numModules"]
 
@@ -72,22 +67,13 @@ def createCharts(inFilename, outFilename, squeezeLegend,
     accuracy = 1.0 - (float(failed) / float(numObjects))
     capacityResults[(moduleWidth, numModules)][numObjects].append(accuracy)
 
-  locs, labels = ambiguity_index.getTotalExpectedOccurrencesTicks_2_5(
-      ambiguity_index.numOtherOccurrencesOfMostUniqueFeature_lowerBound50_100features_10locationsPerObject)
-
-  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(6.0, 9.6), nrows=2, sharex=True)
+  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(3.25, 6),
+                                                      nrows=2, sharex=True,
+                                                      tight_layout = {"pad": 0})
 
   #
   # CAPACITY
   #
-
-  ax2Capacity = axCapacity.twiny()
-  # Optional: swap axes
-  # axCapacity.xaxis.tick_top()
-  # axCapacity.xaxis.set_label_position('top')
-  # ax2Capacity.xaxis.tick_bottom()
-  # ax2Capacity.xaxis.set_label_position('bottom')
-
 
   colors = ("C0", "C1", "C2")
   markers = ("o", "o", "o")
@@ -96,9 +82,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
     for numModules, marker, markerSize in zip(moduleCounts, markers, markerSizes):
       resultsByNumObjects = capacityResults[(moduleWidth, numModules)]
       expResults = [(numObjects, sum(results) / len(results))
-                     for numObjects, results in resultsByNumObjects.iteritems()
-                    if (moduleWidth, numModules) not in maxNumObjectsByParams
-                    or numObjects <= maxNumObjectsByParams[(moduleWidth, numModules)]]
+                     for numObjects, results in resultsByNumObjects.iteritems()]
 
       x = []
       y = []
@@ -110,24 +94,12 @@ def createCharts(inFilename, outFilename, squeezeLegend,
         x, y, "{}-".format(marker), color=color, linewidth=1, markersize=markerSize
       )
 
-  axCapacity.set_xlabel("Number of Learned Objects", fontsize=12)
-  axCapacity.set_ylabel("Recognition Accuracy After\nMany Sensations", fontsize=12)
-  # ax2Capacity.set_xlabel("Sensory ambiguity index")
-
-  ax2Capacity.set_xticks(locs)
-  ax2Capacity.set_xticklabels(labels)
-  ax2Capacity.set_xlim(axCapacity.get_xlim())
+  axCapacity.set_xlabel("Number of Learned Objects")
+  axCapacity.set_ylabel("Recognition Accuracy After\nMany Sensations")
 
   #
   # RECOGNITION TIME
   #
-
-  ax2RecognitionTime = axRecognitionTime.twiny()
-  # Optional: swap axes
-  # axRecognitionTime.xaxis.tick_top()
-  # axRecognitionTime.xaxis.set_label_position('top')
-  # ax2RecognitionTime.xaxis.tick_bottom()
-  # ax2RecognitionTime.xaxis.set_label_position('bottom')
 
   for moduleWidth, color in reversed(zip(moduleWidths, colors)):
     for numModules, marker, markerSize in zip(moduleCounts, markers, markerSizes):
@@ -158,19 +130,12 @@ def createCharts(inFilename, outFilename, squeezeLegend,
 
   axRecognitionTime.set_ylim(0, axRecognitionTime.get_ylim()[1])
   # axRecognitionTime.set_xlabel("# learned objects")
-  axRecognitionTime.set_ylabel("Median Number of Sensations\nTo Recognition", fontsize=12)
-  ax2RecognitionTime.set_xlabel("Median Number of Locations Recalled by\nan Object's Rarest Feature", fontsize=12, labelpad=8)
-
-  ax2RecognitionTime.set_xticks(locs)
-  ax2RecognitionTime.set_xticklabels(labels)
-  ax2RecognitionTime.set_xlim(axRecognitionTime.get_xlim())
-
-  plt.tight_layout()
+  axRecognitionTime.set_ylabel("Median Number of Sensations\nTo Recognition")
 
   if squeezeLegend:
     leg = axRecognitionTime.legend(loc="upper right", title="Cells per\n module",
                      # bbox_to_anchor=(1.035, 1.0),
-                     frameon=False,
+                     frameon=True,
                      handles=[matplotlib.lines.Line2D([], [], color=color)
                               for color in colors],
                      labels=["{}x{}".format(moduleWidth, moduleWidth)
@@ -180,7 +145,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
 
     leg = axRecognitionTime.legend(loc="lower right", title=" Number of \n   modules",
                      # bbox_to_anchor=(1.0, 0.5),
-                     frameon=False,
+                     frameon=True,
                      handles=[matplotlib.lines.Line2D([], [],
                                                       marker=marker,
                                                       markersize=markerSize,
@@ -208,6 +173,22 @@ def createCharts(inFilename, outFilename, squeezeLegend,
                               for marker, markerSize in zip(markers, markerSizes)],
                      labels=moduleCounts)
 
+  locs, labels = ambiguity_index.getTotalExpectedOccurrencesTicks_2_5(
+      ambiguity_index.numOtherOccurrencesOfMostUniqueFeature_lowerBound50_100features_10locationsPerObject)
+  locs = [loc for loc in locs
+          if loc < axRecognitionTime.get_xlim()[1] - 10]
+
+  ax2RecognitionTime = axRecognitionTime.twiny()
+  ax2RecognitionTime.set_xlabel("Median Number of Locations Recalled by\nan Object's Rarest Feature", labelpad=8)
+  ax2RecognitionTime.set_xticks(locs)
+  ax2RecognitionTime.set_xticklabels(labels)
+  ax2RecognitionTime.set_xlim(axRecognitionTime.get_xlim())
+
+  ax2Capacity = axCapacity.twiny()
+  ax2Capacity.set_xticks(locs)
+  ax2Capacity.set_xticklabels(labels)
+  ax2Capacity.set_xlim(axCapacity.get_xlim())
+
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath
@@ -216,6 +197,10 @@ def createCharts(inFilename, outFilename, squeezeLegend,
 
 
 if __name__ == "__main__":
+  plt.rc("font",**{"family": "sans-serif",
+                   "sans-serif": ["Arial"],
+                   "size": 8})
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)

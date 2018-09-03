@@ -11,4 +11,4 @@ python ideal_sim.py &
 python bof_sim.py &
 wait
 
-python plot_comparison_to_ideal.py --inFile results/comparisonToIdeal_gaussian.json --outFile comparisonToIdeal_gaussian.pdf --locationModuleWidth 26 30 40
+python plot_comparison_to_ideal.py --inFile results/comparisonToIdeal_gaussian.json --outFile comparisonToIdeal_gaussian.pdf --locationModuleWidth 26 30 40 --legendPosition 1.0 0.6

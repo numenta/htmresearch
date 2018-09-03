@@ -65,11 +65,12 @@ def getExperiments(bumpType):
 
     +
     [experiment(bumpType, locationModuleWidth=locationModuleWidth)
-     for locationModuleWidth in [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]]
+     for locationModuleWidth in range(2, 21)]
 
     +
     [experiment(bumpType, numFeatures=numUniqueFeatures)
-     for numUniqueFeatures in [5, 10, 20, 50, 75, 100, 150, 200]]
+     for numUniqueFeatures in [5, 10, 20, 50, 75, 100, 150, 200, 250, 300, 350,
+                               400]]
   )
 
 
