@@ -62,7 +62,8 @@ class CoordinateSensorRegion(PyRegion):
       "outputs": {
         "dataOut": {
           "description": "Encoded coordinate SDR.",
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,          
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": True,
@@ -139,14 +140,14 @@ class CoordinateSensorRegion(PyRegion):
     outputs["resetOut"][0] = data["reset"]
     outputs["sequenceIdOut"][0] = data["sequenceId"]
     sdr = self.encoder.encode((numpy.array(data["coordinate"]), self.radius))
-    outputs["dataOut"][:] = sdr
+    self.setSparseOutput(outputs, "dataOut", sdr.nonzero()[0])
 
     if self.verbosity > 1:
       print "CoordinateSensor outputs:"
       print "Coordinate = ", data["coordinate"]
       print "sequenceIdOut: ", outputs["sequenceIdOut"]
       print "resetOut: ", outputs["resetOut"]
-      print "dataOut: ", outputs["dataOut"].nonzero()[0]
+      print "dataOut: ", outputs["dataOut"]
 
   def addDataToQueue(self, coordinate, reset, sequenceId):
     """

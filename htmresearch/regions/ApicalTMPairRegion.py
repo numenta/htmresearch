@@ -48,7 +48,8 @@ class ApicalTMPairRegion(PyRegion):
         "activeColumns": {
           "description": ("An array of 0's and 1's representing the active "
                           "minicolumns, i.e. the input to the TemporalMemory"),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": True,
           "regionLevel": True,
@@ -69,7 +70,8 @@ class ApicalTMPairRegion(PyRegion):
         },
         "basalInput": {
           "description": "An array of 0's and 1's representing basal input",
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": False,
           "regionLevel": True,
@@ -81,7 +83,8 @@ class ApicalTMPairRegion(PyRegion):
                           "that can be learned on new synapses on basal " +
                           "segments. If this input is a length-0 array, the " +
                           "whole basalInput is used."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": False,
           "regionLevel": True,
@@ -91,7 +94,8 @@ class ApicalTMPairRegion(PyRegion):
         "apicalInput": {
           "description": "An array of 0's and 1's representing top down input."
           " The input will be provided to apical dendrites.",
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": False,
           "regionLevel": True,
@@ -103,7 +107,8 @@ class ApicalTMPairRegion(PyRegion):
                           "that can be learned on new synapses on apical " +
                           "segments. If this input is a length-0 array, the " +
                           "whole apicalInput is used."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "required": False,
           "regionLevel": True,
@@ -114,7 +119,8 @@ class ApicalTMPairRegion(PyRegion):
         "predictedCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that was predicted for this timestep."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": False
@@ -123,7 +129,8 @@ class ApicalTMPairRegion(PyRegion):
         "predictedActiveCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that transitioned from predicted to active."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,          
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": False
@@ -132,7 +139,8 @@ class ApicalTMPairRegion(PyRegion):
         "activeCells": {
           "description": ("A binary output containing a 1 for every "
                           "cell that is currently active."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,          
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": True
@@ -141,7 +149,8 @@ class ApicalTMPairRegion(PyRegion):
         "winnerCells": {
           "description": ("A binary output containing a 1 for every "
                           "'winner' cell in the TM."),
-          "dataType": "Real32",
+          "dataType": "UInt32",
+          "sparse": True,          
           "count": 0,
           "regionLevel": True,
           "isDefaultOutput": False
@@ -430,30 +439,30 @@ class ApicalTMPairRegion(PyRegion):
       if inputs["resetIn"][0] != 0:
         # send empty output
         self._tm.reset()
-        outputs["activeCells"][:] = 0
-        outputs["predictedActiveCells"][:] = 0
-        outputs["winnerCells"][:] = 0
+        self.setSparseOutput(outputs, "activeCells", [])
+        self.setSparseOutput(outputs, "predictedActiveCells", [])
+        self.setSparseOutput(outputs, "winnerCells", [])
         return
 
-    activeColumns = inputs["activeColumns"].nonzero()[0]
+    activeColumns = inputs["activeColumns"]
 
     if "basalInput" in inputs:
-      basalInput = inputs["basalInput"].nonzero()[0]
+      basalInput = inputs["basalInput"]
     else:
       basalInput = np.empty(0, dtype="uint32")
 
     if "apicalInput" in inputs:
-      apicalInput = inputs["apicalInput"].nonzero()[0]
+      apicalInput = inputs["apicalInput"]
     else:
       apicalInput = np.empty(0, dtype="uint32")
 
     if "basalGrowthCandidates" in inputs:
-      basalGrowthCandidates = inputs["basalGrowthCandidates"].nonzero()[0]
+      basalGrowthCandidates = inputs["basalGrowthCandidates"]
     else:
       basalGrowthCandidates = basalInput
 
     if "apicalGrowthCandidates" in inputs:
-      apicalGrowthCandidates = inputs["apicalGrowthCandidates"].nonzero()[0]
+      apicalGrowthCandidates = inputs["apicalGrowthCandidates"]
     else:
       apicalGrowthCandidates = apicalInput
 
@@ -461,15 +470,14 @@ class ApicalTMPairRegion(PyRegion):
                      basalGrowthCandidates, apicalGrowthCandidates, self.learn)
 
     # Extract the active / predicted cells and put them into binary arrays.
-    outputs["activeCells"][:] = 0
-    outputs["activeCells"][self._tm.getActiveCells()] = 1
-    outputs["predictedCells"][:] = 0
-    outputs["predictedCells"][
-      self._tm.getPredictedCells()] = 1
-    outputs["predictedActiveCells"][:] = (outputs["activeCells"] *
-                                          outputs["predictedCells"])
-    outputs["winnerCells"][:] = 0
-    outputs["winnerCells"][self._tm.getWinnerCells()] = 1
+    activeCells = self._tm.getActiveCells()
+    self.setSparseOutput(outputs, "activeCells", activeCells)
+    predictedCells = self._tm.getPredictedCells()
+    self.setSparseOutput(outputs, "predictedCells", predictedCells)
+    predictedActiveCells = np.intersect1d(activeCells, predictedCells, True)
+    self.setSparseOutput(outputs, "predictedActiveCells", predictedActiveCells)
+    winnerCells = self._tm.getWinnerCells()
+    self.setSparseOutput(outputs, "winnerCells", winnerCells)
 
 
   def getParameter(self, parameterName, index=-1):

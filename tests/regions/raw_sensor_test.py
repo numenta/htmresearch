@@ -52,7 +52,7 @@ class RawSensorTest(unittest.TestCase):
     net = Network()
     rawSensor = net.addRegion("raw","py.RawSensor", json.dumps(rawParams))
     vfe = net.addRegion("output","VectorFileEffector","")
-    net.link("raw", "output", "UniformLink", "")
+    net.link("raw", "output", "UniformLink", "", "dataOut", "sparseDataIn")
 
     self.assertEqual(rawSensor.getParameter("outputWidth"),1029,
                      "Incorrect outputWidth parameter")
@@ -69,7 +69,7 @@ class RawSensorTest(unittest.TestCase):
 
     # Run the network and check outputs are as expected
     net.run(1)
-    self.assertEqual(rawSensor.getOutputData("dataOut").nonzero()[0].sum(),
+    self.assertEqual(sum(rawSensor.getOutputData("dataOut")),
                      sum([2, 4, 6]), "Value of dataOut incorrect")
     self.assertEqual(rawSensor.getOutputData("resetOut").sum(),0,
                      "Value of resetOut incorrect")
@@ -77,7 +77,7 @@ class RawSensorTest(unittest.TestCase):
                       "Value of sequenceIdOut incorrect")
 
     net.run(1)
-    self.assertEqual(rawSensor.getOutputData("dataOut").nonzero()[0].sum(),
+    self.assertEqual(sum(rawSensor.getOutputData("dataOut")),
                      sum([2, 42, 1023]), "Value of dataOut incorrect")
     self.assertEqual(rawSensor.getOutputData("resetOut").sum(),1,
                      "Value of resetOut incorrect")
@@ -97,7 +97,7 @@ class RawSensorTest(unittest.TestCase):
     # Ensure the queue is preserved through save/load
     vfe2.setParameter("outputFile",os.path.join(self.tmpDir,"temp.csv"))
     net2.run(1)
-    self.assertEqual(rawSensor2.getOutputData("dataOut").nonzero()[0].sum(),
+    self.assertEqual(sum(rawSensor2.getOutputData("dataOut")),
                      sum([18, 19, 20]), "Value of dataOut incorrect")
     self.assertEqual(rawSensor2.getOutputData("resetOut").sum(),0,
                      "Value of resetOut incorrect")
