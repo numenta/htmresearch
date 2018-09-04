@@ -115,7 +115,7 @@ def doExperiment(numObjects,
   }
 
   column = PIUNCorticalColumn(locationConfigs, L4Overrides=l4Overrides,
-                              useGaussian=True)
+                              bumpType="gaussian2")
   exp = PIUNExperiment(column, featureNames=features,
                        numActiveMinicolumns=10,
                        noiseFactor=noiseFactor,

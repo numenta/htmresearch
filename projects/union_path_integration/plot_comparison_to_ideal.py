@@ -60,7 +60,7 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
   with open("results/bof.json", "r") as f:
     bofResults = json.load(f)
 
-  plt.figure(figsize=(6.0, 4.8))
+  plt.figure(figsize=(3.25, 2.5), tight_layout = {"pad": 0})
 
   for yData, label, fmt in [(resultsByParams[locationModuleWidth],
                              "{}x{} Cells Per Module".format(locationModuleWidth,
@@ -111,13 +111,11 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
     #plt.fill_between(x, yBelow, yAbove, alpha=0.3)
 
   # Formatting
-  plt.xlabel("Number of Sensations", fontsize=12)
-  plt.ylabel("Cumulative Accuracy", fontsize=12)
+  plt.xlabel("Number of Sensations")
+  plt.ylabel("Cumulative Accuracy")
 
-  plt.tight_layout()
-  plt.xticks([(i+1)*2 for i in xrange(6)])
-  plt.legend(loc="center right", fontsize=10, framealpha=1.0,
-             bbox_to_anchor=legendPosition)
+  plt.xticks([(i+1) for i in xrange(numSteps)])
+  plt.legend(loc="center right", bbox_to_anchor=legendPosition)
 
   outFilePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", outFilePath
@@ -127,6 +125,10 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
 
 
 if __name__ == "__main__":
+  plt.rc("font",**{"family": "sans-serif",
+                   "sans-serif": ["Arial"],
+                   "size": 8})
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)

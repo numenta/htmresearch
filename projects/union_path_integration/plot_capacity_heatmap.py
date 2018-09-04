@@ -62,7 +62,7 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
     for j, numUniqueFeatures in enumerate(featureCounts):
       plotData[i, j] = meanCapacityByParams[(cellsPerModule, numUniqueFeatures)]
 
-  fig, ax = plt.subplots(figsize=(6.0, 6.0))
+  fig, ax = plt.subplots(figsize=(3.25, 3.25), tight_layout = {"pad": 0})
 
   # Customize vmax so that the colors stay suffiently dark so that the white
   # text is readable.
@@ -79,12 +79,11 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
 
   for i in xrange(len(ylabels)):
     for j in xrange(len(xlabels)):
-      text = ax.text(j, i, str(int(plotData[i, j])), ha="center", va="center", color="w", fontsize=12)
+      text = ax.text(j, i, str(int(plotData[i, j])), ha="center", va="center",
+                     color="w")
 
-  plt.xlabel("Number of Unique Features", fontsize=12)
-  plt.ylabel("Cells Per Module", fontsize=12)
-
-  fig.tight_layout()
+  plt.xlabel("Number of Unique Features")
+  plt.ylabel("Cells Per Module")
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath
@@ -92,6 +91,10 @@ def chart2(inFilename, outFilename, cellCounts, featureCounts):
 
 
 if __name__ == "__main__":
+  plt.rc("font",**{"family": "sans-serif",
+                   "sans-serif": ["Arial"],
+                   "size": 8})
+
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)
