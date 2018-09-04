@@ -67,7 +67,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
     accuracy = 1.0 - (float(failed) / float(numObjects))
     capacityResults[(moduleWidth, numModules)][numObjects].append(accuracy)
 
-  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(3.25, 6),
+  fig, (axRecognitionTime, axCapacity) = plt.subplots(figsize=(3.25, 4.5),
                                                       nrows=2, sharex=True,
                                                       tight_layout = {"pad": 0})
 
@@ -188,7 +188,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
   ax2Capacity.set_xticks(locs)
   ax2Capacity.set_xticklabels(labels)
   ax2Capacity.set_xlim(axCapacity.get_xlim())
-
+  ax2Capacity.tick_params(axis="x", which="major", pad=0)
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath
