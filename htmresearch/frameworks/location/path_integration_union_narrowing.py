@@ -41,7 +41,7 @@ from htmresearch.algorithms.location_modules import (
 RAT_BUMP_SIGMA = 0.18172
 
 
-def createRatModuleFromCellCount(cellsPerAxis, scale, baselineCellsPerAxis=6,
+def createRatModuleFromCellCount(cellsPerAxis, baselineCellsPerAxis=6,
                                  **kwargs):
   """
   @param baselineCellsPerAxis (int or float)
@@ -67,7 +67,6 @@ def createRatModuleFromCellCount(cellsPerAxis, scale, baselineCellsPerAxis=6,
     cellsPerAxis=cellsPerAxis,
     activeFiringRate=activeFiringRate,
     bumpSigma=bumpSigma,
-    scale=scale,
     **kwargs)
 
 
