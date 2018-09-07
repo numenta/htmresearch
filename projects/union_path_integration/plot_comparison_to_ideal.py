@@ -115,7 +115,12 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
   plt.ylabel("Cumulative Accuracy")
 
   plt.xticks([(i+1) for i in xrange(numSteps)])
-  plt.legend(loc="center right", bbox_to_anchor=legendPosition)
+
+  # If there's any opacity, when we export a copy of this from Illustrator, it
+  # creates a PDF that isn't compatible with Word.
+  framealpha = 1.0
+  plt.legend(loc="center right", bbox_to_anchor=legendPosition,
+             framealpha=framealpha)
 
   outFilePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", outFilePath

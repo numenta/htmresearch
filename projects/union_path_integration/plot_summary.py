@@ -133,9 +133,13 @@ def createCharts(inFilename, outFilename, squeezeLegend,
   axRecognitionTime.set_ylabel("Median Number of Sensations\nTo Recognition")
 
   if squeezeLegend:
+    # If there's any opacity, when we export a copy of this from Illustrator, it
+    # creates a PDF that isn't compatible with Word.
+    framealpha = 1.0
     leg = axRecognitionTime.legend(loc="upper right", title="Cells per\n module",
                      # bbox_to_anchor=(1.035, 1.0),
                      frameon=True,
+                     framealpha=framealpha,
                      handles=[matplotlib.lines.Line2D([], [], color=color)
                               for color in colors],
                      labels=["{}x{}".format(moduleWidth, moduleWidth)
@@ -147,6 +151,7 @@ def createCharts(inFilename, outFilename, squeezeLegend,
                      # bbox_to_anchor=(1.0, 0.5),
                      frameon=True,
                      borderpad=0.55,
+                     framealpha=framealpha,
                      handles=[matplotlib.lines.Line2D([], [],
                                                       marker=marker,
                                                       markersize=markerSize,

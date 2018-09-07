@@ -114,7 +114,10 @@ def createTheChart(inFilename, outFilename, xlim2):
   if xlim2 is not None:
     ax2.set_xlim([0, xlim2])
 
-  ax2.legend(loc="upper right")
+  # If there's any opacity, when we export a copy of this from Illustrator, it
+  # creates a PDF that isn't compatible with Word.
+  framealpha = 1.0
+  ax2.legend(loc="upper right", framealpha=framealpha)
 
   filePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", filePath

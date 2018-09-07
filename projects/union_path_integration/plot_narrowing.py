@@ -89,10 +89,12 @@ def examplesChart(inFilename, outFilename, objectCount, objectNumbers,
         axes[m, i].set_xlabel("Object {}".format(i + 1), labelpad=5)
       if m == 0:
         axes[m, i].xaxis.tick_top()
+        axes[m, i].xaxis.set_ticks_position('none')
         axes[m, i].xaxis.set_label_position("top")
+        axes[m, i].tick_params(axis="x", which="major", pad=-2)
         axes[m, i].set_xticks(np.arange(10) * width + (width / 2))
         axes[m, i].set_xticklabels([str(v+1) for v in np.arange(10)])
-        axes[m, i].set_xlabel("Sensation", labelpad=6)
+        axes[m, i].set_xlabel("Sensation")
       else:
         axes[m, i].set_xticks([])
       if i == 0:
@@ -153,7 +155,11 @@ def aggregateChart(inFilename, outFilename, objectCounts, ylim):
   plt.ylabel("Mean Cell Activation Density")
 
   plt.ylim(ylim)
-  plt.legend()
+
+  # If there's any opacity, when we export a copy of this from Illustrator, it
+  # creates a PDF that isn't compatible with Word.
+  framealpha = 1.0
+  plt.legend(framealpha=framealpha)
 
   filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename

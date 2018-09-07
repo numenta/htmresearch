@@ -106,7 +106,7 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
                                            thresholds,
                                            numUniqueFeatures)]])
 
-    ax1.plot(x, y, "x", markersize=6, markeredgewidth=2, color="red",
+    ax1.plot(x, y, "x", markersize=4, markeredgewidth=2, color="red",
              markevery=[i
                         for i, numModules in enumerate(x)
                         if not codesAreUnique[(numModules,
@@ -116,7 +116,7 @@ def createChart(inFilename, outFilename, modulesYmax, label1Position,
 
   ax1.text(label1Position[0], label1Position[1], "Threshold:")
   ax1.text(label2Position[0], label2Position[1], "$ n $")
-  ax1.text(label3Position[0], label3Position[1], "$ \\lceil n * 0.8 \\rceil $")
+  ax1.text(label3Position[0], label3Position[1], "$ n * 0.8 $")
 
   ax1.set_xlabel("Number of\nModules")
   ax1.set_ylabel("Capacity")
