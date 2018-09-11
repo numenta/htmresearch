@@ -33,12 +33,53 @@ import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
   ApicalTiebreakPairMemory)
-from htmresearch.algorithms.column_pooler import ColumnPooler
 from htmresearch.algorithms.location_modules import (
   Superficial2DLocationModule, ThresholdedGaussian2DLocationModule)
 
 
 RAT_BUMP_SIGMA = 0.18172
+
+
+def computeRatModuleParametersFromCellCount(cellsPerAxis,
+                                            baselineCellsPerAxis=6):
+  """
+  Compute 'cellsPerAxis', 'bumpSigma', and 'activeFiringRate' parameters for
+  :class:`ThresholdedGaussian2DLocationModule` given the number of cells per
+  axis. See :func:`createRatModuleFromCellCount`
+  """
+  bumpSigma = RAT_BUMP_SIGMA * (baselineCellsPerAxis / float(cellsPerAxis))
+  activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
+    cellsPerAxis, bumpSigma)
+
+  return {
+    "cellsPerAxis": cellsPerAxis,
+    "bumpSigma": bumpSigma,
+    "activeFiringRate": activeFiringRate
+  }
+
+
+def computeRatModuleParametersFromReadoutResolution(inverseReadoutResolution,
+                                                    enlargeModuleFactor=1.):
+  """
+  Compute 'cellsPerAxis', 'bumpSigma', and 'activeFiringRate' parameters for
+  :class:`ThresholdedGaussian2DLocationModule` given the
+  inverseReadoutResolution. See :func:`createRatModuleFromReadoutResolution`
+  """
+  # Give the module enough precision in its learning so that the bump is the
+  # specified diameter when properly accounting for uncertainty.
+  cellsPerAxis = int(math.ceil(2*inverseReadoutResolution*enlargeModuleFactor))
+
+  bumpSigma = RAT_BUMP_SIGMA / enlargeModuleFactor
+
+  readoutResolution = 1. / (enlargeModuleFactor*inverseReadoutResolution)
+  activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
+    cellsPerAxis, bumpSigma, readoutResolution)
+
+  return {
+    "cellsPerAxis": cellsPerAxis,
+    "bumpSigma": bumpSigma,
+    "activeFiringRate": activeFiringRate
+  }
 
 
 def createRatModuleFromCellCount(cellsPerAxis, baselineCellsPerAxis=6,
@@ -58,16 +99,10 @@ def createRatModuleFromCellCount(cellsPerAxis, baselineCellsPerAxis=6,
   approximately 1/3. If baselineCellsPerAxis=8, the readout resolution is
   approximately 1/4.
   """
-
-  bumpSigma = RAT_BUMP_SIGMA * (baselineCellsPerAxis / float(cellsPerAxis))
-  activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
-    cellsPerAxis, bumpSigma)
-
-  return ThresholdedGaussian2DLocationModule(
-    cellsPerAxis=cellsPerAxis,
-    activeFiringRate=activeFiringRate,
-    bumpSigma=bumpSigma,
-    **kwargs)
+  params = computeRatModuleParametersFromCellCount(cellsPerAxis,
+                                                   baselineCellsPerAxis)
+  params.update(kwargs)
+  return ThresholdedGaussian2DLocationModule(**params)
 
 
 def createRatModuleFromReadoutResolution(inverseReadoutResolution, scale,
@@ -97,22 +132,11 @@ def createRatModuleFromReadoutResolution(inverseReadoutResolution, scale,
   shrink relative to physical space.
   """
 
-  # Give the module enough precision in its learning so that the bump is the
-  # specified diameter when properly accounting for uncertainty.
-  learningCellsPerAxis = int(math.ceil(2*inverseReadoutResolution*enlargeModuleFactor))
-
-  bumpSigma = RAT_BUMP_SIGMA / enlargeModuleFactor
-
-  readoutResolution = 1. / (enlargeModuleFactor*inverseReadoutResolution)
-  activeFiringRate = ThresholdedGaussian2DLocationModule.chooseReliableActiveFiringRate(
-    learningCellsPerAxis, bumpSigma, readoutResolution)
-
-  return ThresholdedGaussian2DLocationModule(
-    cellsPerAxis=learningCellsPerAxis,
-    activeFiringRate=activeFiringRate,
-    bumpSigma=bumpSigma,
-    scale=(scale if fixedScale else scale*enlargeModuleFactor),
-    **kwargs)
+  params = computeRatModuleParametersFromReadoutResolution(inverseReadoutResolution,
+                                                           enlargeModuleFactor)
+  params.update(kwargs)
+  params["scale"] = (scale if fixedScale else scale * enlargeModuleFactor)
+  return ThresholdedGaussian2DLocationModule(**params)
 
 
 class PIUNCorticalColumn(object):
