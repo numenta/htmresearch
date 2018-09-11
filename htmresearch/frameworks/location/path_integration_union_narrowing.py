@@ -160,9 +160,8 @@ class PIUNCorticalColumn(object):
     L4Params = {
       "columnCount": 150,
       "cellsPerColumn": 16,
-      "basalInputSize": (len(locationConfigs) *
-                         sum(module.numberOfCells()
-                             for module in self.L6aModules))
+      "basalInputSize": sum(module.numberOfCells()
+                            for module in self.L6aModules)
     }
 
     if L4Overrides is not None:
