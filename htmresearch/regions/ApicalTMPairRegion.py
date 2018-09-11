@@ -248,9 +248,10 @@ class ApicalTMPairRegion(PyRegion):
           "defaultValue": "false"
         },
         "maxSynapsesPerSegment": {
-          "description": "The maximum number of synapses per segment",
+          "description": "The maximum number of synapses per segment. Use -1 "
+                         "for unlimited.",
           "accessMode": "Read",
-          "dataType": "UInt32",
+          "dataType": "Int32",
           "count": 1
         },
         "maxSegmentsPerCell": {
