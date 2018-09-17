@@ -93,7 +93,7 @@ class LocationNetworkFactoryTest(unittest.TestCase):
       elif region.type == "py.ApicalTMPairRegion":
         region.setParameter("learn", learn)
       elif region.type == "py.Guassian2DLocationRegion":
-        region.setParameter("learn", learn)
+        region.setParameter("learningMode", learn)
 
 
 

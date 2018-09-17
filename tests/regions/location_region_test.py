@@ -231,7 +231,7 @@ class Guassian2DLocationRegionTest(unittest.TestCase):
     learnedRepresentations = defaultdict(list)
 
     # Learn Objects
-    location.setParameter("learn", True)
+    location.setParameter("learningMode", True)
 
     for objectDescription in OBJECTS:
       reset = True
@@ -262,7 +262,7 @@ class Guassian2DLocationRegionTest(unittest.TestCase):
           (objectDescription["name"], iFeature)] = representation
 
     # Infer learned objects
-    location.setParameter("learn", False)
+    location.setParameter("learningMode", False)
 
     for objectDescription in OBJECTS:
       reset = True

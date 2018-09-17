@@ -257,7 +257,7 @@ class Guassian2DLocationRegion(PyRegion):
           defaultValue="probabilistic",
           count=0,
         ),
-        learn=dict(
+        learningMode=dict(
           description="A boolean flag that indicates whether or not we should "
                       "learn by associating the location with the sensory "
                       "input",
@@ -299,7 +299,7 @@ class Guassian2DLocationRegion(PyRegion):
                permanenceDecrement=0.0,
                maxSynapsesPerSegment=-1,
                bumpOverlapMethod="probabilistic",
-               learn=False,
+               learningMode=False,
                seed=42,
                **kwargs):
     if moduleCount <= 0 or cellsPerAxis <= 0:
@@ -324,7 +324,7 @@ class Guassian2DLocationRegion(PyRegion):
     self.permanenceDecrement = permanenceDecrement
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
     self.bumpOverlapMethod = bumpOverlapMethod
-    self.learn = learn
+    self.learningMode = learningMode
     self.seed = seed
 
     self._modules = None
@@ -397,7 +397,7 @@ class Guassian2DLocationRegion(PyRegion):
 
       # Compute sensation
       if anchorInput is not None or anchorGrowthCandidates is not None:
-        module.sensoryCompute(anchorInput, anchorGrowthCandidates, self.learn)
+        module.sensoryCompute(anchorInput, anchorGrowthCandidates, self.learningMode)
 
       # Concatenate outputs
       start = i * self.cellCount
