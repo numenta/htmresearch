@@ -338,22 +338,22 @@ class Guassian2DLocationRegion(PyRegion):
       self._modules = []
       for i in xrange(self.moduleCount):
         self._modules.append(ThresholdedGaussian2DLocationModule(
-          self.cellsPerAxis,
-          self.scale[i],
-          self.orientation[i],
-          self.anchorInputSize,
-          self.activeFiringRate,
-          self.bumpSigma,
-          self.activationThreshold,
-          self.initialPermanence,
-          self.connectedPermanence,
-          self.learningThreshold,
-          self.sampleSize,
-          self.permanenceIncrement,
-          self.permanenceDecrement,
-          self.maxSynapsesPerSegment,
-          self.bumpOverlapMethod,
-          self.seed))
+          cellsPerAxis=self.cellsPerAxis,
+          scale=self.scale[i],
+          orientation=self.orientation[i],
+          anchorInputSize=self.anchorInputSize,
+          activeFiringRate=self.activeFiringRate,
+          bumpSigma=self.bumpSigma,
+          activationThreshold=self.activationThreshold,
+          initialPermanence=self.initialPermanence,
+          connectedPermanence=self.connectedPermanence,
+          learningThreshold=self.learningThreshold,
+          sampleSize=self.sampleSize,
+          permanenceIncrement=self.permanenceIncrement,
+          permanenceDecrement=self.permanenceDecrement,
+          maxSynapsesPerSegment=self.maxSynapsesPerSegment,
+          bumpOverlapMethod=self.bumpOverlapMethod,
+          seed=self.seed))
 
   def compute(self, inputs, outputs):
     """
@@ -383,7 +383,6 @@ class Guassian2DLocationRegion(PyRegion):
     anchorGrowthCandidates = inputs.get("anchorGrowthCandidates")
     if anchorGrowthCandidates is not None:
       anchorGrowthCandidates = anchorGrowthCandidates.nonzero()[0]
-
 
     # Concatenate the output of all modules
     outputs["activeCells"][:] = 0
