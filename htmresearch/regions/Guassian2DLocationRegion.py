@@ -424,7 +424,7 @@ class Guassian2DLocationRegion(PyRegion):
     Set the value of a Spec parameter.
     """
     spec = self.getSpec()
-    if 'learn' not in spec['parameters']:
+    if parameterName not in spec['parameters']:
       raise Exception("Unknown parameter: " + parameterName)
 
     setattr(self, parameterName, parameterValue)
