@@ -13,5 +13,5 @@ simplejson==2.6.2
 tabulate==0.7.5
 tqdm==4.8.4
 # NOTE: nupic and htmresearch_core dependencies should be version locked before creating new release
-nupic==1.0.5
-htmresearch_core==0.0.3
+nupic
+htmresearch_core
