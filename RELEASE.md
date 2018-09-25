@@ -11,4 +11,5 @@
     - Create a release in [Github](https://github.com/numenta/htmresearch/releases) using the new version as the title
 3. Update versions for development
     - Bump the version in the [VERSION](./VERSION) file and add the ".dev0" extension
+    - Remove versions from `nupic` and `htmresearch-core` in [requirements.txt](requirements.txt)
     - Merge `dev` version changes to master
