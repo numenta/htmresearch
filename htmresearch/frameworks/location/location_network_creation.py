@@ -28,10 +28,13 @@ import json
 from htmresearch.frameworks.location.path_integration_union_narrowing import (
   computeRatModuleParametersFromReadoutResolution,
   computeRatModuleParametersFromCellCount)
+from nupic.engine import Network
 
 
 
-def createL4L6aLocationColumn(network, config, suffix=""):
+def createL4L6aLocationColumn(network, L4Params, L6aParams,
+                              inverseReadoutResolution=None,
+                              baselineCellsPerAxis=6, suffix=""):
   """
   Create a single column network containing L4 and L6a layers. L4 layer
   processes sensor inputs while L6a processes motor commands using grid cell
@@ -71,19 +74,19 @@ def createL4L6aLocationColumn(network, config, suffix=""):
 
   :param network: network to add the column
   :type network: Network
-  :param config: Configuration parameters:
-                {
-                  "sensorInputSize": int,
-                  "inverseReadoutResolution": int or float (optional)
-                  "L4Params": {
-                    constructor parameters for :class:`ApicalTMPairRegion`
-                  },
-                  "L6aParams": {
-                    constructor parameters for :class:`Guassian2DLocationRegion`
-                  }
-                }
-
-  :type config: dict
+  :param L4Params:  constructor parameters for :class:`ApicalTMPairRegion`
+  :type L4Params: dict
+  :param L6aParams:  constructor parameters for :class:`Guassian2DLocationRegion`
+  :type L6aParams: dict
+  :param inverseReadoutResolution: Optional readout resolution.
+    The readout resolution specifies the diameter of the circle of phases in the
+    rhombus encoded by a bump. See `createRatModuleFromReadoutResolution.
+  :type inverseReadoutResolution: int
+  :param baselineCellsPerAxis: The baselineCellsPerAxis implies the readout
+    resolution of a grid cell module. If baselineCellsPerAxis=6, that implies
+    that the readout resolution is approximately 1/3. If baselineCellsPerAxis=8,
+    the readout resolution is approximately 1/4
+  :type baselineCellsPerAxis: int or float
   :param suffix: optional string suffix appended to region name. Useful when
                  creating multicolumn networks.
   :type suffix: str
@@ -91,23 +94,25 @@ def createL4L6aLocationColumn(network, config, suffix=""):
   :return: Reference to the given network
   :rtype: Network
   """
-  L6aConfig = copy.deepcopy(config["L6aParams"])
-  if "inverseReadoutResolution" in config:
+  L6aParams = copy.deepcopy(L6aParams)
+  if inverseReadoutResolution is not None:
     # Configure L6a based on 'resolution'
-    resolution = config.pop("inverseReadoutResolution")
-    params = computeRatModuleParametersFromReadoutResolution(resolution)
-    L6aConfig.update(params)
+    params = computeRatModuleParametersFromReadoutResolution(inverseReadoutResolution)
+    L6aParams.update(params)
   else:
-    baselineCellsPerAxis = L6aConfig.get("baselineCellsPerAxis", 6)
     params = computeRatModuleParametersFromCellCount(L6aConfig["cellsPerAxis"],
                                                      baselineCellsPerAxis)
-    L6aConfig.update(params)
+    L6aParams.update(params)
 
   # Configure L4 'basalInputSize' to be compatible L6a output
-  moduleCount = L6aConfig["moduleCount"]
-  cellsPerAxis = L6aConfig["cellsPerAxis"]
-  L4Config = copy.deepcopy(config["L4Params"])
-  L4Config["basalInputWidth"] = moduleCount * cellsPerAxis * cellsPerAxis
+  moduleCount = L6aParams["moduleCount"]
+  cellsPerAxis = L6aParams["cellsPerAxis"]
+
+  L4Params = copy.deepcopy(L4Params)
+  L4Params["basalInputWidth"] = moduleCount * cellsPerAxis * cellsPerAxis
+
+  # Configure sensor output to be compatible with L4 params
+  columnCount = L4Params["columnCount"]
 
   # Add regions to network
   motorInputName = "motorInput" + suffix
@@ -116,12 +121,12 @@ def createL4L6aLocationColumn(network, config, suffix=""):
   L6aName = "L6a" + suffix
 
   network.addRegion(sensorInputName, "py.RawSensor",
-                    json.dumps({"outputWidth": config["sensorInputSize"]}))
+                    json.dumps({"outputWidth": columnCount}))
   network.addRegion(motorInputName, "py.RawValues",
                     json.dumps({"outputWidth": 2}))
-  network.addRegion(L4Name, "py.ApicalTMPairRegion", json.dumps(L4Config))
+  network.addRegion(L4Name, "py.ApicalTMPairRegion", json.dumps(L4Params))
   network.addRegion(L6aName, "py.Guassian2DLocationRegion",
-                    json.dumps(L6aConfig))
+                    json.dumps(L6aParams))
 
   # Link sensory input to L4
   network.link(sensorInputName, L4Name, "UniformLink", "",
@@ -154,14 +159,16 @@ def createL4L6aLocationColumn(network, config, suffix=""):
   # Set phases appropriately
   network.setPhases(sensorInputName, [0])
   network.setPhases(motorInputName, [0])
-  network.setPhases(L4Name, [1])
   network.setPhases(L6aName, [1])
+  network.setPhases(L4Name, [2])
 
   return network
 
 
 
-def createL246aLocationColumn(network, config, suffix=""):
+def createL246aLocationColumn(network, L2Params, L4Params, L6aParams,
+                              baselineCellsPerAxis=6,
+                              inverseReadoutResolution=None, suffix=""):
   """
   Create a single column network composed of L2, L4 and L6a layers.
   L2 layer computes the object representation using :class:`ColumnPoolerRegion`,
@@ -210,39 +217,43 @@ def createL246aLocationColumn(network, config, suffix=""):
 
   :param network: network to add the column
   :type network: Network
-  :param config: Configuration parameters:
-                {
-                  "sensorInputSize": int,
-                  "enableFeedback": True,
-                  "inverseReadoutResolution": int or float (optional)
-                  "L2Params": {
-                    constructor parameters for :class:`ColumnPoolerRegion`
-                  },
-                  "L4Params": {
-                    constructor parameters for :class:`ApicalTMPairRegion`
-                  },
-                  "L6aParams": {
-                    constructor parameters for :class:`Guassian2DLocationRegion`
-                  }
-                }
-
-  :type config: dict
+  :param L2Params:  constructor parameters for :class:`ColumnPoolerRegion`
+  :type L2Params: dict
+  :param L4Params:  constructor parameters for :class:`ApicalTMPairRegion`
+  :type L4Params: dict
+  :param L6aParams:  constructor parameters for :class:`Guassian2DLocationRegion`
+  :type L6aParams: dict
+  :param inverseReadoutResolution: Optional readout resolution.
+    The readout resolution specifies the diameter of the circle of phases in the
+    rhombus encoded by a bump. See `createRatModuleFromReadoutResolution.
+  :type inverseReadoutResolution: int
+  :param baselineCellsPerAxis: The baselineCellsPerAxis implies the readout
+    resolution of a grid cell module. If baselineCellsPerAxis=6, that implies
+    that the readout resolution is approximately 1/3. If baselineCellsPerAxis=8,
+    the readout resolution is approximately 1/4
+  :type baselineCellsPerAxis: int or float
   :param suffix: optional string suffix appended to region name. Useful when
                  creating multicolumn networks.
   :type suffix: str
-
   :return: Reference to the given network
   :rtype: Network
   """
+  # Configure L4 'apicalInputWidth' to be compatible L2 output
+  L4Params = copy.deepcopy(L4Params)
+  L4Params["apicalInputWidth"] = L2Params["cellCount"]
 
   # Add L4 - L6a location layers
-  network = createL4L6aLocationColumn(network, config, suffix)
+  network = createL4L6aLocationColumn(network=network,
+                                      L4Params=L4Params,
+                                      L6aParams=L6aParams,
+                                      inverseReadoutResolution=inverseReadoutResolution,
+                                      baselineCellsPerAxis=baselineCellsPerAxis,
+                                      suffix=suffix)
   L4Name = "L4" + suffix
   sensorInputName = "sensorInput" + suffix
 
   # Add L2 - L4 object layers
   L2Name = "L2" + suffix
-  L2Params = copy.deepcopy(config["L2Params"])
   network.addRegion(L2Name, "py.ColumnPoolerRegion", json.dumps(L2Params))
 
   # Link L4 to L2
@@ -253,7 +264,6 @@ def createL246aLocationColumn(network, config, suffix=""):
                destInput="feedforwardGrowthCandidates")
 
   # Link L2 feedback to L4
-  if config.get("enableFeedback", True):
     network.link(L2Name, L4Name, "UniformLink", "",
                  srcOutput="feedForwardOutput", destInput="apicalInput",
                  propagationDelay=1)
