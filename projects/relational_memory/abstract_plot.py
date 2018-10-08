@@ -52,14 +52,14 @@ layout = {
         "title": "Noise (# of swapped landmarks)",
         "range": [-0.5, 16.5],
         "titlefont": {
-            "size": 16,
+            "size": 18,
         },
     },
     "yaxis": {
         "title": "Recall Accuracy",
         "range": [-0.05, 1.05],
         "titlefont": {
-            "size": 16,
+            "size": 18,
         },
     },
     "margin": {
@@ -70,7 +70,7 @@ layout = {
         "x": 0.8,
         "borderwidth": 2,
         "font": {
-            "size": 16,
+            "size": 18,
         },
     },
 }

@@ -34,7 +34,6 @@ import numpy as np
 
 from htmresearch.algorithms.apical_tiebreak_temporal_memory import (
     ApicalTiebreakPairMemory as TemporalMemory)
-from htmresearch.algorithms.column_pooler import ColumnPooler
 from nupic.algorithms.connections import Connections
 from nupic.algorithms.knn_classifier import KNNClassifier
 
@@ -119,12 +118,8 @@ class RelationalMemory(object):
     self.l6Connections = [Connections(numCells=self._cellsPerModule)
                           for _ in xrange(numModules)]
 
-    self.pooler = ColumnPooler(
-      inputWidth=self.numModules*self._cellsPerModule,
-    )
-
-    self.classifier = KNNClassifier(k=1, distanceMethod="rawOverlap")
-    #self.classifier = KNNClassifier(k=1, distanceMethod="norm")
+    #self.classifier = KNNClassifier(k=1, distanceMethod="rawOverlap")
+    self.classifier = KNNClassifier(k=1, distanceMethod="norm")
 
     # Active state
     self.activeL6Cells = [[] for _ in xrange(numModules)]
@@ -139,8 +134,6 @@ class RelationalMemory(object):
     self.activeL6Cells = [[] for _ in xrange(self.numModules)]
     self.activeL5Cells = [[] for _ in xrange(self.numModules)]
     self.predictedL6Cells = [set([]) for _ in xrange(self.numModules)]
-    self.l4TM.reset()
-    self.pooler.reset()
 
   def trainFeatures(self, sensoryInputs):
     # Randomly assign bilateral connections and zero others
@@ -235,21 +228,14 @@ class RelationalMemory(object):
 
 
     # Pool into object representation
-    classifierLearn = True if objClass is not None else False
-    globalL5ActiveCells = sorted(getGlobalIndices(self.activeL5Cells, self._cellsPerModule))
-    self.pooler.compute(feedforwardInput=globalL5ActiveCells,
-                        learn=classifierLearn,
-                        predictedInput=globalL5ActiveCells)
-
-    # Classifier
-    classifierInput = np.zeros((self.pooler.numberOfCells(),), dtype=np.uint32)
-    classifierInput[self.pooler.getActiveCells()] = 1
-    #print classifierInput.nonzero()
-    #print self.pooler.getActiveCells()
-    #print
-    self.prediction = self.classifier.infer(classifierInput)
+    globalL5ActiveCells = getGlobalIndices(self.activeL5Cells, self._cellsPerModule)
+    denseL5 = np.zeros(self._cellsPerModule * self.numModules, dtype="bool")
+    denseL5[globalL5ActiveCells] = 1
+    self.prediction = self.classifier.infer(denseL5)
     if objClass is not None:
-      self.classifier.learn(classifierInput, objClass)
+      self.classifier.learn(denseL5, objClass)
+
+    #print globalL5ActiveCells
 
     # MOTOR
 
@@ -332,18 +318,19 @@ class RelationalMemory(object):
       outputFile.write("\n")
 
 
-def runExperiment(numObjects, numFeatures, testNoise, l6ActivationThreshold, outputPath):
+def runExperiment(numObjects, numFeatures, testNoise, l6thresh, outputPath):
   objectDims = (4, 4)
 
   numTrainingPasses = 5
   numTestingPasses = 3
-  maxActivePerModule = 10
-  skipFirst = 0
+  maxActivePerModule = 25
+  skipFirst = 5
   numModules = 2
-  moduleDims = (10, 10)
+  moduleDims = (50, 50)
 
-  l4N = 1024
-  l4W = 20
+  l4N = 2048
+  l4W = 40
+  l6ActivationThreshold = 8
 
   # Create a network
   net = RelationalMemory(l4N=l4N, l4W=l4W, numModules=numModules,
@@ -470,11 +457,11 @@ def runExperiment(numObjects, numFeatures, testNoise, l6ActivationThreshold, out
 
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
-  parser.add_argument("--objects", default=1000, required=True, type=int)
+  parser.add_argument("--objects", required=True, type=int)
   parser.add_argument("--features", required=True, type=int)
-  parser.add_argument("--noise", default=0, required=True, type=int)
+  parser.add_argument("--noise", required=True, type=int)
   parser.add_argument("--output", default=None, help="path relative to cwd to save log to")
-  parser.add_argument("--l6thresh", default=6, type=int, help="path relative to cwd to save log to")
+  parser.add_argument("--l6thresh", default=10, type=int, help="path relative to cwd to save log to")
   args = parser.parse_args()
 
   numObjects = args.objects

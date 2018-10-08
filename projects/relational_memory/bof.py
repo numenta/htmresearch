@@ -49,4 +49,4 @@ def run(numObjects, numFeatures, noise):
 
 if __name__ == "__main__":
   for noise in (0, 2, 4, 6, 8, 10, 12, 14):
-    run(numObjects=1000, numFeatures=50, noise=noise)
+    run(numObjects=1000, numFeatures=5, noise=noise)
