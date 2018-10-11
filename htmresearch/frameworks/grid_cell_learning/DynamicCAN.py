@@ -37,6 +37,8 @@ PLOT_INTERVAL = 0.1
 # as values that are too small will lead to constant estimates of zero movement.
 ESTIMATION_INTERVAL = 0.25
 
+
+
 def defaultSTDPKernel(preSynActivation,
                       postSynActivation,
                       dt,
@@ -88,26 +90,30 @@ def defaultSTDPKernel(preSynActivation,
 
   return updates
 
+
+
 def placeSTDPKernel(placeActivation, otherActivation, dt):
   timeFactor = np.exp(-1*np.abs(dt)/(STDP_TIME_CONSTANT))
   updates = np.outer(placeActivation*timeFactor*np.sign(dt), otherActivation)
   return updates
 
-"""
-This class provides a framework for learning a continuous attractor model of
-a grid cell module, using rate coding.  It is loosely based on the ideas from
-Widloski & Fiete, 2014, who use a similar system to learn a spiking version of
-a continuous attractor network.
-
-This class is based on having two populations of excitatory neurons, one which
-is hard-wired to prefer "left" movement, and one which is hardwired to prefer
-"right" movement.  It also includes a population of inhibitory neurons.
-It lacks connections between excitatory neurons; all CAN dynamics are based on
-inhibition.
-"""
 
 
 class Dynamic1DCAN(object):
+  """
+  This class provides a framework for learning a continuous attractor model of
+  a grid cell module, using rate coding.  It is loosely based on the ideas from
+  Widloski & Fiete, 2014, who use a similar system to learn a spiking version of
+  a continuous attractor network.
+
+  This class is based on having two populations of excitatory neurons, one which
+  is hard-wired to prefer "left" movement, and one which is hardwired to prefer
+  "right" movement.  It also includes a population of inhibitory neurons.
+  It lacks connections between excitatory neurons; all CAN dynamics are based on
+  inhibition.
+  """
+
+
   def __init__(self,
                numExcitatory,
                numInhibitory,
@@ -287,7 +293,6 @@ class Dynamic1DCAN(object):
       self.weightsIEL *= self.weightFilter
       self.weightsIEL *= IEWeightFactor
       self.weightsIER *= IEWeightFactor
-
 
 
   def calculatePathIntegrationError(self, time, dt=None, trajectory=None,
@@ -669,6 +674,7 @@ class Dynamic1DCAN(object):
     # self.activationHistoryEL * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
     # self.activationHistoryER * (np.max(np.abs(v) * self.alpha, 0)) + (1 - np.max(np.abs(v) * self.alpha, 0))
 
+
   def decayWeights(self, decayConst=60):
     """
     Decay the network's weights.
@@ -812,6 +818,7 @@ class Dynamic1DCAN(object):
     np.maximum(self.weightsELI, 0, self.weightsELI)
     np.maximum(self.weightsERI, 0, self.weightsERI)
 
+
   def normalize_weights(self, IIMax, IEMax, EIMax):
     """
     Rescale our weight matrices to have a certain maximum absolute value.
@@ -887,6 +894,7 @@ class Dynamic1DCAN(object):
     self.ax2.set_xlabel("Inhibitory activity")
 
     self.fig.canvas.draw()
+
 
   def stdpUpdate(self, time, clearBuffer=False, onlyPlace=False):
     """
@@ -1006,6 +1014,8 @@ class Dynamic1DCAN(object):
                                     np.copy(self.activationsP),
                                     time))
 
+
+
 def w_0(x):
   """
   @param x (numpy array)
@@ -1020,7 +1030,10 @@ def w_0(x):
   return a * np.exp(-gamma * x_length_squared) - np.exp(-beta * x_length_squared)
 
 
+
 class Dynamic2DCAN(Dynamic1DCAN):
+
+
   def __init__(self,
                numPlaces,
                learningRate,
@@ -1224,6 +1237,7 @@ class Dynamic2DCAN(Dynamic1DCAN):
       for k, w in self.weightsIE.items():
         w *= self.envelope
 
+
   def simulate(self, time,
                feedforwardInputI,
                feedforwardInputE,
@@ -1305,6 +1319,7 @@ class Dynamic2DCAN(Dynamic1DCAN):
                        self.numInhibitory, self.numPlaces)
 
     self.dt = oldDt
+
 
   def update(self, feedforwardInputI, feedforwardInputE, v, recurrent=True,
              envelope=False, iSpeedTuning=False):
@@ -1613,6 +1628,7 @@ class Dynamic2DCAN(Dynamic1DCAN):
                                              self.dt * \
                                              baseI, E[k], t,
                                              )
+
 
   def createMovie(self, data, name, nx, ny):
     def update_line(num, data, line):
