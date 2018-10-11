@@ -1,4 +1,5 @@
 ## Grid Cell Learning
+
 This project contains code implementing some of the continuous attractor
 grid cell learning models from Widloski & Fiete, 2014.  CAN.py, in the
 grid_cell_learning frameworks package, contains a straightforward implementation
