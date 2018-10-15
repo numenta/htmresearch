@@ -397,9 +397,9 @@ class Guassian2DLocationRegion(PyRegion):
       outputs["sensoryAssociatedCells"][:] = 0
       return
 
-    displacement = inputs.get("displacement")
-    anchorInput = inputs.get("anchorInput").nonzero()[0]
-    anchorGrowthCandidates = inputs.get("anchorGrowthCandidates").nonzero()[0]
+    displacement = inputs.get("displacement", np.array([]))
+    anchorInput = inputs.get("anchorInput", np.array([])).nonzero()[0]
+    anchorGrowthCandidates = inputs.get("anchorGrowthCandidates", np.array([])).nonzero()[0]
 
     # Concatenate the output of all modules
     activeCells = np.array([], dtype=np.uint32)
