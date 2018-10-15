@@ -56,6 +56,8 @@ class MultiColumnExperiment(PyExperimentSuite):
     """
     print params["name"], ":", repetition
 
+    self.debug = params.get("debug", False)
+
     L2Params = json.loads('{' + params["l2_params"] + '}')
     L4Params = json.loads('{' + params["l4_params"] + '}')
     L6aParams = json.loads('{' + params["l6a_params"] + '}')
@@ -95,9 +97,9 @@ class MultiColumnExperiment(PyExperimentSuite):
       col = str(i)
       self.sensorInput.append(network.regions["sensorInput_" + col].getSelf())
       self.motorInput.append(network.regions["motorInput_" + col].getSelf())
-      self.L2Regions.append(network.regions["L2_" + col].getSelf())
-      self.L4Regions.append(network.regions["L4_" + col].getSelf())
-      self.L6aRegions.append(network.regions["L6a_" + col].getSelf())
+      self.L2Regions.append(network.regions["L2_" + col])
+      self.L4Regions.append(network.regions["L4_" + col])
+      self.L6aRegions.append(network.regions["L6a_" + col])
 
     # Use the number of iterations as the number of objects. This will allow us
     # to execute one iteration per object and use the "iteration" parameter as
@@ -140,17 +142,21 @@ class MultiColumnExperiment(PyExperimentSuite):
     :return: number of touches required to unambiguously classify the object
     """
     objectToInfer = self.objects[iteration]
-    touches = self.infer(objectToInfer)
-    return {'touches': touches}
+    stats = {}
+    touches = self.infer(objectToInfer, stats)
+    results = {'touches': touches}
+    results.update(stats)
+
+    return results
 
   def setLearning(self, learn):
     """
     Set all regions in every column into the given learning mode
     """
     for col in xrange(self.numColumns):
-      self.L2Regions[col].setParameter("learningMode", 0, learn)
-      self.L4Regions[col].setParameter("learn", 0, learn)
-      self.L6aRegions[col].setParameter("learningMode", 0, learn)
+      self.L2Regions[col].getSelf().setParameter("learningMode", 0, learn)
+      self.L4Regions[col].getSelf().setParameter("learn", 0, learn)
+      self.L6aRegions[col].getSelf().setParameter("learningMode", 0, learn)
 
   def sendReset(self):
     """
@@ -208,7 +214,7 @@ class MultiColumnExperiment(PyExperimentSuite):
       # update L2 representations for the object
       self.learnedObjects[obj["name"]] = self.getL2Representations()
 
-  def infer(self, objectToInfer):
+  def infer(self, objectToInfer, stats=None):
     """
     Attempt to recognize the specified object with the network. Randomly move
     the sensor over the object until the object is recognized.
@@ -243,6 +249,8 @@ class MultiColumnExperiment(PyExperimentSuite):
         self.sensorInput[col].addDataToQueue(self.featureSDR[feature["name"]],
                                              False, 0)
       self.network.run(1)
+      if self.debug:
+        self._updateInferenceStats(statistics=stats, objectName=objName)
 
       if self.isObjectClassified(objName, minOverlap=30):
         return sensation
@@ -253,7 +261,29 @@ class MultiColumnExperiment(PyExperimentSuite):
     """
     Returns the active representation in L2.
     """
-    return [set(L2._pooler.getActiveCells()) for L2 in self.L2Regions]
+    return [set(L2.getSelf()._pooler.getActiveCells()) for L2 in self.L2Regions]
+
+  def getL4Representations(self):
+    """
+    Returns the active representation in L4.
+    """
+    return [set(L4.getOutputData("activeCells").nonzero()[0])
+            for L4 in self.L4Regions]
+
+  def getL4PredictedCells(self):
+    """
+    Returns the cells in L4 that were predicted by the location input.
+    """
+    return [set(L4.getOutputData("predictedCells").nonzero()[0])
+            for L4 in self.L4Regions]
+
+  def getL4PredictedActiveCells(self):
+    """
+    Returns the cells in L4 that were predicted by the location signal
+    and are currently active.  Does not consider apical input.
+    """
+    return [set(L4.getOutputData("predictedActiveCells").nonzero()[0])
+            for L4 in self.L4Regions]
 
   def isObjectClassified(self, objectName, minOverlap=None, maxL2Size=None):
     """
@@ -286,6 +316,42 @@ class MultiColumnExperiment(PyExperimentSuite):
         numCorrectClassifications += 1
 
     return numCorrectClassifications == self.numColumns
+
+  def _updateInferenceStats(self, statistics, objectName=None):
+    """
+    Updates the inference statistics.
+
+    Parameters:
+    ----------------------------
+    @param  statistics (dict)
+            Dictionary in which to write the statistics
+
+    @param  objectName (str)
+            Name of the inferred object, if known. Otherwise, set to None.
+
+    """
+    L4Representations = self.getL4Representations()
+    L4PredictedCells = self.getL4PredictedCells()
+    L2Representation = self.getL2Representations()
+
+    for i in xrange(self.numColumns):
+      statistics["L4 Representation C" + str(i)] = len(L4Representations[i])
+      statistics["L4 Predicted C" + str(i)] = len(L4PredictedCells[i])
+      statistics["L2 Representation C" + str(i)] = len(L2Representation[i])
+      statistics["Full L2 SDR C" + str(i)] = sorted([int(c) for c in L2Representation[i]])
+      statistics["L4 Apical Segments C" + str(i)] = len(self.L4Regions[i].getSelf()._tm.getActiveApicalSegments())
+
+      # add true overlap and classification result if objectName was learned
+      if objectName in self.learnedObjects:
+        objectRepresentation = self.learnedObjects[objectName]
+        statistics["Overlap L2 with object C" + str(i)] = len(
+          objectRepresentation[i] & L2Representation[i])
+
+    if objectName in self.learnedObjects:
+      if self.isObjectClassified(objectName):
+        statistics["Correct classification"] = 1.0
+      else:
+        statistics["Correct classification"] = 0.0
 
 
 
