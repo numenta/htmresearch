@@ -79,7 +79,7 @@ OBJECTS = [
 
 
 
-def _createNetwork(inverseReadoutResolution, anchorInputSize):
+def _createNetwork(inverseReadoutResolution, anchorInputSize, dualPhase=False):
   """
   Create a simple network connecting sensor and motor inputs to the location
   region. Use :meth:`RawSensor.addDataToQueue` to add sensor input and growth
@@ -151,6 +151,7 @@ def _createNetwork(inverseReadoutResolution, anchorInputSize):
     "sampleSize": 10,
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.0,
+    "dualPhase": dualPhase,
     "bumpOverlapMethod": "probabilistic"
   })
   net.addRegion("location", "py.Guassian2DLocationRegion", json.dumps(params))
@@ -194,6 +195,7 @@ class Guassian2DLocationRegionTest(unittest.TestCase):
 
     # Start from a random location
     location.executeCommand(["activateRandomLocation"])
+    motor.addDataToQueue([0, 0])
     net.run(1)
     start = location.getOutputData("activeCells").nonzero()[0]
 
@@ -247,6 +249,8 @@ class Guassian2DLocationRegionTest(unittest.TestCase):
         # Calculate displacement from previous location
         if previousLocation is not None:
           motor.addDataToQueue(locationOnObject - previousLocation)
+        else:
+          motor.addDataToQueue([0, 0])
         previousLocation = locationOnObject
 
         # Sense feature at location
@@ -283,6 +287,8 @@ class Guassian2DLocationRegionTest(unittest.TestCase):
         # Calculate displacement from previous location
         if previousLocation is not None:
           motor.addDataToQueue(locationOnObject - previousLocation)
+        else:
+          motor.addDataToQueue([0, 0])
         previousLocation = locationOnObject
 
         # Sense feature at location
