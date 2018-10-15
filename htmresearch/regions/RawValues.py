@@ -84,9 +84,12 @@ class RawValues(PyRegion):
     if len(self.queue) > 0:
       # Take the top element of the data queue
       data = self.queue.pop()
-      # Copy data into output vectors
-      outputs["resetOut"][0] = data["reset"]
-      outputs["dataOut"][:] = data["dataOut"]
+    else:
+      raise Exception("RawValues: No data: queue is empty ")
+
+    # Copy data into output vectors
+    outputs["resetOut"][0] = data["reset"]
+    outputs["dataOut"][:] = data["dataOut"]
 
   def addDataToQueue(self, displacement, reset=False):
     """
