@@ -19,6 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import numpy as np
 from nupic.bindings.regions.PyRegion import PyRegion
 
 from htmresearch.algorithms.location_modules import (
@@ -266,6 +267,18 @@ class Guassian2DLocationRegion(PyRegion):
           count=1,
           defaultValue=False
         ),
+        dualPhase=dict(
+          description="A boolean flag that indicates whether or not we should "
+                      "process movement and sensation using two phases of the "
+                      "same network. When this flag is enabled, the compute "
+                      "method will alternate between movement and sensation on "
+                      "each phase. When this flag is disabled both movement and "
+                      "sensations will be processed on a single phase.",
+          dataType="Bool",
+          accessMode="ReadWrite",
+          count=1,
+          defaultValue=True
+        ),
         seed=dict(
           description="Seed for the random number generator",
           accessMode="Read",
@@ -301,6 +314,7 @@ class Guassian2DLocationRegion(PyRegion):
                bumpOverlapMethod="probabilistic",
                learningMode=False,
                seed=42,
+               dualPhase=True,
                **kwargs):
     if moduleCount <= 0 or cellsPerAxis <= 0:
       raise TypeError("Parameters moduleCount and cellsPerAxis must be > 0")
@@ -325,7 +339,12 @@ class Guassian2DLocationRegion(PyRegion):
     self.maxSynapsesPerSegment = maxSynapsesPerSegment
     self.bumpOverlapMethod = bumpOverlapMethod
     self.learningMode = learningMode
+    self.dualPhase = dualPhase
     self.seed = seed
+
+    # This flag controls whether the region is processing sensation or movement
+    # on dual phase configuration
+    self._sensing = False
 
     self._modules = None
 
@@ -366,45 +385,68 @@ class Guassian2DLocationRegion(PyRegion):
         :meth:`ThresholdedGaussian2DLocationModule.sensoryCompute`
     """
 
-    if "resetIn" in inputs:
-      if len(inputs['resetIn']) != 1:
-        raise Exception("resetIn has invalid length")
+    if inputs.get("resetIn", False):
       self.reset()
+      if self.learningMode:
+        # Initialize to random location after reset when learning
+        self.activateRandomLocation()
+
+      # send empty output
       outputs["activeCells"][:] = 0
       outputs["learnableCells"][:] = 0
       outputs["sensoryAssociatedCells"][:] = 0
       return
 
     displacement = inputs.get("displacement")
-    anchorInput = inputs.get("anchorInput")
-    if anchorInput is not None:
-      anchorInput = anchorInput.nonzero()[0]
-
-    anchorGrowthCandidates = inputs.get("anchorGrowthCandidates")
-    if anchorGrowthCandidates is not None:
-      anchorGrowthCandidates = anchorGrowthCandidates.nonzero()[0]
+    anchorInput = inputs.get("anchorInput").nonzero()[0]
+    anchorGrowthCandidates = inputs.get("anchorGrowthCandidates").nonzero()[0]
 
     # Concatenate the output of all modules
-    outputs["activeCells"][:] = 0
-    outputs["learnableCells"][:] = 0
-    outputs["sensoryAssociatedCells"][:] = 0
+    activeCells = np.array([], dtype=np.uint32)
+    learnableCells = np.array([], dtype=np.uint32)
+    sensoryAssociatedCells = np.array([], dtype=np.uint32)
+
+    # Only process input when data is available
+    shouldMove = displacement.any()
+    shouldSense = anchorInput.any() or anchorGrowthCandidates.any()
+
+    # Handles dual phase movement/sensation processing
+    if self.dualPhase:
+      if self._sensing:
+        shouldMove = False
+      else:
+        shouldSense = False
+
+      # Toggle between movement and sensation
+      self._sensing = not self._sensing
+
     for i in xrange(self.moduleCount):
       module = self._modules[i]
 
       # Compute movement
-      if displacement is not None:
+      if shouldMove:
         module.movementCompute(displacement)
 
       # Compute sensation
-      if anchorInput is not None or anchorGrowthCandidates is not None:
-        module.sensoryCompute(anchorInput, anchorGrowthCandidates, self.learningMode)
+      if shouldSense:
+        module.sensoryCompute(anchorInput, anchorGrowthCandidates,
+                              self.learningMode)
 
       # Concatenate outputs
       start = i * self.cellCount
-      end = start + self.cellCount
-      outputs["activeCells"][start:end][module.getActiveCells()] = 1
-      outputs["learnableCells"][start:end][module.getLearnableCells()] = 1
-      outputs["sensoryAssociatedCells"][start:end][module.getSensoryAssociatedCells()] = 1
+      activeCells = np.append(activeCells,
+                              module.getActiveCells() + start)
+      learnableCells = np.append(learnableCells,
+                                 module.getLearnableCells() + start)
+      sensoryAssociatedCells = np.append(sensoryAssociatedCells,
+                                         module.getSensoryAssociatedCells() + start)
+
+    outputs["activeCells"][:] = 0
+    outputs["activeCells"][activeCells] = 1
+    outputs["learnableCells"][:] = 0
+    outputs["learnableCells"][learnableCells] = 1
+    outputs["sensoryAssociatedCells"][:] = 0
+    outputs["sensoryAssociatedCells"][sensoryAssociatedCells] = 1
 
   def reset(self):
     """ Clear the active cells """
