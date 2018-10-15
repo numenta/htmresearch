@@ -47,25 +47,26 @@ def createL4L6aLocationColumn(network, L4Params, L6aParams,
   uniformly through the rhombus, packed in the optimal hexagonal arrangement.
   ::
 
-                                  +-------+
-                      +---------->|       |<------------+
-                      |     +---->|  L4   |--winner---+ |
-                      |     |     |       |           | |
-                      |     |     +-------+           | |
-                      |     |       |   ^             | |
-                      |     |       |   |             | |
-                      |     |       |   |             | |
-                      |     |       v   |             | |
-                      |     |     +-------+           | |
-                      |     |     |       |           | |
-                      |     +---->|  L6a  |<----------+ |
-                      |     |     |       |--learnable--+
-                      |     |     +-------+
-                      |     |         ^
-                 feature  reset       |
-                      |     |         |
-                      |     |         |
-                   [sensorInput] [motorInput]
+    Phase
+    -----                    +-------+
+                 +---------->|       |<------------+
+     [2]         |     +---->|  L4   |--winner---+ |
+                 |     |     |       |           | |
+                 |     |     +-------+           | |
+                 |     |       |   ^             | |
+                 |     |       |   |             | |
+                 |     |       |   |             | |
+                 |     |       v   |             | |
+                 |     |     +-------+           | |
+                 |     |     |       |           | |
+     [1,3]       |     +---->|  L6a  |<----------+ |
+                 |     |     |       |--learnable--+
+                 |     |     +-------+
+                 |     |         ^
+            feature  reset       |
+                 |     |         |
+                 |     |         |
+     [0]      [sensorInput] [motorInput]
 
 
   .. note::
@@ -100,9 +101,13 @@ def createL4L6aLocationColumn(network, L4Params, L6aParams,
     params = computeRatModuleParametersFromReadoutResolution(inverseReadoutResolution)
     L6aParams.update(params)
   else:
-    params = computeRatModuleParametersFromCellCount(L6aConfig["cellsPerAxis"],
+    params = computeRatModuleParametersFromCellCount(L6aParams["cellsPerAxis"],
                                                      baselineCellsPerAxis)
     L6aParams.update(params)
+
+  numOfcols = L4Params["columnCount"]
+  cellsPerCol = L4Params["cellsPerColumn"]
+  L6aParams["anchorInputSize"] = numOfcols * cellsPerCol
 
   # Configure L4 'basalInputSize' to be compatible L6a output
   moduleCount = L6aParams["moduleCount"]
@@ -144,11 +149,9 @@ def createL4L6aLocationColumn(network, L4Params, L6aParams,
 
   # Link L4 feedback to L6a
   network.link(L4Name, L6aName, "UniformLink", "",
-               srcOutput="activeCells", destInput="anchorInput",
-               propagationDelay=1)
+               srcOutput="activeCells", destInput="anchorInput")
   network.link(L4Name, L6aName, "UniformLink", "",
-               srcOutput="winnerCells", destInput="anchorGrowthCandidates",
-               propagationDelay=1)
+               srcOutput="winnerCells", destInput="anchorGrowthCandidates")
 
   # Link reset signal to L4 and L6a
   network.link(sensorInputName, L4Name, "UniformLink", "",
@@ -157,10 +160,10 @@ def createL4L6aLocationColumn(network, L4Params, L6aParams,
                srcOutput="resetOut", destInput="resetIn")
 
   # Set phases appropriately
-  network.setPhases(sensorInputName, [0])
   network.setPhases(motorInputName, [0])
-  network.setPhases(L6aName, [1])
+  network.setPhases(sensorInputName, [0])
   network.setPhases(L4Name, [2])
+  network.setPhases(L6aName, [1, 3])
 
   return network
 
@@ -182,18 +185,18 @@ def createL246aLocationColumn(network, L2Params, L4Params, L6aParams,
   uniformly through the rhombus, packed in the optimal hexagonal arrangement.
   ::
 
-                               +-------+
-                        reset  |       |
+   Phase                       +-------+
+   -----                reset  |       |
                         +----->|  L2   |<------------------+
-                        |      |       |                   |
+   [3]                  |      |       |                   |
                         |      +-------+                   |
                         |        |   ^                     |
                         |        |   |                     |
-                        |        |   |                     |
+                        |     +1 |   |                     |
                         |        v   |                     |
                         |      +-------+                   |
-                  +----------->|       |--predictedActive--+
-                  |     |      |  L4   |<------------+
+                  +----------->|       |--winnerCells------+
+   [2]            |     |      |  L4   |<------------+
                   |     +----->|       |--winner---+ |
                   |     |      +-------+           | |
                   |     |        |   ^             | |
@@ -202,13 +205,13 @@ def createL246aLocationColumn(network, L2Params, L4Params, L6aParams,
                   |     |        v   |             | |
                   |     |      +-------+           | |
                   |     |      |       |           | |
-                  |     +----->|  L6a  |<----------+ |
+    [1,3]         |     +----->|  L6a  |<----------+ |
                   |     |      |       |--learnable--+
                   |     |      +-------+
              feature  reset        ^
                   |     |          |
                   |     |          |
-               [sensorInput]  [motorInput]
+    [0]        [sensorInput]  [motorInput]
 
 
   .. note::
@@ -238,6 +241,13 @@ def createL246aLocationColumn(network, L2Params, L4Params, L6aParams,
   :return: Reference to the given network
   :rtype: Network
   """
+
+  # Configure L2 'inputWidth' to be compatible with L4
+  numOfcols = L4Params["columnCount"]
+  cellsPerCol = L4Params["cellsPerColumn"]
+  L2Params = copy.deepcopy(L2Params)
+  L2Params["inputWidth"] = numOfcols * cellsPerCol
+
   # Configure L4 'apicalInputWidth' to be compatible L2 output
   L4Params = copy.deepcopy(L4Params)
   L4Params["apicalInputWidth"] = L2Params["cellCount"]
@@ -260,7 +270,7 @@ def createL246aLocationColumn(network, L2Params, L4Params, L6aParams,
   network.link(L4Name, L2Name, "UniformLink", "",
                srcOutput="activeCells", destInput="feedforwardInput")
   network.link(L4Name, L2Name, "UniformLink", "",
-               srcOutput="predictedActiveCells",
+               srcOutput="winnerCells",
                destInput="feedforwardGrowthCandidates")
 
   # Link L2 feedback to L4
@@ -290,37 +300,37 @@ def createMultipleL246aLocationColumn(network, numberOfColumns, L2Params,
   connected to each other through their lateral inputs.
   ::
 
-                         +----lateralInput--+
-                         | +--------------+ |
-                         | |              | |
-                         v |              v |
-                      +-------+         +-------+
-               reset  |       |         |       | reset
-               +----->|  L2   |         |  L2   |<----+
-               |      |       |         |       |     |
-               |      +-------+         +-------+     |
-               |        |   ^             |   ^       |
-               |        |   |             |   |       |
-               |        |   |             |   |       |
-               |        v   |             v   |       |
-               |      +-------+         +-------+     |
-         +----------->|       |         |       |<----------+
-         |     |      |  L4   |         |  L4   |     |     |
-         |     +----->|       |         |       |<----+     |
-         |     |      +-------+         +-------+     |     |
-         |     |        |   ^             |   ^       |     |
-         |     |        |   |             |   |       |     |
-         |     |        |   |             |   |       |     |
-         |     |        v   |             v   |       |     |
-         |     |      +-------+         +-------+     |     |
-         |     |      |       |         |       |     |     |
-         |     +----->|  L6a  |         |  L6a  |<----+     |
-         |     |      |       |         |       |     |     |
-         |     |      +-------+         +-------+     |     |
-    feature  reset        ^                 ^      reset  feature
-         |     |          |                 |         |     |
-         |     |          |                 |         |     |
-      [sensorInput]  [motorInput]      [motorInput] [sensorInput]
+                            +----lateralInput--+
+                            | +--------------+ |
+                            | |       +1     | |
+ Phase                      v |              v |
+ -----                   +-------+         +-------+
+                  reset  |       |         |       | reset
+ [3]              +----->|  L2   |         |  L2   |<----+
+                  |      |       |         |       |     |
+                  |      +-------+         +-------+     |
+                  |        |   ^             |   ^       |
+                  |     +1 |   |          +1 |   |       |
+                  |        |   |             |   |       |
+                  |        v   |             v   |       |
+                  |      +-------+         +-------+     |
+ [2]        +----------->|       |         |       |<----------+
+            |     |      |  L4   |         |  L4   |     |     |
+            |     +----->|       |         |       |<----+     |
+            |     |      +-------+         +-------+     |     |
+            |     |        |   ^             |   ^       |     |
+            |     |        |   |             |   |       |     |
+            |     |        |   |             |   |       |     |
+            |     |        v   |             v   |       |     |
+            |     |      +-------+         +-------+     |     |
+            |     |      |       |         |       |     |     |
+ [1,3]      |     +----->|  L6a  |         |  L6a  |<----+     |
+            |     |      |       |         |       |     |     |
+            |     |      +-------+         +-------+     |     |
+       feature  reset        ^                 ^      reset  feature
+            |     |          |                 |         |     |
+            |     |          |                 |         |     |
+ [0]     [sensorInput]  [motorInput]      [motorInput] [sensorInput]
 
   .. note::
     Region names are "motorInput", "sensorInput". "L2", "L4", and "L6a".
@@ -374,10 +384,12 @@ def createMultipleL246aLocationColumn(network, numberOfColumns, L2Params,
   # Now connect the L2 columns laterally
   if numberOfColumns > 1:
     for i in xrange(numberOfColumns):
+      src = str(i)
       for j in xrange(numberOfColumns):
         if i != j:
+          dest = str(j)
           network.link(
-            "L2_" + str(i), "L2_" + str(j),
+            "L2_" + src, "L2_" + dest,
             "UniformLink", "",
             srcOutput="feedForwardOutput", destInput="lateralInput",
             propagationDelay=1)
