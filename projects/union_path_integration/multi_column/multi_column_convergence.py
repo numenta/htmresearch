@@ -31,7 +31,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from nupic.engine import Network
 
-from htmresearch.frameworks.layers.sensor_placement import greedySensorPositions
 from htmresearch.frameworks.location.location_network_creation import createMultipleL246aLocationColumn
 from htmresearch.frameworks.location.object_generation import generateObjects
 from htmresearch.support.expsuite import PyExperimentSuite
@@ -187,12 +186,13 @@ class MultiColumnExperiment(PyExperimentSuite):
       numOfFeatures = len(features)
 
       # Randomize touch sequences
-      sensorIterator = greedySensorPositions(self.numColumns, numOfFeatures)
-      touchSequence = [next(sensorIterator) for _ in xrange(numOfFeatures)]
+      touchSequence = np.random.permutation(numOfFeatures)
 
       for sensation in xrange(numOfFeatures):
         for col in xrange(self.numColumns):
-          feature = features[touchSequence[sensation][col]]
+          # Shift the touch sequence for each column making
+          colSequence = np.roll(touchSequence, col)
+          feature = features[colSequence[sensation]]
           # Move the sensor to the center of the object
           locationOnObject = np.array([feature["top"] + feature["height"] / 2.,
                                        feature["left"] + feature["width"] / 2.])
@@ -230,13 +230,15 @@ class MultiColumnExperiment(PyExperimentSuite):
     numOfFeatures = len(features)
 
     # Randomize touch sequences
-    sensorIterator = greedySensorPositions(self.numColumns, numOfFeatures)
-    touchSequence = [next(sensorIterator) for _ in xrange(self.numOfSensations)]
+    touchSequence = np.random.permutation(numOfFeatures)
+
 
     for sensation in xrange(self.numOfSensations):
       # Add sensation for all columns at once
       for col in xrange(self.numColumns):
-        feature = features[touchSequence[sensation][col]]
+        # Shift the touch sequence for each column making
+        colSequence = np.roll(touchSequence, col)
+        feature = features[touchSequence[sensation]]
         # Move the sensor to the center of the object
         locationOnObject = np.array([feature["top"] + feature["height"] / 2.,
                                      feature["left"] + feature["width"] / 2.])
