@@ -238,7 +238,7 @@ class MultiColumnExperiment(PyExperimentSuite):
       for col in xrange(self.numColumns):
         # Shift the touch sequence for each column making
         colSequence = np.roll(touchSequence, col)
-        feature = features[touchSequence[sensation]]
+        feature = features[colSequence[sensation]]
         # Move the sensor to the center of the object
         locationOnObject = np.array([feature["top"] + feature["height"] / 2.,
                                      feature["left"] + feature["width"] / 2.])
