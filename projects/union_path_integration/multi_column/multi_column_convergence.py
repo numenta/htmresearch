@@ -28,6 +28,7 @@ import os
 import random
 
 import matplotlib
+from matplotlib.ticker import MaxNLocator
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -385,7 +386,7 @@ def plotSensationByColumn(suite, name):
     touches[features][cols] = np.mean(
       suite.get_histories_over_repetitions(exp, "touches", np.mean))
 
-  plt.figure(tight_layout={"pad": 0})
+  ax = plt.figure(tight_layout={"pad": 0}).gca()
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
   for i, features in enumerate(sorted(touches)):
     cols = touches[features]
@@ -397,6 +398,7 @@ def plotSensationByColumn(suite, name):
   plt.xlabel("Number of columns")
   plt.ylabel("Average number of touches")
   plt.title("Number of touches to recognize one object (multiple columns)")
+  ax.xaxis.set_major_locator(MaxNLocator(integer=True))
   plt.legend(framealpha=1.0)
 
   # save
@@ -434,13 +436,14 @@ def plotDebugStatistics(suite, name):
 
     # Plot metrics
     for metric in metrics:
-      plt.figure(tight_layout={"pad": 0})
+      ax = plt.figure(tight_layout={"pad": 0}).gca()
       for c in xrange(cols):
         key = "{} C{}".format(metric, c)
         data = np.mean(history[key], axis=0)
         plt.plot(xrange(1, len(data) + 1), data, label=key)
 
       # format
+      ax.xaxis.set_major_locator(MaxNLocator(integer=True))
       plt.xlabel("Number of sensations")
       plt.ylabel(metric)
       plt.title("{} by sensation ({} features, {} columns)".
