@@ -27,6 +27,9 @@ import json
 import os
 import random
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 from nupic.engine import Network
@@ -223,6 +226,7 @@ class MultiColumnExperiment(PyExperimentSuite):
     self.setLearning(False)
     self.sendReset()
 
+    touches = None
     previousLocation = [None] * self.numColumns
     displacement = [0., 0.]
     features = objectToInfer["features"]
@@ -231,7 +235,6 @@ class MultiColumnExperiment(PyExperimentSuite):
 
     # Randomize touch sequences
     touchSequence = np.random.permutation(numOfFeatures)
-
 
     for sensation in xrange(self.numOfSensations):
       # Add sensation for all columns at once
@@ -255,10 +258,12 @@ class MultiColumnExperiment(PyExperimentSuite):
       if self.debug:
         self._updateInferenceStats(statistics=stats, objectName=objName)
 
-      if self.isObjectClassified(objName, minOverlap=30):
-        return sensation + 1
+      if touches is None and self.isObjectClassified(objName, minOverlap=30):
+        touches = sensation + 1
+        if not self.debug:
+          return touches
 
-    return self.numOfSensations
+    return self.numOfSensations if touches is None else touches
 
   def getL2Representations(self):
     """
@@ -355,7 +360,7 @@ class MultiColumnExperiment(PyExperimentSuite):
           len(objectRepresentation[i] & L2Representation[i]))
 
     if objectName in self.learnedObjects:
-      if self.isObjectClassified(objectName):
+      if self.isObjectClassified(objectName, minOverlap=30):
         statistics["Correct classification"].append(1.0)
       else:
         statistics["Correct classification"].append(0.0)
@@ -370,7 +375,6 @@ def plotSensationByColumn(suite, name):
   path = os.path.join(path, name)
 
   touches = {}
-  plt.figure(tight_layout={"pad": 0})
   for exp in suite.get_exps(path=path):
     params = suite.get_params(exp)
     cols = params["num_cortical_columns"]
@@ -381,6 +385,7 @@ def plotSensationByColumn(suite, name):
     touches[features][cols] = np.mean(
       suite.get_histories_over_repetitions(exp, "touches", np.mean))
 
+  plt.figure(tight_layout={"pad": 0})
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
   for i, features in enumerate(sorted(touches)):
     cols = touches[features]
@@ -402,6 +407,54 @@ def plotSensationByColumn(suite, name):
 
 
 
+def plotDebugStatistics(suite, name):
+  path = suite.cfgparser.get(name, "path")
+  path = os.path.join(path, name)
+  for exp in suite.get_exps(path=path):
+    params = suite.get_params(exp)
+    if not params["debug"]:
+      continue
+
+    cols = params["num_cortical_columns"]
+    features = params["num_features"]
+
+    # Multi column metrics. See _updateInferenceStats
+    metrics = ["L2 Representation",
+               "Overlap L2 with object",
+               "L4 Apical Segments",
+               "L4 Representation",
+               "L4 Predicted"]
+
+    keys = []
+    for col in xrange(cols):
+      keys.extend(["{} C{}".format(metric, col) for metric in metrics])
+
+    # Just Plot the first repetition
+    history = suite.get_history(exp, 0, keys)
+
+    # Plot metrics
+    for metric in metrics:
+      plt.figure(tight_layout={"pad": 0})
+      for c in xrange(cols):
+        key = "{} C{}".format(metric, c)
+        data = np.mean(history[key], axis=0)
+        plt.plot(xrange(1, len(data) + 1), data, label=key)
+
+      # format
+      plt.xlabel("Number of sensations")
+      plt.ylabel(metric)
+      plt.title("{} by sensation ({} features, {} columns)".
+                format(metric, features, cols))
+      plt.legend(framealpha=1.0)
+
+      # save
+      plotPath = os.path.join(path, "{}_{}_{}.pdf".
+                              format(metric, features, cols))
+      plt.savefig(plotPath)
+      plt.close()
+
+
+
 if __name__ == "__main__":
   registerAllResearchRegions()
 
@@ -414,3 +467,4 @@ if __name__ == "__main__":
 
   for exp in experiments:
     plotSensationByColumn(suite, exp)
+    plotDebugStatistics(suite, exp)
