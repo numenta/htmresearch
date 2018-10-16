@@ -256,7 +256,7 @@ class MultiColumnExperiment(PyExperimentSuite):
         self._updateInferenceStats(statistics=stats, objectName=objName)
 
       if self.isObjectClassified(objName, minOverlap=30):
-        return sensation
+        return sensation + 1
 
     return self.numOfSensations
 
