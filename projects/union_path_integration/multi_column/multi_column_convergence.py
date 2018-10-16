@@ -110,10 +110,10 @@ class MultiColumnExperiment(PyExperimentSuite):
     numFeatures = params["num_features"]
     numOfMinicolumns = L4Params["columnCount"]
     numOfActiveMinicolumns = params["num_active_minicolumns"]
-    self.featureSDR = {
+    self.featureSDR = [{
       str(f): sorted(np.random.choice(numOfMinicolumns, numOfActiveMinicolumns))
       for f in xrange(numFeatures)
-    }
+    } for _ in xrange(self.numColumns)]
 
     # Generate objects used in the experiment
     self.objects = generateObjects(numObjects=numObjects,
@@ -190,7 +190,7 @@ class MultiColumnExperiment(PyExperimentSuite):
 
       for sensation in xrange(numOfFeatures):
         for col in xrange(self.numColumns):
-          # Shift the touch sequence for each column making
+          # Shift the touch sequence for each column
           colSequence = np.roll(touchSequence, col)
           feature = features[colSequence[sensation]]
           # Move the sensor to the center of the object
@@ -202,7 +202,7 @@ class MultiColumnExperiment(PyExperimentSuite):
           previousLocation[col] = locationOnObject
 
           # learn each pattern multiple times
-          activeColumns = self.featureSDR[feature["name"]]
+          activeColumns = self.featureSDR[col][feature["name"]]
           for _ in xrange(self.numLearningPoints):
             # Sense feature at location
             self.motorInput[col].addDataToQueue(displacement)
@@ -236,7 +236,7 @@ class MultiColumnExperiment(PyExperimentSuite):
     for sensation in xrange(self.numOfSensations):
       # Add sensation for all columns at once
       for col in xrange(self.numColumns):
-        # Shift the touch sequence for each column making
+        # Shift the touch sequence for each column
         colSequence = np.roll(touchSequence, col)
         feature = features[colSequence[sensation]]
         # Move the sensor to the center of the object
@@ -249,7 +249,7 @@ class MultiColumnExperiment(PyExperimentSuite):
 
         # Sense feature at location
         self.motorInput[col].addDataToQueue(displacement)
-        self.sensorInput[col].addDataToQueue(self.featureSDR[feature["name"]],
+        self.sensorInput[col].addDataToQueue(self.featureSDR[col][feature["name"]],
                                              False, 0)
       self.network.run(1)
       if self.debug:
