@@ -32,7 +32,7 @@ CWD = os.path.dirname(os.path.realpath(__file__))
 CHART_DIR = os.path.join(CWD, "charts")
 
 
-def doRandomModuleExperiment(ms, ks, latticeAngle=np.radians(90)):
+def doRandomModuleExperiment(ms, ks, latticeAngle=np.radians(60)):
   scales = [1.*(math.sqrt(2)**s) for s in xrange(max(ms))]
   readoutResolution = 0.2
   kmax = max(ks)
@@ -79,7 +79,9 @@ def doRandomModuleExperiment(ms, ks, latticeAngle=np.radians(90)):
     for k in ks:
       domainToPlaneByModule_ = domainToPlaneByModule[:m,:,:k]
       latticeBasisByModule_ = latticeBasisByModule[:m]
-      print "domainToPlaneByModule", domainToPlaneByModule_
+      print
+      print "domainToPlaneByModule", domainToPlaneByModule_.tolist()
+      print "latticeBasisByModule", latticeBasisByModule.tolist()
       result = computeGridUniquenessHypercube(domainToPlaneByModule_,
                                               latticeBasisByModule_,
                                               readoutResolution, 0.5)
@@ -91,7 +93,7 @@ def doRandomModuleExperiment(ms, ks, latticeAngle=np.radians(90)):
 def experiment1():
   ms = range(1, 8)
   ks = range(1, 7)
-  numTrials = 1
+  numTrials = 5
 
   allResultsByParams = defaultdict(list)
   for _ in xrange(numTrials):
