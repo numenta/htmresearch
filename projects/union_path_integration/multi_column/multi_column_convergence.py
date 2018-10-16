@@ -1,5 +1,5 @@
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2016, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2018, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -22,6 +22,7 @@
 This file computes number of observations needed to unambiguously recognize an
 object with multi-column L2-L4-L6a networks as the number of columns increases.
 """
+import collections
 import json
 import os
 import random
@@ -142,7 +143,7 @@ class MultiColumnExperiment(PyExperimentSuite):
     :return: number of touches required to unambiguously classify the object
     """
     objectToInfer = self.objects[iteration]
-    stats = {}
+    stats = collections.defaultdict(list)
     touches = self.infer(objectToInfer, stats)
     results = {'touches': touches}
     results.update(stats)
@@ -335,23 +336,27 @@ class MultiColumnExperiment(PyExperimentSuite):
     L2Representation = self.getL2Representations()
 
     for i in xrange(self.numColumns):
-      statistics["L4 Representation C" + str(i)] = len(L4Representations[i])
-      statistics["L4 Predicted C" + str(i)] = len(L4PredictedCells[i])
-      statistics["L2 Representation C" + str(i)] = len(L2Representation[i])
-      statistics["Full L2 SDR C" + str(i)] = sorted([int(c) for c in L2Representation[i]])
-      statistics["L4 Apical Segments C" + str(i)] = len(self.L4Regions[i].getSelf()._tm.getActiveApicalSegments())
+      statistics["L4 Representation C" + str(i)].append(
+        len(L4Representations[i]))
+      statistics["L4 Predicted C" + str(i)].append(len(L4PredictedCells[i]))
+      statistics["L2 Representation C" + str(i)].append(
+        len(L2Representation[i]))
+      statistics["Full L2 SDR C" + str(i)].append(sorted(
+        [int(c) for c in L2Representation[i]]))
+      statistics["L4 Apical Segments C" + str(i)].append(len(
+        self.L4Regions[i].getSelf()._tm.getActiveApicalSegments()))
 
       # add true overlap and classification result if objectName was learned
       if objectName in self.learnedObjects:
         objectRepresentation = self.learnedObjects[objectName]
-        statistics["Overlap L2 with object C" + str(i)] = len(
-          objectRepresentation[i] & L2Representation[i])
+        statistics["Overlap L2 with object C" + str(i)].append(
+          len(objectRepresentation[i] & L2Representation[i]))
 
     if objectName in self.learnedObjects:
       if self.isObjectClassified(objectName):
-        statistics["Correct classification"] = 1.0
+        statistics["Correct classification"].append(1.0)
       else:
-        statistics["Correct classification"] = 0.0
+        statistics["Correct classification"].append(0.0)
 
 
 
