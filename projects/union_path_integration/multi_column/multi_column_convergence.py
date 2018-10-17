@@ -126,6 +126,9 @@ class MultiColumnExperiment(PyExperimentSuite):
                                    numFeatures=numFeatures,
                                    distribution=params["feature_distribution"])
 
+    # Make sure the objects are unique
+    assert len(np.unique(self.objects)) == len(self.objects)
+
     self.sdrSize = L2Params["sdrSize"]
 
     # Learn objects
