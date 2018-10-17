@@ -28,6 +28,7 @@ import os
 import random
 
 import matplotlib
+from matplotlib.ticker import MaxNLocator
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -293,6 +294,27 @@ class MultiColumnExperiment(PyExperimentSuite):
     return [set(L4.getOutputData("predictedActiveCells").nonzero()[0])
             for L4 in self.L4Regions]
 
+  def getL6aRepresentations(self):
+    """
+    Returns the active representation in L6a.
+    """
+    return [set(L6a.getOutputData("activeCells").nonzero()[0])
+            for L6a in self.L6aRegions]
+
+  def getL6aSensoryAssociatedCells(self):
+    """
+    Returns the sensoryAssociatedCells in L6a.
+    """
+    return [set(L6a.getOutputData("sensoryAssociatedCells").nonzero()[0])
+            for L6a in self.L6aRegions]
+
+  def getL6aLearnableCells(self):
+    """
+    Returns the sensoryAssociatedCells in L6a.
+    """
+    return [set(L6a.getOutputData("learnableCells").nonzero()[0])
+            for L6a in self.L6aRegions]
+
   def isObjectClassified(self, objectName, minOverlap=None, maxL2Size=None):
     """
     Return True if objectName is currently unambiguously classified by every L2
@@ -338,11 +360,20 @@ class MultiColumnExperiment(PyExperimentSuite):
             Name of the inferred object, if known. Otherwise, set to None.
 
     """
+    L6aLearnableCells = self.getL6aLearnableCells()
+    L6aSensoryAssociatedCells = self.getL6aSensoryAssociatedCells()
+    L6aRepresentations = self.getL6aRepresentations()
     L4Representations = self.getL4Representations()
     L4PredictedCells = self.getL4PredictedCells()
     L2Representation = self.getL2Representations()
 
     for i in xrange(self.numColumns):
+      statistics["L6a SensoryAssociatedCells C" + str(i)].append(
+        len(L6aSensoryAssociatedCells[i]))
+      statistics["L6a LearnableCells C" + str(i)].append(
+        len(L6aLearnableCells[i]))
+      statistics["L6a Representation C" + str(i)].append(
+        len(L6aRepresentations[i]))
       statistics["L4 Representation C" + str(i)].append(
         len(L4Representations[i]))
       statistics["L4 Predicted C" + str(i)].append(len(L4PredictedCells[i]))
@@ -385,7 +416,7 @@ def plotSensationByColumn(suite, name):
     touches[features][cols] = np.mean(
       suite.get_histories_over_repetitions(exp, "touches", np.mean))
 
-  plt.figure(tight_layout={"pad": 0})
+  ax = plt.figure(tight_layout={"pad": 0}).gca()
   colorList = ['r', 'b', 'g', 'm', 'c', 'k', 'y']
   for i, features in enumerate(sorted(touches)):
     cols = touches[features]
@@ -397,6 +428,7 @@ def plotSensationByColumn(suite, name):
   plt.xlabel("Number of columns")
   plt.ylabel("Average number of touches")
   plt.title("Number of touches to recognize one object (multiple columns)")
+  ax.xaxis.set_major_locator(MaxNLocator(integer=True))
   plt.legend(framealpha=1.0)
 
   # save
@@ -421,6 +453,9 @@ def plotDebugStatistics(suite, name):
     # Multi column metrics. See _updateInferenceStats
     metrics = ["L2 Representation",
                "Overlap L2 with object",
+               "L6a Representation",
+               "L6a LearnableCells",
+               "L6a SensoryAssociatedCells",
                "L4 Apical Segments",
                "L4 Representation",
                "L4 Predicted"]
@@ -434,13 +469,14 @@ def plotDebugStatistics(suite, name):
 
     # Plot metrics
     for metric in metrics:
-      plt.figure(tight_layout={"pad": 0})
+      ax = plt.figure(tight_layout={"pad": 0}).gca()
       for c in xrange(cols):
         key = "{} C{}".format(metric, c)
         data = np.mean(history[key], axis=0)
         plt.plot(xrange(1, len(data) + 1), data, label=key)
 
       # format
+      ax.xaxis.set_major_locator(MaxNLocator(integer=True))
       plt.xlabel("Number of sensations")
       plt.ylabel(metric)
       plt.title("{} by sensation ({} features, {} columns)".
