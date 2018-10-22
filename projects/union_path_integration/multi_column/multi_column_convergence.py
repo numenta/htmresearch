@@ -454,6 +454,8 @@ def plotDebugStatistics(suite, name):
 
     cols = params["num_cortical_columns"]
     features = params["num_features"]
+    L2Params = json.loads('{' + params["l2_params"] + '}')
+    cellCount = L2Params["cellCount"]
 
     # Multi column metrics. See _updateInferenceStats
     metrics = ["L2 Representation",
@@ -468,6 +470,7 @@ def plotDebugStatistics(suite, name):
     keys = []
     for col in xrange(cols):
       keys.extend(["{} C{}".format(metric, col) for metric in metrics])
+      keys.append("Full L2 SDR C{}".format(col))
 
     # Just Plot the first repetition
     history = suite.get_history(exp, 0, keys)
@@ -491,6 +494,32 @@ def plotDebugStatistics(suite, name):
       # save
       plotPath = os.path.join(path, "{}_{}_{}.pdf".
                               format(metric, features, cols))
+      plt.savefig(plotPath)
+      plt.close()
+
+    # Plot L2 SDR
+    for c in xrange(cols):
+      fig = plt.figure(tight_layout={"pad": 0})
+      data = history["Full L2 SDR C{}".format(c)]
+
+      # One SDR per object for every touch
+      for obj, touches in enumerate(data):
+        ax = fig.add_axes([0.1 + 0.015 * obj, 0.1, 0.01, .8],
+                          frameon=False, xticks=[], yticks=[])
+        values = []
+        for sdr in touches:
+          bits = np.zeros(cellCount)
+          bits[sdr] = 1
+          values.append(bits)
+
+        ax.imshow(np.array(values).T, aspect='auto', cmap=plt.cm.binary,
+                  interpolation='nearest')
+      # format
+      plt.title("L2 SDR for col {} ({} features, {} columns)".
+                format(c, features, cols), loc='right')
+      # save
+      plotPath = os.path.join(path, "Full L2 SDR_{}_{}_{}.pdf".
+                              format(features, cols, c))
       plt.savefig(plotPath)
       plt.close()
 
