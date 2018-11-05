@@ -154,7 +154,7 @@ def _createNetwork(inverseReadoutResolution, anchorInputSize, dualPhase=False):
     "dualPhase": dualPhase,
     "bumpOverlapMethod": "probabilistic"
   })
-  net.addRegion("location", "py.Guassian2DLocationRegion", json.dumps(params))
+  net.addRegion("location", "py.GridCellLocationRegion", json.dumps(params))
 
   if anchorInputSize > 0:
     # Link sensor
@@ -176,7 +176,7 @@ def _createNetwork(inverseReadoutResolution, anchorInputSize, dualPhase=False):
 
 
 
-class Guassian2DLocationRegionTest(unittest.TestCase):
+class GridCellLocationRegionTest(unittest.TestCase):
   @classmethod
   def setUpClass(cls):
     registerAllResearchRegions()

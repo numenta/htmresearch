@@ -77,7 +77,7 @@ def createL4L6aLocationColumn(network, L4Params, L6aParams,
   :type network: Network
   :param L4Params:  constructor parameters for :class:`ApicalTMPairRegion`
   :type L4Params: dict
-  :param L6aParams:  constructor parameters for :class:`Guassian2DLocationRegion`
+  :param L6aParams:  constructor parameters for :class:`GridCellLocationRegion`
   :type L6aParams: dict
   :param inverseReadoutResolution: Optional readout resolution.
     The readout resolution specifies the diameter of the circle of phases in the
@@ -130,7 +130,7 @@ def createL4L6aLocationColumn(network, L4Params, L6aParams,
   network.addRegion(motorInputName, "py.RawValues",
                     json.dumps({"outputWidth": 2}))
   network.addRegion(L4Name, "py.ApicalTMPairRegion", json.dumps(L4Params))
-  network.addRegion(L6aName, "py.Guassian2DLocationRegion",
+  network.addRegion(L6aName, "py.GridCellLocationRegion",
                     json.dumps(L6aParams))
 
   # Link sensory input to L4
@@ -224,7 +224,7 @@ def createL246aLocationColumn(network, L2Params, L4Params, L6aParams,
   :type L2Params: dict
   :param L4Params:  constructor parameters for :class:`ApicalTMPairRegion`
   :type L4Params: dict
-  :param L6aParams:  constructor parameters for :class:`Guassian2DLocationRegion`
+  :param L6aParams:  constructor parameters for :class:`GridCellLocationRegion`
   :type L6aParams: dict
   :param inverseReadoutResolution: Optional readout resolution.
     The readout resolution specifies the diameter of the circle of phases in the
@@ -345,7 +345,7 @@ def createMultipleL246aLocationColumn(network, numberOfColumns, L2Params,
   :type L2Params: dict
   :param L4Params:  constructor parameters for :class:`ApicalTMPairRegion`
   :type L4Params: dict
-  :param L6aParams:  constructor parameters for :class:`Guassian2DLocationRegion`
+  :param L6aParams:  constructor parameters for :class:`GridCellLocationRegion`
   :type L6aParams: dict
   :param inverseReadoutResolution: Optional readout resolution.
     The readout resolution specifies the diameter of the circle of phases in the

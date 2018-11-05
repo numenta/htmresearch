@@ -27,9 +27,9 @@ from htmresearch.algorithms.location_modules import (
 
 
 
-class Guassian2DLocationRegion(PyRegion):
+class GridCellLocationRegion(PyRegion):
   """
-  The Guassian2DLocationRegion computes the location of the sensor in the space
+  The GridCellLocationRegion computes the location of the sensor in the space
   of the object given sensory and motor inputs using gaussian grid cell modules
   to update the location.
 
@@ -54,10 +54,10 @@ class Guassian2DLocationRegion(PyRegion):
   @classmethod
   def getSpec(cls):
     """
-    Return the spec for the Guassian2DLocationRegion
+    Return the spec for the GridCellLocationRegion
     """
     spec = dict(
-      description=Guassian2DLocationRegion.__doc__,
+      description=GridCellLocationRegion.__doc__,
       singleNodeOnly=True,
       inputs=dict(
         anchorInput=dict(
@@ -83,10 +83,10 @@ class Guassian2DLocationRegion(PyRegion):
           requireSplitterMap=False,
         ),
         displacement=dict(
-          description="Pair of floats representing the displacement as 2D "
-                      "translation vector [dx, dy].",
+          description="An array of floats representing the displacement as a "
+                      "multi dimensional translation vector [d1, d2, ..., dk].",
           dataType="Real32",
-          count=2,
+          count=0,
           required=False,
           regionLevel=True,
           isDefaultInput=False,
@@ -279,6 +279,13 @@ class Guassian2DLocationRegion(PyRegion):
           count=1,
           defaultValue=True
         ),
+        dimensions=dict(
+          description="The number of dimensions represented in the displacement",
+          accessMode="Read",
+          dataType="UInt32",
+          count=1,
+          defaultValue=2
+        ),
         seed=dict(
           description="Seed for the random number generator",
           accessMode="Read",
@@ -315,11 +322,14 @@ class Guassian2DLocationRegion(PyRegion):
                learningMode=False,
                seed=42,
                dualPhase=True,
+               dimensions=2,
                **kwargs):
     if moduleCount <= 0 or cellsPerAxis <= 0:
       raise TypeError("Parameters moduleCount and cellsPerAxis must be > 0")
     if moduleCount != len(scale) or moduleCount != len(orientation):
       raise TypeError("scale and orientation arrays len must match moduleCount")
+    if dimensions < 2:
+      raise TypeError("dimensions must be >= 2")
 
     self.moduleCount = moduleCount
     self.cellsPerAxis = cellsPerAxis
@@ -340,6 +350,7 @@ class Guassian2DLocationRegion(PyRegion):
     self.bumpOverlapMethod = bumpOverlapMethod
     self.learningMode = learningMode
     self.dualPhase = dualPhase
+    self.dimensions = dimensions
     self.seed = seed
 
     # This flag controls whether the region is processing sensation or movement
@@ -347,6 +358,8 @@ class Guassian2DLocationRegion(PyRegion):
     self._sensing = False
 
     self._modules = None
+
+    self._projection = None
 
     PyRegion.__init__(self, **kwargs)
 
@@ -373,6 +386,14 @@ class Guassian2DLocationRegion(PyRegion):
           maxSynapsesPerSegment=self.maxSynapsesPerSegment,
           bumpOverlapMethod=self.bumpOverlapMethod,
           seed=self.seed))
+
+      # Create a projection matrix for each module used to convert higher
+      # dimension displacements to 2D
+      if self.dimensions > 2:
+        self._projection = [
+          self.createProjectionMatrix(dimensions=self.dimensions)
+            for _ in xrange(self.moduleCount)]
+
 
   def compute(self, inputs, outputs):
     """
@@ -410,6 +431,9 @@ class Guassian2DLocationRegion(PyRegion):
     shouldMove = displacement.any()
     shouldSense = anchorInput.any() or anchorGrowthCandidates.any()
 
+    if shouldMove and len(displacement) != self.dimensions:
+      raise TypeError("displacement must have {} dimensions".format(self.dimensions))
+
     # Handles dual phase movement/sensation processing
     if self.dualPhase:
       if self._sensing:
@@ -425,7 +449,12 @@ class Guassian2DLocationRegion(PyRegion):
 
       # Compute movement
       if shouldMove:
-        module.movementCompute(displacement)
+        movement = displacement
+        if self.dimensions > 2:
+          # Project n-dimension displacements to 2D
+          movement = np.matmul(self._projection[i], movement)
+
+        module.movementCompute(movement)
 
       # Compute sensation
       if shouldSense:
@@ -484,3 +513,42 @@ class Guassian2DLocationRegion(PyRegion):
     Returns underlying list of modules used by this region
     """
     return self._modules
+
+  def createProjectionMatrix(self, dimensions=3):
+    """
+    Compute  projection matrix used to convert n-dimensional displacement into
+    2D displacement compatible with :class:`ThresholdedGaussian2DLocationModule`
+    algorithm. To compute the 2D displacement each module must multiply the
+    n-dimensional displacement with the projection matrix for that module.
+
+    :param dimensions: Number of dimensions. Must be greater than 2. Default 3.
+    :type int dimensions:
+
+    :return: The projection matrix
+    :rtype: array(2, n)
+    """
+    if dimensions < 3:
+      raise ValueError("dimensions value must be 3 or higher")
+
+    b1 = np.random.multivariate_normal(mean=np.zeros(dimensions),
+                                       cov=np.eye(dimensions))
+    b1 /= np.linalg.norm(b1)
+
+    # Choose a random vector orthogonal to b1
+    while True:
+      randomVector = np.random.multivariate_normal(mean=np.zeros(dimensions),
+                                                   cov=np.eye(dimensions))
+      randomVector /= np.linalg.norm(randomVector)
+      projectedToPlane = randomVector - np.dot(randomVector, b1) * b1
+
+      # make sure random vector is not parallel to b1 plane
+      length = np.linalg.norm(projectedToPlane)
+      if length == 0:
+        continue
+
+      b2 = projectedToPlane / length
+
+      # b1 and b2 are two orthogonal vectors on the plane.
+      # To get a 2D displacement, you'll dot the n-dimensional displacement with
+      # each of these vectors.
+      return np.array([b1, b2])
