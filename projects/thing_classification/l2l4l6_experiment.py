@@ -174,14 +174,18 @@ class L2L4L6aExperiment(PyExperimentSuite):
     """
     objname, sensations = self.objects.items()[iteration]
 
-    self.network.sendReset()
-    self.network.infer(sensations=sensations, objname=objname)
-    classified = self.network.isObjectClassified(objectName=objname,
-                                                 minOverlap=self.sdrSize,
-                                                 maxL2Size=self.sdrSize)
+    # Select sensations to infer
+    np.random.shuffle(sensations[0])
+    sensations = [sensations[0][:self.numOfSensations]]
 
-    print "Infer :", objname, "=", classified
-    return {"name": objname, "classified": classified}
+    self.network.sendReset()
+
+    # Collect all statistics for every inference.
+    # See L246aNetwork._updateInferenceStats
+    stats = defaultdict(list)
+    self.network.infer(sensations=sensations, stats=stats, objname=objname)
+    stats.update({"name": objname})
+    return stats
 
 
 
@@ -192,19 +196,36 @@ def plotAccuracy(suite, name):
   path = suite.cfgparser.get(name, "path")
   path = os.path.join(path, name)
 
-  results = {}
+  accuracy = defaultdict(list)
+  sensations = defaultdict(list)
+
   for exp in suite.get_exps(path=path):
     params = suite.get_params(exp)
+    maxTouches = params["num_sensations"]
     cells = params["cells_per_axis"]
-    res = suite.get_history(exp, 0, "classified")
-    results[cells] = float(sum(res)) / float(len(res))
 
-  results = OrderedDict(sorted(results.items(), key=lambda t: t[0]))
-  plt.plot(results.keys(), results.values())
-  plt.xlabel("Number of cells per axis")
-  plt.ylabel("Accuracy")
+    res = suite.get_history(exp, 0, "Correct classification")
+    classified = [any(x) for x in res]
+    accuracy[cells] = float(sum(classified)) / float(len(classified))
+    touches = [np.argmax(x) or maxTouches for x in res]
+    sensations[cells] = [np.mean(touches), np.max(touches)]
+
   plt.title("Classification Accuracy")
-  plt.legend(framealpha=1.0)
+
+  accuracy = OrderedDict(sorted(accuracy.items(), key=lambda t: t[0]))
+  fig, ax1 = plt.subplots()
+  ax1.plot(accuracy.keys(), accuracy.values(), "b")
+  ax1.set_xlabel("Cells per axis")
+  ax1.set_ylabel("Accuracy", color="b")
+  ax1.tick_params("y", colors="b")
+
+  sensations = OrderedDict(sorted(sensations.items(), key=lambda t: t[0]))
+  ax2 = ax1.twinx()
+  ax2.set_prop_cycle(linestyle=["-", "--"])
+  ax2.plot(sensations.keys(), sensations.values(), "r")
+  ax2.set_ylabel("Sensations", color="r")
+  ax2.tick_params("y", colors="r")
+  ax2.legend(("Mean", "Max"))
 
   # save
   path = suite.cfgparser.get(name, "path")
