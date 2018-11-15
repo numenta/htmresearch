@@ -492,9 +492,6 @@ class L246aNetwork(object):
     # will be populated during training
     self.learnedObjects = {}
 
-    # Holds inference statistics
-    self.statistics = defaultdict(list)
-
   @LoggingDecorator()
   def sendReset(self):
     for col in xrange(self.numColumns):
@@ -557,7 +554,7 @@ class L246aNetwork(object):
       # update L2 representations for the object
       self.learnedObjects[objectName] = self.getL2Representations()
 
-  def infer(self, sensations, objname=None):
+  def infer(self, sensations, stats=None, objname=None):
     """
     Attempt to recognize the object given a list of sensations.
     You may use :meth:`getCurrentClassification` to extract the current object
@@ -570,6 +567,10 @@ class L246aNetwork(object):
                        as the other columns.
 
     :type sensations: list[tuple[list[int], list[int]]]
+    :param stats: Dictionary holding statistics information.
+                  See '_updateInferenceStats' for information on the statistics
+                  collected
+    :type stats: defaultdict[str, list]
     :param objname: Name of the inferred object, if known
     :type objname: str or None
     """
@@ -593,9 +594,10 @@ class L246aNetwork(object):
         self.sensorInput[col].addDataToQueue(feature, False, 0)
 
       self.network.run(1)
-      self._updateInferenceStats(objname)
+      if stats is not None:
+        self._updateInferenceStats(stats=stats, objectName=objname)
 
-  def _updateInferenceStats(self, objectName=None):
+  def _updateInferenceStats(self, stats, objectName=None):
     """
     Updates the inference statistics.
 
@@ -611,34 +613,34 @@ class L246aNetwork(object):
     L2Representation = self.getL2Representations()
 
     for i in xrange(self.numColumns):
-      self.statistics["L6a SensoryAssociatedCells C" + str(i)].append(
+      stats["L6a SensoryAssociatedCells C" + str(i)].append(
         len(L6aSensoryAssociatedCells[i]))
-      self.statistics["L6a LearnableCells C" + str(i)].append(
+      stats["L6a LearnableCells C" + str(i)].append(
         len(L6aLearnableCells[i]))
-      self.statistics["L6a Representation C" + str(i)].append(
+      stats["L6a Representation C" + str(i)].append(
         len(L6aRepresentations[i]))
-      self.statistics["L4 Representation C" + str(i)].append(
+      stats["L4 Representation C" + str(i)].append(
         len(L4Representations[i]))
-      self.statistics["L4 Predicted C" + str(i)].append(
+      stats["L4 Predicted C" + str(i)].append(
         len(L4PredictedCells[i]))
-      self.statistics["L2 Representation C" + str(i)].append(
+      stats["L2 Representation C" + str(i)].append(
         len(L2Representation[i]))
-      self.statistics["Full L2 SDR C" + str(i)].append(sorted(
+      stats["Full L2 SDR C" + str(i)].append(sorted(
         [int(c) for c in L2Representation[i]]))
-      self.statistics["L4 Apical Segments C" + str(i)].append(len(
+      stats["L4 Apical Segments C" + str(i)].append(len(
         self.L4Regions[i].getSelf()._tm.getActiveApicalSegments()))
 
       # add true overlap and classification result if objectName was learned
       if objectName in self.learnedObjects:
         objectRepresentation = self.learnedObjects[objectName]
-        self.statistics["Overlap L2 with object C" + str(i)].append(
+        stats["Overlap L2 with object C" + str(i)].append(
           len(objectRepresentation[i] & L2Representation[i]))
 
     if objectName in self.learnedObjects:
       if self.isObjectClassified(objectName, minOverlap=30):
-        self.statistics["Correct classification"].append(1.0)
+        stats["Correct classification"].append(1.0)
       else:
-        self.statistics["Correct classification"].append(0.0)
+        stats["Correct classification"].append(0.0)
 
   def getL2Representations(self):
     """
