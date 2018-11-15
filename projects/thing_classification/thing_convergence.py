@@ -51,10 +51,10 @@ def getL4Params():
     "permanenceIncrement": 0.1,
     "permanenceDecrement": 0.01,
     "minThreshold": 19,
-    "predictedSegmentDecrement": 0.0,
+    "apicalPredictedSegmentDecrement": 0.0,
     "activationThreshold": 19,
     "sampleSize": 20,
-    "implementation": "etm",
+    "implementation": "ApicalTiebreakCPP",
   }
 
 
