@@ -52,7 +52,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
     torch.manual_seed(params["seed"])
     np.random.seed(params["seed"])
 
+    # Get our directories correct and working with Domino
+    dirName = os.path.dirname(os.path.realpath(__file__))
+    self.dataDir = os.path.join(dirName,"data")
     self.resultsDir = os.path.join(params["path"], params["name"], "plots")
+
     if not os.path.exists(self.resultsDir):
       os.makedirs(self.resultsDir)
 
@@ -61,7 +65,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 
     self.train_loader = torch.utils.data.DataLoader(
-      datasets.MNIST('data', train=True, download=True,
+      datasets.MNIST(self.dataDir, train=True, download=True,
                      transform=transforms.Compose([
                        transforms.ToTensor(),
                        transforms.Normalize((0.1307,), (0.3081,))
@@ -69,7 +73,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       batch_size=params["batch_size"], shuffle=True, **kwargs)
 
     self.test_loader = torch.utils.data.DataLoader(
-      datasets.MNIST('data', train=False, transform=transforms.Compose([
+      datasets.MNIST(self.dataDir, train=False, transform=transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.1307,), (0.3081,))
       ])),
@@ -159,7 +163,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     total_correct = 0
     for noise in [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
       test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST('data', train=False, transform=transforms.Compose([
+        datasets.MNIST(self.dataDir, train=False, transform=transforms.Compose([
           transforms.ToTensor(),
           RandomNoise(noise,
                       # logDir="data/debug"
