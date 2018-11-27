@@ -32,15 +32,23 @@ class KWinners(torch.autograd.Function):
   https://github.com/jcjohnson/pytorch-examples
   """
   @staticmethod
-  def forward(ctx, x):
+  def forward(ctx, x, dutyCycles, k, boostStrength):
     """
     In the forward pass we receive a context object and a Tensor containing the
     input; we must return a Tensor containing the output, and we can use the
     context object to cache objects for use in the backward pass.
     """
-    res = Variable(torch.zeros(x.shape))
-    topk, indices = x.topk(200)
-    res = res.scatter(1, indices, topk)
+    targetDensity = float(k) / x.shape[1]
+    boostFactors = torch.exp((targetDensity - dutyCycles) * boostStrength)
+    boosted = x * boostFactors
+    # print(boosted)
+    res = torch.zeros(x.shape)
+    topk, indices = boosted.topk(k)
+
+    # res = res.scatter(1, indices, topk)
+    for i in range(x.shape[0]):
+      res[i,indices[i]] = x[i,indices[i]]
+
     ctx.save_for_backward(x,indices)
     return res
 
@@ -62,5 +70,5 @@ class KWinners(torch.autograd.Function):
     for i in range(grad_output.size(0)):
       grad_x[i, indices[i]] = grad_output[i, indices[i]]
 
-    return grad_x
+    return grad_x,None,None,None
 
