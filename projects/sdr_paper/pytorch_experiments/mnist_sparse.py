@@ -100,8 +100,8 @@ def main():
                       ' (default: 2.0)')
   parser.add_argument('--no-cuda', action='store_true', default=False,
                       help='disables CUDA training')
-  parser.add_argument('--seed', type=int, default=1, metavar='S',
-                      help='random seed (default: 1)')
+  parser.add_argument('--seed', type=int, default=42, metavar='S',
+                      help='random seed (default: 42)')
   parser.add_argument('--log-interval', type=int, default=1000, metavar='N',
                       help='how many minibatches to wait before logging' 
                            ' training status (default: 1000)')
@@ -156,7 +156,7 @@ def main():
     print("Testing with noise level=",noise)
     total_correct += test(args, model, device, test_loader)
 
-  print("k=200, n=2000, potential pool = 50%")
+  print("k=200, n=2000, potential pool = ",model.weightSparsity)
   print("Total correct:",total_correct)
 
 if __name__ == '__main__':
