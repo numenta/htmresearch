@@ -36,7 +36,16 @@ class SparseMNISTNet(nn.Module):
   This class implements a sparse MNIST net.
   """
 
-  def __init__(self, n=2000, k=200, weightSparsity=0.25, boostStrength=1.0):
+  def __init__(self, n=2000, k=200, weightSparsity=0.5, boostStrength=1.0):
+    """
+    A network with one hidden layer, which is a k-sparse linear layer.
+
+    :param n:  Number of units in the hidden layer
+    :param k:  Number of on (non-zero) units per iteration
+    :param weightSparsity: Pct of weights that are non-zero
+    :param boostStrength:  boost strength (0.0 implies no boosting)
+
+    """
     super(SparseMNISTNet, self).__init__()
 
     self.k = k
@@ -100,3 +109,10 @@ class SparseMNISTNet(nn.Module):
     print("duty cycles min/max/mean:",
           self.dutyCycle.min(), self.dutyCycle.max(), self.dutyCycle.mean())
 
+
+  def printParameters(self):
+    print("              k :", self.k)
+    print("              n :", self.n)
+    print(" weightSparsity :", self.weightSparsity)
+    print("  boostStrength :", self.boostStrength)
+    print("dutyCyclePeriod :", self.dutyCyclePeriod)
