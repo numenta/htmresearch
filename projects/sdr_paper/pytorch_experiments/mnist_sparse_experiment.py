@@ -118,30 +118,30 @@ class MNISTSparseExperiment(PyExperimentSuite):
         plt.savefig(self.resultsDir + "/figure_"+str(epoch)+"_"+str(
                     self.model.learningIterations))
         plt.close()
-        print("")
-        self.model.printMetrics()
-        print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-          epoch, batch_idx * len(data), len(self.train_loader.dataset),
-                 100. * batch_idx / len(self.train_loader), loss.item()))
+        # print("")
+        # self.model.printMetrics()
+        # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+        #   epoch, batch_idx * len(data), len(self.train_loader.dataset),
+        #          100. * batch_idx / len(self.train_loader), loss.item()))
 
 
-  def test(self, params):
+  def test(self, params, test_loader):
     self.model.eval()
     test_loss = 0
     correct = 0
     with torch.no_grad():
-      for data, target in self.test_loader:
+      for data, target in test_loader:
         data, target = data.to(self.device), target.to(self.device)
         output = self.model(data)
         test_loss += F.nll_loss(output, target, reduction='sum').item() # sum up batch loss
         pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
         correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= len(self.test_loader.dataset)
-    test_error = 100. * correct / len(self.test_loader.dataset)
+    test_loss /= len(test_loader.dataset)
+    test_error = 100. * correct / len(test_loader.dataset)
     # self.model.printMetrics()
     # print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-    #   test_loss, correct, len(self.test_loader.dataset),
+    #   test_loss, correct, len(test_loader.dataset),
     #   test_error))
 
     ret = {"num_correct": correct,
@@ -169,7 +169,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
       # print("Testing with noise level=",noise)
-      testResult = self.test(params)
+      testResult = self.test(params, test_loader)
       total_correct += testResult["num_correct"]
       ret[noise]= testResult
 
