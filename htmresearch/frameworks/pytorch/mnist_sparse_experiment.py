@@ -20,7 +20,6 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
-import argparse
 import os
 import numpy as np
 
@@ -54,7 +53,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     # Get our directories correct and working with Domino
     dirName = os.path.dirname(os.path.realpath(__file__))
-    self.dataDir = os.path.join(dirName,"data")
+    # self.dataDir = os.path.join(dirName,"data")
+    self.dataDir = params["datadir"]
     self.resultsDir = os.path.join(params["path"], params["name"], "plots")
 
     if not os.path.exists(self.resultsDir):
@@ -94,6 +94,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     Called once for each training iteration.
     """
     self.train(params, epoch=iteration)
+    print(iteration)
     return self.runNoiseTests(params)
 
 
