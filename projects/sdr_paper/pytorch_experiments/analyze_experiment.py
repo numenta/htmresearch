@@ -23,53 +23,104 @@ from __future__ import print_function
 
 import pprint
 import numpy as np
+import sys
 
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
 
-
-if __name__ == '__main__':
-
-  expName = "./results/experiment1"
-
-  suite = MNISTSparseExperiment()
-
-  experiments = suite.get_exps(expName)
-
+def analyzeParameters(expName, suite):
+  print("\n================",expName,"=====================")
   expParams = suite.get_params(expName)
   pprint.pprint(expParams)
+  if type(expParams["boost_strength"]) == list:
+    for boost in expParams["boost_strength"]:
+      # Retrieve the last totalCorrect from each experiment with boost 0
+      # Print them sorted from best to worst
+      values, params = suite.get_values_fix_params(
+        expName, 0, "totalCorrect", "last", boost_strength=boost)
+      v = np.array(values)
+      print("Average with boost", boost, "=", v.mean())
+      # sortedIndices = v.argsort()
+      # for i in sortedIndices[::-1]:
+      #   print(v[i],params[i]["name"])
+
+  if type(expParams["k"]) == list:
+    for b in expParams["k"]:
+      # Retrieve the last totalCorrect from each experiment
+      # Print them sorted from best to worst
+      values, params = suite.get_values_fix_params(
+        expName, 0, "totalCorrect", "last", k=b)
+      v = np.array(values)
+      print("Average with k", b, "=", v.mean())
+      # sortedIndices = v.argsort()
+      # for i in sortedIndices[::-1]:
+      #   print(v[i],params[i]["name"])
+
+  if type(expParams["learning_rate"]) == list:
+    for b in expParams["learning_rate"]:
+      # Retrieve the last totalCorrect from each experiment
+      values, params = suite.get_values_fix_params(
+        expName, 0, "totalCorrect", "last", learning_rate=b)
+      v = np.array(values)
+      print("Average with learning_rate", b, "=", v.mean())
+      # Print them sorted from best to worst
+      # sortedIndices = v.argsort()
+      # for i in sortedIndices[::-1]:
+      #   print(v[i],params[i]["name"])
+
+  if type(expParams["weight_sparsity"]) == list:
+    for b in expParams["weight_sparsity"]:
+      # Retrieve the last totalCorrect from each experiment
+      values, params = suite.get_values_fix_params(
+        expName, 0, "totalCorrect", "last", weight_sparsity=b)
+      v = np.array(values)
+      print("Average with weight_sparsity", b, "=", v.mean())
+      # Print them sorted from best to worst
+      # sortedIndices = v.argsort()
+      # for i in sortedIndices[::-1]:
+      #   print(v[i],params[i]["name"])
+
+
+def analyzeExperiment(expName, suite):
+  print("\n================",expName,"=====================")
 
   # Retrieve the last totalCorrect from each experiment
   # Print them sorted from best to worst
   values, params = suite.get_values_fix_params(
-          expName, 0, "totalCorrect", "last")
+    expName, 0, "totalCorrect", "last")
   v = np.array(values)
   sortedIndices = v.argsort()
   for i in sortedIndices[::-1]:
-    print(v[i],params[i]["name"])
+    print(v[i], params[i]["name"])
 
   print()
 
-  for boost in expParams ["boost_strength"]:
-    # Retrieve the last totalCorrect from each experiment with boost 0
-    # Print them sorted from best to worst
-    values, params = suite.get_values_fix_params(
-            expName, 0, "totalCorrect", "last", boost_strength=boost)
-    v = np.array(values)
-    sortedIndices = v.argsort()
-    print("Average with boost", boost,"=",v.mean())
-    # for i in sortedIndices[::-1]:
-    #   print(v[i],params[i]["name"])
 
+# Need to run it from htmresearch top level:
+# python projects/sdr_paper/pytorch_experiments/analyze_experiment.py -c projects/sdr_paper/pytorch_experiments/experiments.cfg
 
-  for b in expParams ["k"]:
-    # Retrieve the last totalCorrect from each experiment with boost 0
-    # Print them sorted from best to worst
-    values, params = suite.get_values_fix_params(
-            expName, 0, "totalCorrect", "last", k=b)
-    v = np.array(values)
-    sortedIndices = v.argsort()
-    print("Average with k", b,"=",v.mean())
-    # for i in sortedIndices[::-1]:
-    #   print(v[i],params[i]["name"])
+if __name__ == '__main__':
+
+  suite = MNISTSparseExperiment()
+
+  # List of all experiments
+  # experiments = suite.get_exps("./results")
+  # pprint.pprint(experiments)
+
+  analyzeExperiment("./results", suite)
+  for expName in ["./results/experiment1", "./results/experiment2",
+                  "./results/experiment3", "./results/experiment4",
+                  "./results/experimentTemp"]:
+    analyzeParameters(expName, suite)
+
+  # List the noise values from the best one
+  # noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
+  #                           "0.35", "0.4", "0.45", "0.5"]
+  # expPath = "./results/experiment1/learning_rate0.040boost_strength0.0k100.0momentum0.250"
+  # print(expPath)
+  # result = suite.get_value(expPath, 0, noiseValues, "last")
+  # for k in noiseValues:
+  #   print(k,result[k]["testerror"])
+  # pprint.pprint(result)
+  # print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
 

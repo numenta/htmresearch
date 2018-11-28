@@ -51,9 +51,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     torch.manual_seed(params["seed"])
     np.random.seed(params["seed"])
 
-    # Get our directories correct and working with Domino
-    dirName = os.path.dirname(os.path.realpath(__file__))
-    # self.dataDir = os.path.join(dirName,"data")
+    # Get our directories correct
     self.dataDir = params["datadir"]
     self.resultsDir = os.path.join(params["path"], params["name"], "plots")
 
@@ -95,7 +93,12 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     self.train(params, epoch=iteration)
     print(iteration)
-    return self.runNoiseTests(params)
+    if iteration == params["iterations"] - 1:
+      ret = self.runNoiseTests(params)
+      print("totalCorrect=", ret["totalCorrect"], "Test error=", ret["testerror"])
+      return ret
+    else:
+      return {}
 
 
   def finalize(self, params, rep):
@@ -173,14 +176,13 @@ class MNISTSparseExperiment(PyExperimentSuite):
         ])),
         batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
-      # print("Testing with noise level=",noise)
       testResult = self.test(params, test_loader)
       total_correct += testResult["num_correct"]
       ret[noise]= testResult
 
     # self.model.printParameters()
-    # print("Total noise correctness score:",total_correct)
     ret["totalCorrect"] = total_correct
+    ret["testerror"] = ret[0.0]["testerror"]
 
     return ret
 
