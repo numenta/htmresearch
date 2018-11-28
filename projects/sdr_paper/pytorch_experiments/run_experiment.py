@@ -19,6 +19,10 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
 

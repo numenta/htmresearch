@@ -83,17 +83,15 @@ class SparseMNISTNet(nn.Module):
 
     # First hidden layer
     x = x.view(-1, 28*28)
-    if self.learningIterations > self.dutyCyclePeriod:
-      x = KWinners.apply(self.l1(x), self.dutyCycle, self.k, self.boostStrength)
-    else:
-      x = KWinners.apply(self.l1(x), self.dutyCycle, self.k, 0.0)
+    x = KWinners.apply(self.l1(x), self.dutyCycle, self.k, self.boostStrength)
 
     if self.training:
       # Update moving average of duty cycle for training iterations only
       batchSize = x.shape[0]
-      self.dutyCycle = (self.dutyCycle * (self.dutyCyclePeriod - batchSize) +
-                        ((x > 0).sum(dim=0)).float()) / self.dutyCyclePeriod
       self.learningIterations += batchSize
+      period = min(self.dutyCyclePeriod, self.learningIterations)
+      self.dutyCycle = (self.dutyCycle * (period - batchSize) +
+                        ((x > 0).sum(dim=0)).float()) / period
 
     # Output layer
     x = self.l2(x)
