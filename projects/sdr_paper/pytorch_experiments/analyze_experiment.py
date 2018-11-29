@@ -32,6 +32,7 @@ def analyzeParameters(expName, suite):
   print("\n================",expName,"=====================")
   expParams = suite.get_params(expName)
   pprint.pprint(expParams)
+
   if type(expParams["boost_strength"]) == list:
     for boost in expParams["boost_strength"]:
       # Retrieve the last totalCorrect from each experiment with boost 0
@@ -96,6 +97,18 @@ def analyzeExperiment(expName, suite):
   print()
 
 
+def printExperimentSpecifics(expPath, suite):
+  # List the noise values from the best one
+  noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
+                            "0.35", "0.4", "0.45", "0.5"]
+  print("\n================",expPath,"=====================")
+  result = suite.get_value(expPath, 0, noiseValues, "last")
+  for k in noiseValues:
+    print(k,result[k]["testerror"])
+  pprint.pprint(result)
+  print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
+
+
 # Need to run it from htmresearch top level:
 # python projects/sdr_paper/pytorch_experiments/analyze_experiment.py -c projects/sdr_paper/pytorch_experiments/experiments.cfg
 
@@ -110,17 +123,10 @@ if __name__ == '__main__':
   analyzeExperiment("./results", suite)
   for expName in ["./results/experiment1", "./results/experiment2",
                   "./results/experiment3", "./results/experiment4",
-                  "./results/experimentTemp"]:
+                  "./results/experimentTemp", "./results/experiment7"]:
     analyzeParameters(expName, suite)
 
-  # List the noise values from the best one
-  # noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
-  #                           "0.35", "0.4", "0.45", "0.5"]
-  # expPath = "./results/experiment1/learning_rate0.040boost_strength0.0k100.0momentum0.250"
-  # print(expPath)
-  # result = suite.get_value(expPath, 0, noiseValues, "last")
-  # for k in noiseValues:
-  #   print(k,result[k]["testerror"])
-  # pprint.pprint(result)
-  # print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
 
+  expPath = "./results/experiment1/learning_rate0.040boost_strength0.0k100.0momentum0.250"
+  expPath = "./results/experiment7/weight_sparsity0.350learning_rate0.040boost_strength1.50k200.0momentum0.250"
+  printExperimentSpecifics(expPath, suite)
