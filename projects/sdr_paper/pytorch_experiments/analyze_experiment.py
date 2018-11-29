@@ -23,7 +23,7 @@ from __future__ import print_function
 
 import pprint
 import numpy as np
-import sys
+import torch
 
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
@@ -82,7 +82,7 @@ def analyzeParameters(expName, suite):
       #   print(v[i],params[i]["name"])
 
 
-def analyzeExperiment(expName, suite):
+def analyzeResults(expName, suite):
   print("\n================",expName,"=====================")
 
   # Retrieve the last totalCorrect from each experiment
@@ -116,17 +116,30 @@ if __name__ == '__main__':
 
   suite = MNISTSparseExperiment()
 
+  # model = torch.load("results/experimentQuick/k10.0/model.pt")
+  # model.eval()
+  # print(model.l1.weight.data)
+
   # List of all experiments
   # experiments = suite.get_exps("./results")
   # pprint.pprint(experiments)
 
-  analyzeExperiment("./results", suite)
+  analyzeResults("./results", suite)
+
   for expName in ["./results/experiment1", "./results/experiment2",
-                  "./results/experiment3", "./results/experiment4",
-                  "./results/experimentTemp", "./results/experiment7"]:
+                  # "./results/experiment3", "./results/experiment4",
+                  # "./results/experimentTemp", "./results/experiment7",
+                  # "./results/experiment8", "./results/experiment10",
+                  "./results/experiment11"]:
     analyzeParameters(expName, suite)
 
 
-  expPath = "./results/experiment1/learning_rate0.040boost_strength0.0k100.0momentum0.250"
-  expPath = "./results/experiment7/weight_sparsity0.350learning_rate0.040boost_strength1.50k200.0momentum0.250"
-  printExperimentSpecifics(expPath, suite)
+  # Print details of the best ones so far
+  # expPath = "./results/experiment1/learning_rate0.040boost_strength0.0k100.0momentum0.250"
+  # printExperimentSpecifics(expPath, suite)
+  #
+  # expPath = "./results/experiment7/weight_sparsity0.350learning_rate0.040boost_strength1.50k200.0momentum0.250"
+  # printExperimentSpecifics(expPath, suite)
+  #
+  # expPath = "./results/experiment10/weight_sparsity0.40learning_rate0.040n500.0boost_strength1.0k50.0momentum0.250"
+  # printExperimentSpecifics(expPath, suite)
