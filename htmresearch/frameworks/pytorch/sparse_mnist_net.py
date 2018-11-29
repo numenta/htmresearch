@@ -32,21 +32,21 @@ import matplotlib
 matplotlib.use('Agg')
 
 class SparseMNISTNet(nn.Module):
-  """
-  This class implements a sparse MNIST net.
-  """
 
   def __init__(self, n=2000, k=200, weightSparsity=0.5, boostStrength=1.0):
     """
-    A network with one hidden layer, which is a k-sparse linear layer.
+    A network with one hidden layer, which is a k-sparse linear layer, designed
+    for MNIST.
 
     :param n:  Number of units in the hidden layer
-    :param k:  Number of on (non-zero) units per iteration
-    :param weightSparsity: Pct of weights that are non-zero
+    :param k:  Number of ON (non-zero) units per iteration
+    :param weightSparsity: Pct of weights that are allowed to be non-zero
     :param boostStrength:  boost strength (0.0 implies no boosting)
 
     """
     super(SparseMNISTNet, self).__init__()
+
+    assert(weightSparsity <= 0)
 
     self.k = k
     self.n = n
@@ -68,7 +68,6 @@ class SparseMNISTNet(nn.Module):
       self.zeroWts.append(
         np.random.permutation(self.l1.weight.shape[1])[0:numZeros])
 
-
     self.rezeroWeights()
 
 
@@ -87,6 +86,7 @@ class SparseMNISTNet(nn.Module):
 
     if self.training:
       # Update moving average of duty cycle for training iterations only
+      # During inference this is kept static.
       batchSize = x.shape[0]
       self.learningIterations += batchSize
       period = min(self.dutyCyclePeriod, self.learningIterations)

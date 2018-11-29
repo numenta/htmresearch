@@ -101,13 +101,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
       return {}
 
 
-  def finalize(self, params, rep):
-    """
-    Called once at the end of each experiment. Not sure what to do here!
-    """
-    pass
-
-
   def train(self, params, epoch):
     self.model.train()
     for batch_idx, (data, target) in enumerate(self.train_loader):
