@@ -22,6 +22,7 @@
 from __future__ import print_function
 import os
 import numpy as np
+import time
 
 import torch
 import torch.nn.functional as F
@@ -47,6 +48,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once at the beginning of each experiment.
     """
+    self.startTime = time.time()
     print(params)
     torch.manual_seed(params["seed"])
     np.random.seed(params["seed"])
@@ -61,6 +63,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
     self.use_cuda = not params["no_cuda"] and torch.cuda.is_available()
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
+
+    print("Using cuda:", self.use_cuda)
 
     self.train_loader = torch.utils.data.DataLoader(
       datasets.MNIST(self.dataDir, train=True, download=True,
@@ -91,14 +95,22 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once for each training iteration.
     """
+    ret = {}
     self.train(params, epoch=iteration)
-    print(iteration)
     if iteration == params["iterations"] - 1:
-      ret = self.runNoiseTests(params)
+      ret.update(self.runNoiseTests(params))
       print("totalCorrect=", ret["totalCorrect"], "Test error=", ret["testerror"])
-      return ret
-    else:
-      return {}
+
+    ret.update({"elapsedTime": time.time() - self.startTime})
+
+    print(iteration,ret["elapsedTime"])
+
+    return ret
+
+  def finalize(self, params, rep):
+    """Save the full model once we are done."""
+    saveDir = os.path.join(params["path"], params["name"], "model.pt")
+    torch.save(self.model, saveDir)
 
 
   def train(self, params, epoch):

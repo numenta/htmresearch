@@ -46,7 +46,7 @@ class SparseMNISTNet(nn.Module):
     """
     super(SparseMNISTNet, self).__init__()
 
-    assert(weightSparsity <= 0)
+    assert(weightSparsity >= 0)
 
     self.k = k
     self.n = n
@@ -59,8 +59,10 @@ class SparseMNISTNet(nn.Module):
     # Boosting related variables
     self.dutyCyclePeriod = 2000
     self.boostStrength = boostStrength
-    self.dutyCycle = torch.zeros(self.n)
-    self.boostFactors = torch.ones(self.n)
+    self.dutyCycle = torch.nn.Parameter(torch.zeros(self.n),
+                                        requires_grad=False)
+    self.boostFactors = torch.nn.Parameter(torch.ones(self.n),
+                                           requires_grad=False)
 
     # For each L1 unit, decide which weights are going to be zero
     numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
