@@ -74,7 +74,7 @@ class SparseMNISTNet(nn.Module):
     self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
-    self.dutyCycle = torch.zeros(self.n)
+    self.register_buffer("dutyCycle", torch.zeros(self.n))
 
     # For each L1 unit, decide which weights are going to be zero
     if self.weightSparsity < 1.0:
@@ -132,10 +132,6 @@ class SparseMNISTNet(nn.Module):
 
     return x
 
-  def _apply(self, fn):
-      ret = super(SparseMNISTNet, self)._apply(fn)
-      self.dutyCycle = fn(self.dutyCycle)
-      return ret
 
   def printMetrics(self):
     print("Learning Iterations:", self.learningIterations)
