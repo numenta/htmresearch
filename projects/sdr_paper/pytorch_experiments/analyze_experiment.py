@@ -128,13 +128,17 @@ if __name__ == '__main__':
   analyzeResults("./results", suite)
 
   for expName in [
-            # "./results/experiment1", "./results/experiment2",
-            # "./results/experiment3", "./results/experiment4",
-            # "./results/experimentTemp", "./results/experiment7",
-            "./results/experiment8", "./results/experiment10",
-            # "./results/experiment11",
-            # "./results/experiment12",
-            "./results/experiment14", "./results/experiment15"]:
+    # "./results/experiment1", "./results/experiment2",
+    # "./results/experiment3", "./results/experiment4",
+    # "./results/experimentTemp", "./results/experiment7",
+    "./results/experiment8", "./results/experiment10",
+    # "./results/experiment11",
+    # "./results/experiment12",
+    "./results/experiment14",
+    "./results/experiment15",
+    "./results/experiment17",
+    "./results/experiment19",
+  ]:
     analyzeParameters(expName, suite)
 
 
@@ -147,3 +151,6 @@ if __name__ == '__main__':
   #
   # expPath = "./results/experiment10/weight_sparsity0.40learning_rate0.040n500.0boost_strength1.0k50.0momentum0.250"
   # printExperimentSpecifics(expPath, suite)
+
+  expPath = "./results/experiment19/k_inference_factor2.0n500.0k50.0"
+  printExperimentSpecifics(expPath, suite)
