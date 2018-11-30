@@ -84,6 +84,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
                           boostStrength=params["boost_strength"],
                           weightSparsity=params["weight_sparsity"],
                           boostStrengthFactor=params["boost_strength_factor"],
+                          kInferenceFactor=params["k_inference_factor"],
                           )
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")

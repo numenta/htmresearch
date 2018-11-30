@@ -33,7 +33,9 @@ matplotlib.use('Agg')
 
 class SparseMNISTNet(nn.Module):
 
-  def __init__(self, n=2000, k=200,
+  def __init__(self, n=2000,
+               k=200,
+               kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
                boostStrengthFactor=1.0):
@@ -42,16 +44,19 @@ class SparseMNISTNet(nn.Module):
     for MNIST.
 
     :param n:
-      Number of units in the hidden layer
+      Number of units in the hidden layer.
 
     :param k:
-      Number of ON (non-zero) units per iteration
+      Number of ON (non-zero) units per iteration.
+
+    :param kInferenceFactor:
+      During inference (training=False) we increase k by this factor.
 
     :param weightSparsity:
-      Pct of weights that are allowed to be non-zero
+      Pct of weights that are allowed to be non-zero.
 
     :param boostStrength:
-      boost strength (0.0 implies no boosting)
+      boost strength (0.0 implies no boosting).
 
     :param boostStrengthFactor:
       boost strength is multiplied by this factor after each epoch.
@@ -61,8 +66,10 @@ class SparseMNISTNet(nn.Module):
     super(SparseMNISTNet, self).__init__()
 
     assert(weightSparsity >= 0)
+    assert(k <= n)
 
     self.k = k
+    self.kInferenceFactor = kInferenceFactor
     self.n = n
     self.l1 = nn.Linear(28*28, self.n)
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
@@ -105,12 +112,18 @@ class SparseMNISTNet(nn.Module):
 
   def forward(self, x):
 
+    if not self.training:
+      k = min(int(round(self.k * self.kInferenceFactor)), self.n)
+      print("using k=",k)
+    else:
+      k = self.k
+
     # First hidden layer
     x = x.view(-1, 28*28)
 
     # Apply k-winner algorithm if k < n, otherwise default to standard RELU
-    if self.k != self.n:
-      x = KWinners.apply(self.l1(x), self.dutyCycle, self.k, self.boostStrength)
+    if k != self.n:
+      x = KWinners.apply(self.l1(x), self.dutyCycle, k, self.boostStrength)
     else:
       x = F.relu(self.l1(x))
 
@@ -121,7 +134,7 @@ class SparseMNISTNet(nn.Module):
       self.learningIterations += batchSize
 
       # Only need to update dutycycle if if k < n
-      if self.k != self.n:
+      if k != self.n:
         period = min(self.dutyCyclePeriod, self.learningIterations)
         self.dutyCycle = (self.dutyCycle * (period - batchSize) +
                           ((x > 0).sum(dim=0)).float()) / period
@@ -142,8 +155,10 @@ class SparseMNISTNet(nn.Module):
 
 
   def printParameters(self):
-    print("              k :", self.k)
-    print("              n :", self.n)
-    print(" weightSparsity :", self.weightSparsity)
-    print("  boostStrength :", self.boostStrength)
-    print("dutyCyclePeriod :", self.dutyCyclePeriod)
+    print("                 k :", self.k)
+    print("                 n :", self.n)
+    print("    weightSparsity :", self.weightSparsity)
+    print("     boostStrength :", self.boostStrength)
+    print("   dutyCyclePeriod :", self.dutyCyclePeriod)
+    print("   kInferenceFactor:", self.kInferenceFactor)
+    print("boostStrengthFactor:", self.boostStrengthFactor)
