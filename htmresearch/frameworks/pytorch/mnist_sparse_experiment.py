@@ -79,12 +79,17 @@ class MNISTSparseExperiment(PyExperimentSuite):
       ])),
       batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
-    self.model = SparseMNISTNet(n=params["n"],
+    sp_model = SparseMNISTNet(n=params["n"],
                           k=params["k"],
                           boostStrength=params["boost_strength"],
                           weightSparsity=params["weight_sparsity"],
                           boostStrengthFactor=params["boost_strength_factor"],
-                          ).to(self.device)
+                          )
+    if torch.cuda.device_count() > 1:
+      print("Using", torch.cuda.device_count(), "GPUs")
+      sp_model = torch.nn.DataParallel(sp_model)
+
+    self.model = sp_model.to(self.device)
     self.optimizer = optim.SGD(self.model.parameters(),
                                lr=params["learning_rate"],
                                momentum=params["momentum"])

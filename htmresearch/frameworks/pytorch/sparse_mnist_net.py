@@ -74,7 +74,7 @@ class SparseMNISTNet(nn.Module):
     self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
-    self.dutyCycle = torch.zeros(self.n)
+    self.register_buffer("dutyCycle", torch.zeros(self.n))
 
     # For each L1 unit, decide which weights are going to be zero
     if self.weightSparsity < 1.0:

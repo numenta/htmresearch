@@ -104,7 +104,7 @@ class KWinners(torch.autograd.Function):
     # Take the boosted version of the input x, find the top k winners.
     # Compute an output that contains the values of x corresponding to the top k
     # boosted values
-    res = torch.zeros(x.shape)
+    res = torch.zeros(x.shape).to(x.device)
     topk, indices = boosted.topk(k)
     for i in range(x.shape[0]):
       res[i,indices[i]] = x[i,indices[i]]
@@ -123,7 +123,7 @@ class KWinners(torch.autograd.Function):
     forward function.
     """
     x,indices, = ctx.saved_tensors
-    grad_x = Variable(torch.zeros(grad_output.shape))
+    grad_x = Variable(torch.zeros(grad_output.shape).to(grad_output.device))
 
     # Probably a better way to do it, but this is not terrible as it only loops
     # over the batch size.
