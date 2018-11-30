@@ -77,19 +77,21 @@ class SparseMNISTNet(nn.Module):
     self.dutyCycle = torch.zeros(self.n)
 
     # For each L1 unit, decide which weights are going to be zero
-    numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
-    for i in range(self.n):
-      self.zeroWts.append(
-        np.random.permutation(self.l1.weight.shape[1])[0:numZeros])
+    if self.weightSparsity < 1.0:
+      numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
+      for i in range(self.n):
+        self.zeroWts.append(
+          np.random.permutation(self.l1.weight.shape[1])[0:numZeros])
 
-    self.rezeroWeights()
+      self.rezeroWeights()
 
 
   def rezeroWeights(self):
-    # print("non zero before:",self.l1.weight.data.nonzero().shape)
-    for i in range(self.n):
-      self.l1.weight.data[i, self.zeroWts[i]] = 0.0
-    # print("non zero after:",self.l1.weight.data.nonzero().shape)
+    if self.weightSparsity < 1.0:
+      # print("non zero before:",self.l1.weight.data.nonzero().shape)
+      for i in range(self.n):
+        self.l1.weight.data[i, self.zeroWts[i]] = 0.0
+      # print("non zero after:",self.l1.weight.data.nonzero().shape)
 
 
   def postEpoch(self):
