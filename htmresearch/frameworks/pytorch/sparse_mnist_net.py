@@ -114,7 +114,6 @@ class SparseMNISTNet(nn.Module):
 
     if not self.training:
       k = min(int(round(self.k * self.kInferenceFactor)), self.n)
-      print("using k=",k)
     else:
       k = self.k
 
