@@ -130,6 +130,10 @@ class SparseMNISTNet(nn.Module):
 
     return x
 
+  def _apply(self, fn):
+      ret = super(SparseMNISTNet, self)._apply(fn)
+      self.dutyCycle = fn(self.dutyCycle)
+      return ret
 
   def printMetrics(self):
     print("Learning Iterations:", self.learningIterations)
