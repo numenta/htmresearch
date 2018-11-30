@@ -64,8 +64,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 
-    print("Using cuda:", self.use_cuda)
-
     self.train_loader = torch.utils.data.DataLoader(
       datasets.MNIST(self.dataDir, train=True, download=True,
                      transform=transforms.Compose([
@@ -82,10 +80,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
       batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
     self.model = SparseMNISTNet(n=params["n"],
-                                k=params["k"],
-                                boostStrength=params["boost_strength"],
-                                weightSparsity=params["weight_sparsity"]
-                                ).to(self.device)
+                          k=params["k"],
+                          boostStrength=params["boost_strength"],
+                          weightSparsity=params["weight_sparsity"],
+                          boostStrengthFactor=params["boost_strength_factor"],
+                          ).to(self.device)
     self.optimizer = optim.SGD(self.model.parameters(),
                                lr=params["learning_rate"],
                                momentum=params["momentum"])
@@ -93,19 +92,21 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
   def iterate(self, params, repetition, iteration):
     """
-    Called once for each training iteration.
+    Called once for each training iteration (== epoch here).
     """
     ret = {}
     self.train(params, epoch=iteration)
     if iteration == params["iterations"] - 1:
       ret.update(self.runNoiseTests(params))
-      print("totalCorrect=", ret["totalCorrect"], "Test error=", ret["testerror"])
+      print("totalCorrect=", ret["totalCorrect"],
+            "Test error=", ret["testerror"])
 
     ret.update({"elapsedTime": time.time() - self.startTime})
 
     print(iteration,ret["elapsedTime"])
 
     return ret
+
 
   def finalize(self, params, rep):
     """Save the full model once we are done."""
@@ -114,6 +115,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
 
   def train(self, params, epoch):
+    """
+    Train one epoch of this model.
+    """
     self.model.train()
     for batch_idx, (data, target) in enumerate(self.train_loader):
       data, target = data.to(self.device), target.to(self.device)
@@ -137,8 +141,12 @@ class MNISTSparseExperiment(PyExperimentSuite):
         #   epoch, batch_idx * len(data), len(self.train_loader.dataset),
         #          100. * batch_idx / len(self.train_loader), loss.item()))
 
+    self.model.postEpoch()
 
   def test(self, params, test_loader):
+    """
+    Test the model using the given loader
+    """
     self.model.eval()
     test_loss = 0
     correct = 0
@@ -152,10 +160,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     test_loss /= len(test_loader.dataset)
     test_error = 100. * correct / len(test_loader.dataset)
-    # self.model.printMetrics()
-    # print('Test set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-    #   test_loss, correct, len(test_loader.dataset),
-    #   test_error))
 
     ret = {"num_correct": correct,
            "test_loss": test_loss,
@@ -165,6 +169,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
 
   def runNoiseTests(self, params):
+    """
+    Run the model with different noise values and return the metrics.
+    """
     ret = {}
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 

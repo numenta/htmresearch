@@ -27,6 +27,10 @@ from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
 
 
+# Run from htmresearch:
+# domino run projects/sdr_paper/pytorch_experiments/run_experiment.py -c projects/sdr_paper/pytorch_experiments/experiments.cfg
+#   OR
+# python projects/sdr_paper/pytorch_experiments/run_experiment.py -c projects/sdr_paper/pytorch_experiments/experiments.cfg -d
 if __name__ == '__main__':
   suite = MNISTSparseExperiment()
   suite.start()

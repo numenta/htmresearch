@@ -33,15 +33,29 @@ matplotlib.use('Agg')
 
 class SparseMNISTNet(nn.Module):
 
-  def __init__(self, n=2000, k=200, weightSparsity=0.5, boostStrength=1.0):
+  def __init__(self, n=2000, k=200,
+               weightSparsity=0.5,
+               boostStrength=1.0,
+               boostStrengthFactor=1.0):
     """
     A network with one hidden layer, which is a k-sparse linear layer, designed
     for MNIST.
 
-    :param n:  Number of units in the hidden layer
-    :param k:  Number of ON (non-zero) units per iteration
-    :param weightSparsity: Pct of weights that are allowed to be non-zero
-    :param boostStrength:  boost strength (0.0 implies no boosting)
+    :param n:
+      Number of units in the hidden layer
+
+    :param k:
+      Number of ON (non-zero) units per iteration
+
+    :param weightSparsity:
+      Pct of weights that are allowed to be non-zero
+
+    :param boostStrength:
+      boost strength (0.0 implies no boosting)
+
+    :param boostStrengthFactor:
+      boost strength is multiplied by this factor after each epoch.
+      A value < 1.0 will decrement it every epoch.
 
     """
     super(SparseMNISTNet, self).__init__()
@@ -57,12 +71,10 @@ class SparseMNISTNet(nn.Module):
     self.learningIterations = 0
 
     # Boosting related variables
-    self.dutyCyclePeriod = 2000
+    self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
-    self.dutyCycle = torch.nn.Parameter(torch.zeros(self.n),
-                                        requires_grad=False)
-    self.boostFactors = torch.nn.Parameter(torch.ones(self.n),
-                                           requires_grad=False)
+    self.boostStrengthFactor = boostStrengthFactor
+    self.dutyCycle = torch.zeros(self.n)
 
     # For each L1 unit, decide which weights are going to be zero
     numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
@@ -80,20 +92,37 @@ class SparseMNISTNet(nn.Module):
     # print("non zero after:",self.l1.weight.data.nonzero().shape)
 
 
+  def postEpoch(self):
+    """
+    Call this once after each training epoch. Currently just updates
+    boostStrength
+    """
+    self.boostStrength = self.boostStrength * self.boostStrengthFactor
+    print("boostStrength is now:", self.boostStrength)
+
+
   def forward(self, x):
 
     # First hidden layer
     x = x.view(-1, 28*28)
-    x = KWinners.apply(self.l1(x), self.dutyCycle, self.k, self.boostStrength)
+
+    # Apply k-winner algorithm if k < n, otherwise default to standard RELU
+    if self.k != self.n:
+      x = KWinners.apply(self.l1(x), self.dutyCycle, self.k, self.boostStrength)
+    else:
+      x = F.relu(self.l1(x))
 
     if self.training:
       # Update moving average of duty cycle for training iterations only
       # During inference this is kept static.
       batchSize = x.shape[0]
       self.learningIterations += batchSize
-      period = min(self.dutyCyclePeriod, self.learningIterations)
-      self.dutyCycle = (self.dutyCycle * (period - batchSize) +
-                        ((x > 0).sum(dim=0)).float()) / period
+
+      # Only need to update dutycycle if if k < n
+      if self.k != self.n:
+        period = min(self.dutyCyclePeriod, self.learningIterations)
+        self.dutyCycle = (self.dutyCycle * (period - batchSize) +
+                          ((x > 0).sum(dim=0)).float()) / period
 
     # Output layer
     x = self.l2(x)

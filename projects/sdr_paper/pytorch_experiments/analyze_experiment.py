@@ -40,7 +40,8 @@ def analyzeParameters(expName, suite):
       values, params = suite.get_values_fix_params(
         expName, 0, "totalCorrect", "last", boost_strength=boost)
       v = np.array(values)
-      print("Average with boost", boost, "=", v.mean())
+      print("Average/min/max with boost", boost, "=",
+            v.mean(), v.min(), v.max())
       # sortedIndices = v.argsort()
       # for i in sortedIndices[::-1]:
       #   print(v[i],params[i]["name"])
@@ -126,11 +127,14 @@ if __name__ == '__main__':
 
   analyzeResults("./results", suite)
 
-  for expName in ["./results/experiment1", "./results/experiment2",
-                  # "./results/experiment3", "./results/experiment4",
-                  # "./results/experimentTemp", "./results/experiment7",
-                  # "./results/experiment8", "./results/experiment10",
-                  "./results/experiment11"]:
+  for expName in [
+            # "./results/experiment1", "./results/experiment2",
+            # "./results/experiment3", "./results/experiment4",
+            # "./results/experimentTemp", "./results/experiment7",
+            "./results/experiment8", "./results/experiment10",
+            # "./results/experiment11",
+            # "./results/experiment12",
+            "./results/experiment14", "./results/experiment15"]:
     analyzeParameters(expName, suite)
 
 
