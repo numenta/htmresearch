@@ -123,7 +123,7 @@ class KWinners(torch.autograd.Function):
     forward function.
     """
     x,indices, = ctx.saved_tensors
-    grad_x = Variable(torch.zeros(grad_output.shape).to(grad_output.device))
+    grad_x = torch.zeros(grad_output.shape, requires_grad=True).to(grad_output.device)
 
     # Probably a better way to do it, but this is not terrible as it only loops
     # over the batch size.

@@ -29,58 +29,26 @@ from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
 
 def analyzeParameters(expName, suite):
+  """
+  Analyze the impact of each list parameter in this experiment
+  """
   print("\n================",expName,"=====================")
   expParams = suite.get_params(expName)
   pprint.pprint(expParams)
 
-  if type(expParams["boost_strength"]) == list:
-    for boost in expParams["boost_strength"]:
-      # Retrieve the last totalCorrect from each experiment with boost 0
-      # Print them sorted from best to worst
-      values, params = suite.get_values_fix_params(
-        expName, 0, "totalCorrect", "last", boost_strength=boost)
-      v = np.array(values)
-      print("Average/min/max with boost", boost, "=",
-            v.mean(), v.min(), v.max())
-      # sortedIndices = v.argsort()
-      # for i in sortedIndices[::-1]:
-      #   print(v[i],params[i]["name"])
-
-  if type(expParams["k"]) == list:
-    for b in expParams["k"]:
-      # Retrieve the last totalCorrect from each experiment
-      # Print them sorted from best to worst
-      values, params = suite.get_values_fix_params(
-        expName, 0, "totalCorrect", "last", k=b)
-      v = np.array(values)
-      print("Average with k", b, "=", v.mean())
-      # sortedIndices = v.argsort()
-      # for i in sortedIndices[::-1]:
-      #   print(v[i],params[i]["name"])
-
-  if type(expParams["learning_rate"]) == list:
-    for b in expParams["learning_rate"]:
-      # Retrieve the last totalCorrect from each experiment
-      values, params = suite.get_values_fix_params(
-        expName, 0, "totalCorrect", "last", learning_rate=b)
-      v = np.array(values)
-      print("Average with learning_rate", b, "=", v.mean())
-      # Print them sorted from best to worst
-      # sortedIndices = v.argsort()
-      # for i in sortedIndices[::-1]:
-      #   print(v[i],params[i]["name"])
-
-  if type(expParams["weight_sparsity"]) == list:
-    for b in expParams["weight_sparsity"]:
-      # Retrieve the last totalCorrect from each experiment
-      values, params = suite.get_values_fix_params(
-        expName, 0, "totalCorrect", "last", weight_sparsity=b)
-      v = np.array(values)
-      print("Average with weight_sparsity", b, "=", v.mean())
-      # Print them sorted from best to worst
-      # sortedIndices = v.argsort()
-      # for i in sortedIndices[::-1]:
-      #   print(v[i],params[i]["name"])
+  for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
+            "k_inference_factor"]:
+    if p in expParams and type(expParams[p]) == list:
+      for v1 in expParams[p]:
+        # Retrieve the last totalCorrect from each experiment
+        # Print them sorted from best to worst
+        values, params = suite.get_values_fix_params(
+          expName, 0, "totalCorrect", "last", **{p:v1})
+        v = np.array(values)
+        print("Average/min/max for", p, v1, "=", v.mean(), v.min(), v.max())
+        # sortedIndices = v.argsort()
+        # for i in sortedIndices[::-1]:
+        #   print(v[i],params[i]["name"])
 
 
 def analyzeResults(expName, suite):
@@ -138,6 +106,7 @@ if __name__ == '__main__':
     "./results/experiment15",
     "./results/experiment17",
     "./results/experiment19",
+    "./results/experiment20",
   ]:
     analyzeParameters(expName, suite)
 
