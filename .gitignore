@@ -98,3 +98,7 @@ robotium-solo-5.0.1.jar.properties
 /domino.log
 .vscode/
 /projects/combined_sequences/detailed_plots
+/projects/sdr_paper/pytorch_experiments/data
+/projects/sdr_paper/pytorch_experiments/images
+/projects/sdr_paper/pytorch_experiments/results
+/results
