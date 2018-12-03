@@ -100,16 +100,23 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once for each training iteration (== epoch here).
     """
+    t1 = time.time()
     ret = {}
     self.train(params, epoch=iteration)
-    if iteration == params["iterations"] - 1:
+    if iteration == params["iterations"] - 1 or (iteration%5 == 0):
       ret.update(self.runNoiseTests(params))
-      print("totalCorrect=", ret["totalCorrect"],
+      print("Noise test results: totalCorrect=", ret["totalCorrect"],
             "Test error=", ret["testerror"])
+      if ret["totalCorrect"] > 80000:
+        print("*******")
+        print(params)
 
     ret.update({"elapsedTime": time.time() - self.startTime})
 
-    print(iteration,ret["elapsedTime"])
+    print("Iteration =", iteration,
+          ", iteration time= {0:.3f} secs, "
+          "total elapsed time= {1:.3f} mins".format(
+            time.time() - t1,ret["elapsedTime"]/60.0))
 
     return ret
 
@@ -134,6 +141,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
       self.optimizer.step()
       self.model.rezeroWeights()  # Only allow weight changes to the non-zero weights
       if batch_idx % params["log_interval"] == 0:
+        print("logging: ",self.model.learningIterations,
+              " learning iterations, elapsedTime", time.time() - self.startTime)
         bins = np.linspace(0.0, 0.8, 200)
         plt.hist(self.model.dutyCycle, bins, alpha=0.5, label='All cols')
         plt.xlabel("Duty cycle")
