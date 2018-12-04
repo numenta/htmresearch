@@ -135,8 +135,10 @@ class SparseMNISTNet(nn.Module):
       # Only need to update dutycycle if if k < n
       if k != self.n:
         period = min(self.dutyCyclePeriod, self.learningIterations)
-        self.dutyCycle = (self.dutyCycle * (period - batchSize) +
-                          ((x > 0).sum(dim=0)).float()) / period
+        self.dutyCycle.mul_(period - batchSize)
+        self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
+        self.dutyCycle.div_(period)
+
 
     # Output layer
     x = self.l2(x)
