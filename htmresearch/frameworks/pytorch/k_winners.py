@@ -108,7 +108,7 @@ class KWinners(torch.autograd.Function):
     for i in range(x.shape[0]):
       res[i,indices[i]] = x[i,indices[i]]
 
-    ctx.save_for_backward(x,indices)
+    ctx.save_for_backward(indices)
     return res
 
 
@@ -121,7 +121,7 @@ class KWinners(torch.autograd.Function):
     compute and return the gradient of the loss with respect to the input to the
     forward function.
     """
-    x,indices, = ctx.saved_tensors
+    indices, = ctx.saved_tensors
     grad_x = torch.zeros_like(grad_output, requires_grad=True)
 
     # Probably a better way to do it, but this is not terrible as it only loops
