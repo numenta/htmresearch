@@ -21,7 +21,6 @@
 
 from __future__ import print_function
 import torch
-from torch.autograd import Variable
 
 
 class KWinners(torch.autograd.Function):
@@ -97,15 +96,15 @@ class KWinners(torch.autograd.Function):
     if boostStrength > 0.0:
       targetDensity = float(k) / x.shape[1]
       boostFactors = torch.exp((targetDensity - dutyCycles) * boostStrength)
-      boosted = x * boostFactors
+      boosted = x.detach() * boostFactors
     else:
-      boosted = x
+      boosted = x.detach()
 
     # Take the boosted version of the input x, find the top k winners.
     # Compute an output that contains the values of x corresponding to the top k
     # boosted values
-    res = torch.zeros(x.shape).to(x.device)
-    topk, indices = boosted.topk(k)
+    res = torch.zeros_like(x)
+    topk, indices = boosted.topk(k, sorted=False)
     for i in range(x.shape[0]):
       res[i,indices[i]] = x[i,indices[i]]
 
@@ -123,7 +122,7 @@ class KWinners(torch.autograd.Function):
     forward function.
     """
     x,indices, = ctx.saved_tensors
-    grad_x = torch.zeros(grad_output.shape, requires_grad=True).to(grad_output.device)
+    grad_x = torch.zeros_like(grad_output, requires_grad=True)
 
     # Probably a better way to do it, but this is not terrible as it only loops
     # over the batch size.
