@@ -12,7 +12,7 @@ seaborn==0.8.1
 simplejson==2.6.2
 tabulate==0.7.5
 tqdm==4.8.4
-torch>=0.4.1
+torch>=1.0.0
 torchvision>=0.2.1
 scikit-image>=0.14.1
 # NOTE: nupic and htmresearch_core dependencies should be version locked before creating new release
