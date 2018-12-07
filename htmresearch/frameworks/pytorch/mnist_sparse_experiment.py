@@ -33,6 +33,7 @@ from htmresearch.support.expsuite import PyExperimentSuite
 
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseMNISTNet
+from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
 
 import matplotlib
 matplotlib.use('Agg')
@@ -79,13 +80,26 @@ class MNISTSparseExperiment(PyExperimentSuite):
       ])),
       batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
-    sp_model = SparseMNISTNet(n=params["n"],
-                          k=params["k"],
-                          boostStrength=params["boost_strength"],
-                          weightSparsity=params["weight_sparsity"],
-                          boostStrengthFactor=params["boost_strength_factor"],
-                          kInferenceFactor=params["k_inference_factor"],
-                          )
+    if params["use_cnn"]:
+      sp_model = SparseMNISTCNN(
+        c1OutChannels=params["c1_out_channels"],
+        c1k=params["c1_k"],
+        useDropout=params["use_dropout"],
+        boostStrength=params["boost_strength"],
+        weightSparsity=params["weight_sparsity"],
+        boostStrengthFactor=params["boost_strength_factor"],
+        kInferenceFactor=params["k_inference_factor"],
+      )
+      pass
+    else:
+      sp_model = SparseMNISTNet(
+        n=params["n"],
+        k=params["k"],
+        boostStrength=params["boost_strength"],
+        weightSparsity=params["weight_sparsity"],
+        boostStrengthFactor=params["boost_strength_factor"],
+        kInferenceFactor=params["k_inference_factor"],
+        )
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")
       sp_model = torch.nn.DataParallel(sp_model)
