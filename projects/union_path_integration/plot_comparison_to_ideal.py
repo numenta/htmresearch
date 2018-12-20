@@ -113,7 +113,11 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
 
   plt.xticks([(i+1) for i in xrange(numSteps)])
 
-  plt.legend(loc="center right", bbox_to_anchor=legendPosition)
+  # Remove the errorbars from the legend.
+  handles, labels = plt.gca().get_legend_handles_labels()
+  handles = [h[0] for h in handles]
+
+  plt.legend(handles, labels, loc="center right", bbox_to_anchor=legendPosition)
 
   outFilePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", outFilePath

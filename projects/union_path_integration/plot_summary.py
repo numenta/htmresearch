@@ -91,10 +91,9 @@ def createCharts(inFilename, outFilename, squeezeLegend,
 
       for numObjects, results in sorted(resultsByNumObjects.iteritems()):
         p1, p2, p3 = np.percentile(results, percentiles)
-        p2 = np.mean(results)
 
         x.append(numObjects)
-        y.append(np.mean(results))
+        y.append(p2)
         errBelow.append(p2 - p1)
         errAbove.append(p3 - p2)
 

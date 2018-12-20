@@ -89,10 +89,15 @@ def aggregateChart(inFilename, outFilename, objectCounts, ylim):
 
   plt.ylim(ylim)
 
+  # Remove the errorbars from the legend.
+  handles, labels = plt.gca().get_legend_handles_labels()
+  handles = [h[0] for h in handles]
+
   # If there's any opacity, when we export a copy of this from Illustrator, it
   # creates a PDF that isn't compatible with Word.
   framealpha = 1.0
-  plt.legend(framealpha=framealpha)
+
+  plt.legend(handles, labels, framealpha=framealpha)
 
   filename = os.path.join(CHART_DIR, outFilename)
   print "Saving", filename
@@ -107,9 +112,8 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument("--inFile", type=str, required=True)
   parser.add_argument("--outFile", type=str, required=True)
-  parser.add_argument("--aggregateObjectCounts", type=int, nargs="+", default=[50, 75, 100, 125])
-  parser.add_argument("--aggregateYlim", type=float, nargs=2, default=(-0.05, 1.05))
+  parser.add_argument("--objectCounts", type=int, nargs="+", default=[50, 75, 100, 125])
+  parser.add_argument("--ylim", type=float, nargs=2, default=(-0.05, 1.05))
   args = parser.parse_args()
 
-  aggregateChart(args.inFile, args.outFile, args.aggregateObjectCounts,
-                 args.aggregateYlim)
+  aggregateChart(args.inFile, args.outFile, args.objectCounts, args.ylim)
