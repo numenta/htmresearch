@@ -113,6 +113,8 @@ def createChart(inFilename, outFilename, locationModuleWidths, legendPosition):
 
   plt.xticks([(i+1) for i in xrange(numSteps)])
 
+  plt.legend(loc="center right", bbox_to_anchor=legendPosition)
+
   outFilePath = os.path.join(CHART_DIR, outFilename)
   print "Saving", outFilePath
   plt.savefig(outFilePath)
