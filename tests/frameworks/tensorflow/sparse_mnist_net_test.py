@@ -21,7 +21,6 @@
 """
   Test Tensorflow version of SparseMNISTNet model
 """
-import multiprocessing
 import random
 import unittest
 from datetime import datetime
@@ -49,12 +48,12 @@ INPUT_SIZE = 28 * 28
 OPTIMIZER = "Adam"
 LOSS = "sparse_categorical_crossentropy"
 
-# Tensorflow configuration
-CPU_COUNT = multiprocessing.cpu_count()
+# Tensorflow configuration.
+# Make sure to use one thread in order to keep the results deterministic
 CONFIG = tf.ConfigProto(
-  intra_op_parallelism_threads=CPU_COUNT,
-  inter_op_parallelism_threads=2,
-  device_count={'CPU': CPU_COUNT}
+  intra_op_parallelism_threads=1,
+  inter_op_parallelism_threads=1,
+  device_count={'CPU': 1}
 )
 
 
@@ -105,8 +104,8 @@ class SparseMNISTNetTest(tf.test.TestCase):
                                       batch_size=BATCH_SIZE)
 
       print 'Test accuracy:', accuracy, "Test loss:", loss
-      self.assertAlmostEqual(accuracy, 0.96, delta=0.01)
-      self.assertAlmostEqual(loss, 0.10, delta=0.01)
+      self.assertAlmostEqual(accuracy, 0.9693, places=4)
+      self.assertAlmostEqual(loss, 0.1037, places=4)
 
 
   def testSparseConstraint(self):
@@ -182,8 +181,8 @@ class SparseMNISTNetTest(tf.test.TestCase):
                                       batch_size=BATCH_SIZE)
       print 'Test accuracy:', accuracy, "Test loss:", loss
 
-      self.assertAlmostEqual(accuracy, 0.95, delta=0.01)
-      self.assertAlmostEqual(loss, 0.16, delta=0.01)
+      self.assertAlmostEqual(accuracy, 0.9527, places=4)
+      self.assertAlmostEqual(loss, 0.1575, places=4)
 
 
 
