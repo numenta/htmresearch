@@ -33,6 +33,7 @@ from htmresearch.support.expsuite import PyExperimentSuite
 
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseMNISTNet
+from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
 
 import matplotlib
 matplotlib.use('Agg')
@@ -79,13 +80,26 @@ class MNISTSparseExperiment(PyExperimentSuite):
       ])),
       batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
-    sp_model = SparseMNISTNet(n=params["n"],
-                          k=params["k"],
-                          boostStrength=params["boost_strength"],
-                          weightSparsity=params["weight_sparsity"],
-                          boostStrengthFactor=params["boost_strength_factor"],
-                          kInferenceFactor=params["k_inference_factor"],
-                          )
+    if params["use_cnn"]:
+      sp_model = SparseMNISTCNN(
+        c1OutChannels=params["c1_out_channels"],
+        c1k=params["c1_k"],
+        useDropout=params["use_dropout"],
+        boostStrength=params["boost_strength"],
+        weightSparsity=params["weight_sparsity"],
+        boostStrengthFactor=params["boost_strength_factor"],
+        kInferenceFactor=params["k_inference_factor"],
+      )
+      pass
+    else:
+      sp_model = SparseMNISTNet(
+        n=params["n"],
+        k=params["k"],
+        boostStrength=params["boost_strength"],
+        weightSparsity=params["weight_sparsity"],
+        boostStrengthFactor=params["boost_strength_factor"],
+        kInferenceFactor=params["k_inference_factor"],
+        )
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")
       sp_model = torch.nn.DataParallel(sp_model)
@@ -100,16 +114,23 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once for each training iteration (== epoch here).
     """
+    t1 = time.time()
     ret = {}
     self.train(params, epoch=iteration)
-    if iteration == params["iterations"] - 1:
+    if iteration == params["iterations"] - 1 or (iteration%5 == 0):
       ret.update(self.runNoiseTests(params))
-      print("totalCorrect=", ret["totalCorrect"],
+      print("Noise test results: totalCorrect=", ret["totalCorrect"],
             "Test error=", ret["testerror"])
+      if ret["totalCorrect"] > 80000:
+        print("*******")
+        print(params)
 
     ret.update({"elapsedTime": time.time() - self.startTime})
 
-    print(iteration,ret["elapsedTime"])
+    print("Iteration =", iteration,
+          ", iteration time= {0:.3f} secs, "
+          "total elapsed time= {1:.3f} mins".format(
+            time.time() - t1,ret["elapsedTime"]/60.0))
 
     return ret
 
@@ -134,6 +155,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
       self.optimizer.step()
       self.model.rezeroWeights()  # Only allow weight changes to the non-zero weights
       if batch_idx % params["log_interval"] == 0:
+        print("logging: ",self.model.learningIterations,
+              " learning iterations, elapsedTime", time.time() - self.startTime)
         bins = np.linspace(0.0, 0.8, 200)
         plt.hist(self.model.dutyCycle, bins, alpha=0.5, label='All cols')
         plt.xlabel("Duty cycle")

@@ -23,7 +23,6 @@ from __future__ import print_function
 
 import pprint
 import numpy as np
-import torch
 
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
@@ -37,7 +36,7 @@ def analyzeParameters(expName, suite):
   pprint.pprint(expParams)
 
   for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
-            "k_inference_factor"]:
+            "k_inference_factor", "boost_strength_factor"]:
     if p in expParams and type(expParams[p]) == list:
       for v1 in expParams[p]:
         # Retrieve the last totalCorrect from each experiment
@@ -102,11 +101,14 @@ if __name__ == '__main__':
     "./results/experiment8", "./results/experiment10",
     # "./results/experiment11",
     # "./results/experiment12",
-    "./results/experiment14",
-    "./results/experiment15",
-    "./results/experiment17",
+    # "./results/experiment14",
+    # "./results/experiment15",
+    # "./results/experiment17",
     "./results/experiment19",
     "./results/experiment20",
+    "./results/experiment21",
+    "./results/experiment22",
+    "./results/experiment23Best",
   ]:
     analyzeParameters(expName, suite)
 
@@ -121,5 +123,11 @@ if __name__ == '__main__':
   # expPath = "./results/experiment10/weight_sparsity0.40learning_rate0.040n500.0boost_strength1.0k50.0momentum0.250"
   # printExperimentSpecifics(expPath, suite)
 
-  expPath = "./results/experiment19/k_inference_factor2.0n500.0k50.0"
+  expPath = "./results/experiment23/k_inference_factor2.0boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0"
+  printExperimentSpecifics(expPath, suite)
+
+  expPath = "./results/experiment23Best/k_inference_factor1.50boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0"
+  printExperimentSpecifics(expPath, suite)
+
+  expPath = "./results/experiment24/k_inference_factor1.50boost_strength_factor0.850learning_rate0.040batch_size4.0n1000.0boost_strength1.50k50.0"
   printExperimentSpecifics(expPath, suite)

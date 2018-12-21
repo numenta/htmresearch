@@ -73,7 +73,6 @@ class SparseMNISTNet(nn.Module):
     self.n = n
     self.l1 = nn.Linear(28*28, self.n)
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
-    self.zeroWts = []
     self.l2 = nn.Linear(self.n, 10)
     self.learningIterations = 0
 
@@ -85,19 +84,27 @@ class SparseMNISTNet(nn.Module):
 
     # For each L1 unit, decide which weights are going to be zero
     if self.weightSparsity < 1.0:
-      numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
-      for i in range(self.n):
-        self.zeroWts.append(
-          np.random.permutation(self.l1.weight.shape[1])[0:numZeros])
+      outputSize, inputSize = self.l1.weight.shape
+      numZeros = int(round((1.0 - self.weightSparsity) * inputSize))
 
+      outputIndices = np.arange(outputSize)
+      inputIndices = np.array([np.random.permutation(inputSize)[:numZeros]
+                               for _ in outputIndices], dtype=np.long)
+
+      # Create tensor indices for all non-zero weights
+      zeroIndices = np.empty((outputSize, numZeros, 2), dtype=np.long)
+      zeroIndices[:, :, 0] = outputIndices[:, None]
+      zeroIndices[:, :, 1] = inputIndices
+      zeroIndices = torch.LongTensor(zeroIndices.reshape(-1, 2))
+
+      self.zeroWts = (zeroIndices[:, 0], zeroIndices[:, 1])
       self.rezeroWeights()
 
 
   def rezeroWeights(self):
     if self.weightSparsity < 1.0:
       # print("non zero before:",self.l1.weight.data.nonzero().shape)
-      for i in range(self.n):
-        self.l1.weight.data[i, self.zeroWts[i]] = 0.0
+      self.l1.weight.data[self.zeroWts] = 0.0
       # print("non zero after:",self.l1.weight.data.nonzero().shape)
 
 
@@ -135,8 +142,10 @@ class SparseMNISTNet(nn.Module):
       # Only need to update dutycycle if if k < n
       if k != self.n:
         period = min(self.dutyCyclePeriod, self.learningIterations)
-        self.dutyCycle = (self.dutyCycle * (period - batchSize) +
-                          ((x > 0).sum(dim=0)).float()) / period
+        self.dutyCycle.mul_(period - batchSize)
+        self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
+        self.dutyCycle.div_(period)
+
 
     # Output layer
     x = self.l2(x)
