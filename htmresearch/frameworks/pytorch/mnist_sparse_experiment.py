@@ -157,13 +157,14 @@ class MNISTSparseExperiment(PyExperimentSuite):
       if batch_idx % params["log_interval"] == 0:
         print("logging: ",self.model.learningIterations,
               " learning iterations, elapsedTime", time.time() - self.startTime)
-        bins = np.linspace(0.0, 0.8, 200)
-        plt.hist(self.model.dutyCycle, bins, alpha=0.5, label='All cols')
-        plt.xlabel("Duty cycle")
-        plt.ylabel("Number of units")
-        plt.savefig(self.resultsDir + "/figure_"+str(epoch)+"_"+str(
-                    self.model.learningIterations))
-        plt.close()
+        if params["create_plots"]:
+          bins = np.linspace(0.0, 0.8, 200)
+          plt.hist(self.model.dutyCycle, bins, alpha=0.5, label='All cols')
+          plt.xlabel("Duty cycle")
+          plt.ylabel("Number of units")
+          plt.savefig(self.resultsDir + "/figure_"+str(epoch)+"_"+str(
+                      self.model.learningIterations))
+          plt.close()
         # print("")
         # self.model.printMetrics()
         # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(

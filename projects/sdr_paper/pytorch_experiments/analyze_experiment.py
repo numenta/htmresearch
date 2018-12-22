@@ -38,12 +38,14 @@ def analyzeParameters(expName, suite):
   for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
             "k_inference_factor", "boost_strength_factor"]:
     if p in expParams and type(expParams[p]) == list:
+      print(p)
       for v1 in expParams[p]:
         # Retrieve the last totalCorrect from each experiment
         # Print them sorted from best to worst
         values, params = suite.get_values_fix_params(
           expName, 0, "totalCorrect", "last", **{p:v1})
         v = np.array(values)
+        print(v1,v)
         print("Average/min/max for", p, v1, "=", v.mean(), v.min(), v.max())
         # sortedIndices = v.argsort()
         # for i in sortedIndices[::-1]:
@@ -98,17 +100,19 @@ if __name__ == '__main__':
     # "./results/experiment1", "./results/experiment2",
     # "./results/experiment3", "./results/experiment4",
     # "./results/experimentTemp", "./results/experiment7",
-    "./results/experiment8", "./results/experiment10",
+    # "./results/experiment8", "./results/experiment10",
     # "./results/experiment11",
     # "./results/experiment12",
     # "./results/experiment14",
     # "./results/experiment15",
     # "./results/experiment17",
-    "./results/experiment19",
-    "./results/experiment20",
-    "./results/experiment21",
-    "./results/experiment22",
+    # "./results/experiment19",
+    # "./results/experiment20",
+    # "./results/experiment21",
+    "./results/experiment23",
     "./results/experiment23Best",
+    "./results/experiment23Best2",
+    "./results/experiment24",
   ]:
     analyzeParameters(expName, suite)
 
