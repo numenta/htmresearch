@@ -81,6 +81,7 @@ class SparseMNISTNet(nn.Module):
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros(self.n))
+    self.lastBoostUpdate = 0
 
     # For each L1 unit, decide which weights are going to be zero
     if self.weightSparsity < 1.0:
@@ -113,8 +114,9 @@ class SparseMNISTNet(nn.Module):
     Call this once after each training epoch. Currently just updates
     boostStrength
     """
-    self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    print("boostStrength is now:", self.boostStrength)
+    pass
+    # self.boostStrength = self.boostStrength * self.boostStrengthFactor
+    # print("boostStrength is now:", self.boostStrength)
 
 
   def forward(self, x):
@@ -146,6 +148,10 @@ class SparseMNISTNet(nn.Module):
         self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
         self.dutyCycle.div_(period)
 
+        if self.learningIterations - self.lastBoostUpdate > 10*self.dutyCyclePeriod:
+          self.boostStrength = self.boostStrength * self.boostStrengthFactor
+          self.lastBoostUpdate = self.learningIterations
+          print("boostStrength is now:", self.boostStrength)
 
     # Output layer
     x = self.l2(x)
