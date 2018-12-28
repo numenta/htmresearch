@@ -32,39 +32,49 @@ def analyzeParameters(expName, suite):
   Analyze the impact of each list parameter in this experiment
   """
   print("\n================",expName,"=====================")
-  expParams = suite.get_params(expName)
-  pprint.pprint(expParams)
+  try:
+    expParams = suite.get_params(expName)
+    pprint.pprint(expParams)
 
-  for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
-            "k_inference_factor", "boost_strength_factor"]:
-    if p in expParams and type(expParams[p]) == list:
-      print(p)
-      for v1 in expParams[p]:
-        # Retrieve the last totalCorrect from each experiment
-        # Print them sorted from best to worst
-        values, params = suite.get_values_fix_params(
-          expName, 0, "totalCorrect", "last", **{p:v1})
-        v = np.array(values)
-        print(v1,v)
-        print("Average/min/max for", p, v1, "=", v.mean(), v.min(), v.max())
-        # sortedIndices = v.argsort()
-        # for i in sortedIndices[::-1]:
-        #   print(v[i],params[i]["name"])
+    for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
+              "k_inference_factor", "boost_strength_factor"]:
+      if p in expParams and type(expParams[p]) == list:
+        print(p)
+        for v1 in expParams[p]:
+          # Retrieve the last totalCorrect from each experiment
+          # Print them sorted from best to worst
+          values, params = suite.get_values_fix_params(
+            expName, 0, "totalCorrect", "last", **{p:v1})
+          v = np.array(values)
+          print(v1,v)
+          try:
+            print("Average/min/max for", p, v1, "=", v.mean(), v.min(), v.max())
+            # sortedIndices = v.argsort()
+            # for i in sortedIndices[::-1]:
+            #   print(v[i],params[i]["name"])
+          except:
+            print("Can't compute stats for",p)
+
+  except:
+    print("Couldn't load experiment",expName)
 
 
 def analyzeResults(expName, suite):
   print("\n================",expName,"=====================")
 
-  # Retrieve the last totalCorrect from each experiment
-  # Print them sorted from best to worst
-  values, params = suite.get_values_fix_params(
-    expName, 0, "totalCorrect", "last")
-  v = np.array(values)
-  sortedIndices = v.argsort()
-  for i in sortedIndices[::-1]:
-    print(v[i], params[i]["name"])
+  try:
+    # Retrieve the last totalCorrect from each experiment
+    # Print them sorted from best to worst
+    values, params = suite.get_values_fix_params(
+      expName, 0, "totalCorrect", "last")
+    v = np.array(values)
+    sortedIndices = v.argsort()
+    for i in sortedIndices[::-1]:
+      print(v[i], params[i]["name"])
 
-  print()
+    print()
+  except:
+    print("Couldn't analyze experiment",expName)
 
 
 def printExperimentSpecifics(expPath, suite):
@@ -72,11 +82,14 @@ def printExperimentSpecifics(expPath, suite):
   noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
                             "0.35", "0.4", "0.45", "0.5"]
   print("\n================",expPath,"=====================")
-  result = suite.get_value(expPath, 0, noiseValues, "last")
-  for k in noiseValues:
-    print(k,result[k]["testerror"])
-  pprint.pprint(result)
-  print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
+  try:
+    result = suite.get_value(expPath, 0, noiseValues, "last")
+    for k in noiseValues:
+      print(k,result[k]["testerror"])
+    pprint.pprint(result)
+    print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
+  except:
+    print("Couldn't load experiment",expPath)
 
 
 # Need to run it from htmresearch top level:
@@ -109,15 +122,25 @@ if __name__ == '__main__':
     # "./results/experiment19",
     # "./results/experiment20",
     # "./results/experiment21",
-    "./results/experiment23",
-    "./results/experiment23Best",
-    "./results/experiment23Best2",
-    "./results/experiment24",
+    # "./results/experiment23",
+    # "./results/experiment23Best",
+    # "./results/experiment23Best2",
+    # "./results/experiment24",
+    "./results/standardOneLayer",
+    "./results/experiment28",
+    # "./results/experiment29",
   ]:
     analyzeParameters(expName, suite)
 
 
   # Print details of the best ones so far
+
+  expPath = "./results/standardOneLayer"
+  printExperimentSpecifics(expPath, suite)
+
+  expPath = "./results/bestSparseNet/boost_strength1.0k50.0n500.0"
+  printExperimentSpecifics(expPath, suite)
+
   # expPath = "./results/experiment1/learning_rate0.040boost_strength0.0k100.0momentum0.250"
   # printExperimentSpecifics(expPath, suite)
   #
@@ -127,11 +150,11 @@ if __name__ == '__main__':
   # expPath = "./results/experiment10/weight_sparsity0.40learning_rate0.040n500.0boost_strength1.0k50.0momentum0.250"
   # printExperimentSpecifics(expPath, suite)
 
-  expPath = "./results/experiment23/k_inference_factor2.0boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0"
-  printExperimentSpecifics(expPath, suite)
-
-  expPath = "./results/experiment23Best/k_inference_factor1.50boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0"
-  printExperimentSpecifics(expPath, suite)
-
-  expPath = "./results/experiment24/k_inference_factor1.50boost_strength_factor0.850learning_rate0.040batch_size4.0n1000.0boost_strength1.50k50.0"
-  printExperimentSpecifics(expPath, suite)
+  # expPath = "./results/experiment23/k_inference_factor2.0boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0"
+  # printExperimentSpecifics(expPath, suite)
+  #
+  # expPath = "./results/experiment23Best/k_inference_factor1.50boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0"
+  # printExperimentSpecifics(expPath, suite)
+  #
+  # expPath = "./results/experiment24/k_inference_factor1.50boost_strength_factor0.850learning_rate0.040batch_size4.0n1000.0boost_strength1.50k50.0"
+  # printExperimentSpecifics(expPath, suite)
