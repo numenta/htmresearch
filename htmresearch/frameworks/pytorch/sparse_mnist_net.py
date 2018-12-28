@@ -111,12 +111,9 @@ class SparseMNISTNet(nn.Module):
 
   def postEpoch(self):
     """
-    Call this once after each training epoch. Currently just updates
-    boostStrength
+    Call this once after each training epoch.
     """
     pass
-    # self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    # print("boostStrength is now:", self.boostStrength)
 
 
   def forward(self, x):

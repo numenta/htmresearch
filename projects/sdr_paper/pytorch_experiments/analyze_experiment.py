@@ -142,7 +142,7 @@ if __name__ == '__main__':
   lastNoiseCurve(expPath, suite)
   learningCurve(expPath, suite)
 
-  expPath = "./results/bestSparseNet/boost_strength1.0k50.0n500.0"
+  expPath = "./results/exp31/boost_strength1.0k50.0n500.0"
   lastNoiseCurve(expPath, suite)
   learningCurve(expPath, suite)
 

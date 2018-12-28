@@ -124,11 +124,12 @@ class MNISTSparseExperiment(PyExperimentSuite):
     ret.update(self.runNoiseTests(params))
     print("Noise test results: totalCorrect=", ret["totalCorrect"],
           "Test error=", ret["testerror"])
-    if ret["totalCorrect"] > 89000:
+    if ret["totalCorrect"] > 93000:
       print("*******")
       print(params)
 
     ret.update({"elapsedTime": time.time() - self.startTime})
+    ret.update({"learningRate": self.learningRate})
 
     print("Iteration =", iteration,
           ", iteration time= {0:.3f} secs, "
@@ -246,9 +247,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
       total_correct += testResult["num_correct"]
       ret[noise]= testResult
 
-    # self.model.printParameters()
     ret["totalCorrect"] = total_correct
     ret["testerror"] = ret[0.0]["testerror"]
+    ret["entropy"] = ret[0.0]["entropy"]
 
     return ret
 

@@ -30,8 +30,6 @@ import numpy as np
 import torch
 from torchvision import datasets, transforms
 
-# Need to run it from htmresearch top level:
-# python projects/sdr_paper/pytorch_experiments/analyze_model.py model_path
 
 def getSparseWeights(weightSparsity, inputSize, outputSize):
   """
