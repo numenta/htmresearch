@@ -23,6 +23,7 @@ from __future__ import print_function
 
 import pprint
 import numpy as np
+from tabulate import tabulate
 
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
@@ -90,9 +91,10 @@ def lastNoiseCurve(expPath, suite):
   print("\nNOISE CURVE ================",expPath,"=====================")
   try:
     result = suite.get_value(expPath, 0, noiseValues, "last")
+    info = []
     for k in noiseValues:
-      print(k,result[k]["testerror"])
-    pprint.pprint(result)
+      info.append([k,result[k]["testerror"]])
+    print(tabulate(info, headers=["noise","Test Error"], tablefmt="grid"))
     print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
   except:
     print("Couldn't load experiment",expPath)
@@ -104,10 +106,14 @@ def learningCurve(expPath, suite):
   """
   print("\nLEARNING CURVE ================",expPath,"=====================")
   try:
-    result = suite.get_value(expPath, 0, ["testerror","totalCorrect","elapsedTime"], "all")
-    print("i testerror totalCorrect elapsedTime")
-    for i,v in enumerate(zip(result["testerror"],result["totalCorrect"],result["elapsedTime"])):
-      print(i,v[0],v[1],int(v[2]))
+    headers=["testerror","totalCorrect","elapsedTime","entropy"]
+    result = suite.get_value(expPath, 0, headers, "all")
+    info = []
+    for i,v in enumerate(zip(result["testerror"],result["totalCorrect"],
+                             result["elapsedTime"],result["entropy"])):
+      info.append([i, v[0], v[1], int(v[2]), v[3]])
+    headers.insert(0,"iteration")
+    print(tabulate(info, headers=headers, tablefmt="grid"))
   except:
     print("Couldn't load experiment",expPath)
 
@@ -143,6 +149,14 @@ if __name__ == '__main__':
   learningCurve(expPath, suite)
 
   expPath = "./results/exp31/boost_strength1.0k50.0n500.0"
+  lastNoiseCurve(expPath, suite)
+  learningCurve(expPath, suite)
+
+  expPath = "./results/exp33/learning_rate0.020boost_strength1.50k50.0n500.0"
+  lastNoiseCurve(expPath, suite)
+  learningCurve(expPath, suite)
+
+  expPath = "./results/exp32/learning_rate0.040boost_strength1.0k50.0n500.0"
   lastNoiseCurve(expPath, suite)
   learningCurve(expPath, suite)
 
