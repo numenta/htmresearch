@@ -152,11 +152,11 @@ if __name__ == '__main__':
   lastNoiseCurve(expPath, suite)
   learningCurve(expPath, suite)
 
-  expPath = "./results/exp33/learning_rate0.020boost_strength1.50k50.0n500.0"
+  expPath = "./results/exp35/learning_rate_factor0.60learning_rate0.040"
   lastNoiseCurve(expPath, suite)
   learningCurve(expPath, suite)
 
-  expPath = "./results/exp32/learning_rate0.040boost_strength1.0k50.0n500.0"
+  expPath = "./results/exp35/learning_rate_factor0.50learning_rate0.040"
   lastNoiseCurve(expPath, suite)
   learningCurve(expPath, suite)
 

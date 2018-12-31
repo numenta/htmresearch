@@ -147,7 +147,6 @@ def analyzeModelOverlaps(modelName):
                        title="Overlap histogram of model with test vector",
                        base="model23_mnist")
   plotOverlaps(vectors, model.l1.weight.data, base="model23_mnist", k=model.k)
-  print("here")
 
 
 def analyzeWeightDistribution(weights,base):
@@ -157,6 +156,8 @@ def analyzeWeightDistribution(weights,base):
   bins = np.linspace(-0.1, 0.1, 50)
   nz = weights.nonzero()[0]
   nzw = weights[nz]
+  print("zero before and after:", (weights==0).sum(), (nzw==0).sum())
+  print("Small weights:", (abs(nzw)>0.0).sum(), (abs(nzw)<0.01).sum(), (abs(nzw)<0.02).sum(), (abs(nzw)<0.03).sum())
   plt.hist(nzw, bins, alpha=0.5, label='All cols')
   plt.legend(loc='upper right')
   plt.xlabel("Weight values")
@@ -175,6 +176,7 @@ def analyzeModelWeightDistribution(modelName,base):
 
 
 def analyzeModelNoiseRobustness(modelName):
+  """TODO"""
   model = torch.load(modelName)
   model.eval()
 
@@ -195,7 +197,8 @@ if __name__ == '__main__':
   plotOverlaps([v], w, k=50)
 
 
-  analyzeModelOverlaps("results/experiment23/k_inference_factor2.0boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0/model.pt")
+  # modelName = "results/experiment23/k_inference_factor2.0boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0/model.pt"
+  modelName = "results/exp31/boost_strength1.0k50.0n500.0/model.pt"
+  analyzeModelOverlaps(modelName)
 
-  analyzeModelWeightDistribution("results/experiment23/k_inference_factor2.0boost_strength_factor0.90learning_rate0.040batch_size4.0n500.0boost_strength1.0k50.0/model.pt",
-                                 base="model23")
+  analyzeModelWeightDistribution(modelName, base="model31")
