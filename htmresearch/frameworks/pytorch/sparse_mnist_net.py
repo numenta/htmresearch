@@ -28,9 +28,6 @@ import torch.nn.functional as F
 
 from htmresearch.frameworks.pytorch.k_winners import KWinners
 
-import matplotlib
-matplotlib.use('Agg')
-
 class SparseMNISTNet(nn.Module):
 
   def __init__(self, n=2000,
@@ -81,7 +78,6 @@ class SparseMNISTNet(nn.Module):
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros(self.n))
-    self.lastBoostUpdate = 0
 
     # For each L1 unit, decide which weights are going to be zero
     if self.weightSparsity < 1.0:
@@ -113,7 +109,8 @@ class SparseMNISTNet(nn.Module):
     """
     Call this once after each training epoch.
     """
-    pass
+    self.boostStrength = self.boostStrength * self.boostStrengthFactor
+    print("boostStrength is now:", self.boostStrength)
 
 
   def forward(self, x):
@@ -145,31 +142,8 @@ class SparseMNISTNet(nn.Module):
         self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
         self.dutyCycle.div_(period)
 
-        if self.learningIterations - self.lastBoostUpdate > 10*self.dutyCyclePeriod:
-          self.boostStrength = self.boostStrength * self.boostStrengthFactor
-          self.lastBoostUpdate = self.learningIterations
-          print("boostStrength is now:", self.boostStrength)
-
     # Output layer
     x = self.l2(x)
     x = F.log_softmax(x, dim=1)
 
     return x
-
-
-  def printMetrics(self):
-    print("Learning Iterations:", self.learningIterations)
-    print("non zero weights:", self.l1.weight.data.nonzero().shape,
-          "all weights:", self.l1.weight.data.shape)
-    print("duty cycles min/max/mean:",
-          self.dutyCycle.min(), self.dutyCycle.max(), self.dutyCycle.mean())
-
-
-  def printParameters(self):
-    print("                 k :", self.k)
-    print("                 n :", self.n)
-    print("    weightSparsity :", self.weightSparsity)
-    print("     boostStrength :", self.boostStrength)
-    print("   dutyCyclePeriod :", self.dutyCyclePeriod)
-    print("   kInferenceFactor:", self.kInferenceFactor)
-    print("boostStrengthFactor:", self.boostStrengthFactor)
