@@ -34,10 +34,8 @@ from htmresearch.support.expsuite import PyExperimentSuite
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseMNISTNet
 from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
-
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+from htmresearch.frameworks.pytorch.duty_cycle_metrics import \
+     binaryEntropy, maxEntropy, plotDutyCycles
 
 
 class MNISTSparseExperiment(PyExperimentSuite):
@@ -105,9 +103,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
       sp_model = torch.nn.DataParallel(sp_model)
 
     self.model = sp_model.to(self.device)
-    self.optimizer = optim.SGD(self.model.parameters(),
-                               lr=params["learning_rate"],
-                               momentum=params["momentum"])
+    self.learningRate = params["learning_rate"]
+    self.createOptimizer(params, self.learningRate)
 
 
   def iterate(self, params, repetition, iteration):
@@ -117,64 +114,94 @@ class MNISTSparseExperiment(PyExperimentSuite):
     t1 = time.time()
     ret = {}
     self.train(params, epoch=iteration)
-    if iteration == params["iterations"] - 1 or (iteration%5 == 0):
+
+    # Run noise test
+    if (params["test_noise_every_epoch"] or 
+        iteration == params["iterations"] - 1):
       ret.update(self.runNoiseTests(params))
       print("Noise test results: totalCorrect=", ret["totalCorrect"],
-            "Test error=", ret["testerror"])
-      if ret["totalCorrect"] > 80000:
+            "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
+      if ret["totalCorrect"] > 93000:
         print("*******")
         print(params)
+    else:
+      ret.update(self.test(params, self.test_loader))
+      print("Test error=", ret["testerror"], ", entropy=", ret["entropy"])
 
     ret.update({"elapsedTime": time.time() - self.startTime})
+    ret.update({"learningRate": self.learningRate})
 
     print("Iteration =", iteration,
           ", iteration time= {0:.3f} secs, "
           "total elapsed time= {1:.3f} mins".format(
             time.time() - t1,ret["elapsedTime"]/60.0))
 
+    self.learningRate = self.learningRate * params["learning_rate_factor"]
+    self.createOptimizer(params, self.learningRate)
+
     return ret
 
 
   def finalize(self, params, rep):
-    """Save the full model once we are done."""
+    """
+    Save the full model once we are done.
+    """
     saveDir = os.path.join(params["path"], params["name"], "model.pt")
     torch.save(self.model, saveDir)
 
 
+  def createOptimizer(self, params, lr):
+    """
+    Create a new instance of the optimizer with the given learning rate.
+    """
+    print("Creating optimizer with learning rate=",lr)
+    if params["optimizer"] == "SGD":
+      self.optimizer = optim.SGD(self.model.parameters(),
+                                 lr=lr,
+                                 momentum=params["momentum"])
+    elif params["optimizer"] == "Adam":
+      self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+    else:
+      raise LookupError("Incorrect optimizer value")
+
+
   def train(self, params, epoch):
     """
-    Train one epoch of this model.
+    Train one epoch of this model by iterating through mini batches. An epoch
+    ends after one pass through the training set, or if the number of mini
+    batches exceeds the parameter "batches_in_epoch".
     """
     self.model.train()
     for batch_idx, (data, target) in enumerate(self.train_loader):
+
       data, target = data.to(self.device), target.to(self.device)
       self.optimizer.zero_grad()
       output = self.model(data)
       loss = F.nll_loss(output, target)
       loss.backward()
       self.optimizer.step()
-      self.model.rezeroWeights()  # Only allow weight changes to the non-zero weights
+      self.model.rezeroWeights()
+
+      # Log info every log_interval mini batches
       if batch_idx % params["log_interval"] == 0:
+        _,entropy = binaryEntropy(self.model.dutyCycle)
         print("logging: ",self.model.learningIterations,
-              " learning iterations, elapsedTime", time.time() - self.startTime)
-        bins = np.linspace(0.0, 0.8, 200)
-        plt.hist(self.model.dutyCycle, bins, alpha=0.5, label='All cols')
-        plt.xlabel("Duty cycle")
-        plt.ylabel("Number of units")
-        plt.savefig(self.resultsDir + "/figure_"+str(epoch)+"_"+str(
-                    self.model.learningIterations))
-        plt.close()
-        # print("")
-        # self.model.printMetrics()
-        # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-        #   epoch, batch_idx * len(data), len(self.train_loader.dataset),
-        #          100. * batch_idx / len(self.train_loader), loss.item()))
+              " learning iterations, elapsedTime", time.time() - self.startTime,
+              " entropy:", float(entropy)," / ", maxEntropy(params["n"],params["k"]))
+        if params["create_plots"]:
+          plotDutyCycles(self.model.dutyCycle,
+                         self.resultsDir + "/figure_"+str(epoch)+"_"+str(
+                           self.model.learningIterations))
+
+      if batch_idx >= params["batches_in_epoch"]:
+        break
 
     self.model.postEpoch()
 
+
   def test(self, params, test_loader):
     """
-    Test the model using the given loader
+    Test the model using the given loader and return test metrics
     """
     self.model.eval()
     test_loss = 0
@@ -183,23 +210,25 @@ class MNISTSparseExperiment(PyExperimentSuite):
       for data, target in test_loader:
         data, target = data.to(self.device), target.to(self.device)
         output = self.model(data)
-        test_loss += F.nll_loss(output, target, reduction='sum').item() # sum up batch loss
-        pred = output.max(1, keepdim=True)[1] # get the index of the max log-probability
+        test_loss += F.nll_loss(output, target, reduction='sum').item()
+        pred = output.max(1, keepdim=True)[1]
         correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
     test_error = 100. * correct / len(test_loader.dataset)
 
+    _, entropy = binaryEntropy(self.model.dutyCycle)
     ret = {"num_correct": correct,
            "test_loss": test_loss,
-           "testerror": test_error}
+           "testerror": test_error,
+           "entropy": float(entropy)}
 
     return ret
 
 
   def runNoiseTests(self, params):
     """
-    Run the model with different noise values and return the metrics.
+    Test the model with different noise values and return test metrics.
     """
     ret = {}
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
@@ -211,6 +240,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         datasets.MNIST(self.dataDir, train=False, transform=transforms.Compose([
           transforms.ToTensor(),
           RandomNoise(noise,
+                      whiteValue=0.1307 + 2*0.3081,
                       # logDir="data/debug"
                       ),
           transforms.Normalize((0.1307,), (0.3081,))
@@ -221,11 +251,19 @@ class MNISTSparseExperiment(PyExperimentSuite):
       total_correct += testResult["num_correct"]
       ret[noise]= testResult
 
-    # self.model.printParameters()
     ret["totalCorrect"] = total_correct
     ret["testerror"] = ret[0.0]["testerror"]
+    ret["entropy"] = ret[0.0]["entropy"]
 
     return ret
+
+
+  def pruneWeights(self, params):
+    """
+    TODO: Prune the weights whose absolute magnitude is <= params["minWeight"]
+    """
+    pass
+
 
 if __name__ == '__main__':
   suite = MNISTSparseExperiment()

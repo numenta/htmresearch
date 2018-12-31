@@ -28,9 +28,6 @@ import torch.nn.functional as F
 
 from htmresearch.frameworks.pytorch.k_winners import KWinners
 
-import matplotlib
-matplotlib.use('Agg')
-
 class SparseMNISTNet(nn.Module):
 
   def __init__(self, n=2000,
@@ -110,8 +107,7 @@ class SparseMNISTNet(nn.Module):
 
   def postEpoch(self):
     """
-    Call this once after each training epoch. Currently just updates
-    boostStrength
+    Call this once after each training epoch.
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
     print("boostStrength is now:", self.boostStrength)
@@ -146,27 +142,8 @@ class SparseMNISTNet(nn.Module):
         self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
         self.dutyCycle.div_(period)
 
-
     # Output layer
     x = self.l2(x)
     x = F.log_softmax(x, dim=1)
 
     return x
-
-
-  def printMetrics(self):
-    print("Learning Iterations:", self.learningIterations)
-    print("non zero weights:", self.l1.weight.data.nonzero().shape,
-          "all weights:", self.l1.weight.data.shape)
-    print("duty cycles min/max/mean:",
-          self.dutyCycle.min(), self.dutyCycle.max(), self.dutyCycle.mean())
-
-
-  def printParameters(self):
-    print("                 k :", self.k)
-    print("                 n :", self.n)
-    print("    weightSparsity :", self.weightSparsity)
-    print("     boostStrength :", self.boostStrength)
-    print("   dutyCyclePeriod :", self.dutyCyclePeriod)
-    print("   kInferenceFactor:", self.kInferenceFactor)
-    print("boostStrengthFactor:", self.boostStrengthFactor)

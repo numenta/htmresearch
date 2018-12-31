@@ -26,7 +26,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htmresearch.frameworks.pytorch.k_winners import KWinners
+from htmresearch.frameworks.pytorch.k_winners_cnn import KWinners
 
 import matplotlib
 matplotlib.use('Agg')
@@ -73,6 +73,37 @@ class SparseMNISTCNN(nn.Module):
       boost strength is multiplied by this factor after each epoch.
       A value < 1.0 will decrement it every epoch.
 
+
+    We consider three possibilities for sparse CNNs:
+
+    1) Treat the output as a sparse linear layer as if the weights were not
+       shared. Do global inhibition across the whole layer, and accumulate
+       duty cycles across all units as if they were all distinct. This makes
+       little sense.
+
+    2) Treat the output as a sparse linear layer but do consider weight sharing.
+       Do global inhibition across the whole layer, but accumulate duty cycles
+       across the c1OutChannels filters (it is possible that a given filter has
+       multiple active outputs per image). This is simpler to implement and may
+       be a decent approach for smaller images such as MNIST. It requires fewer
+       filters to get our SDR properties.
+
+    3) Do local inhibition. Do inhibition within each set of filters such
+       that each location has at least k active units. Accumulate duty cycles
+       across the c1OutChannels filters (it is possible that a given filter has
+       multiple active outputs per image). The downside of this approach is that
+       we will force activity even in blank areas of the image, which could even
+       be negative. To counteract that we would want something like the spatial
+       pooler's stimulusThreshold, so that only positive activity gets
+       transmitted. Another downside is that we may need a large number of
+       filters to get SDR properties. Overall this may be a good approach for
+       larger color images and complex domains but may be too heavy handed for
+       MNIST.
+
+    In all of the above cases we would ensure that each filter has a sparse
+    set of weights. In addition we can optionally enforce sparsity in the
+    linear layers after the CNN layers.
+
     """
     super(SparseMNISTCNN, self).__init__()
 
@@ -105,7 +136,7 @@ class SparseMNISTCNN(nn.Module):
     self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
-    self.register_buffer("dutyCycle", torch.zeros(self.c1OutChannels))
+    self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
 
     #
     # # Weight sparsification. For each unit, decide which weights are going to be zero
@@ -140,12 +171,22 @@ class SparseMNISTCNN(nn.Module):
   def forward(self, x):
     batchSize = x.shape[0]
 
+    if not self.training:
+      k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutChannels)
+    else:
+      k = self.c1k
+
     x = self.c1(x)
     x = F.max_pool2d(x, 2)
-    x = F.relu(x)
+
+    if self.c1k < self.c1OutChannels:
+      x = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
+    else:
+      x = F.relu(x)
 
     x = x.view(-1, self.c1MaxpoolWidth * self.c1MaxpoolWidth *
                    self.c1OutChannels)
+
     x = self.fc1(x)
     x = F.relu(x)
     if self.useDropout:
@@ -156,6 +197,13 @@ class SparseMNISTCNN(nn.Module):
       # Update moving average of duty cycle for training iterations only
       # During inference this is kept static.
       self.learningIterations += batchSize
+
+      # Only need to update C1 dutycycle if c1k < c1OutChannels
+      # if k < self.c1OutChannels:
+      #   period = min(self.dutyCyclePeriod, self.learningIterations)
+      #   self.dutyCycle.mul_(period - batchSize)
+      #   self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
+      #   self.dutyCycle.div_(period)
 
     x = F.log_softmax(x, dim=1)
 
