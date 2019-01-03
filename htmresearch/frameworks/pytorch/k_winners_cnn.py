@@ -123,8 +123,12 @@ class KWinners(torch.autograd.Function):
     compute and return the gradient of the loss with respect to the input to the
     forward function.
     """
+    # print("kwinners: incoming grad:", grad_output, grad_output.shape)
     batchSize = grad_output.shape[0]
-    indices = ctx.saved_tensors
+    indices, = ctx.saved_tensors
+    # print(ctx.saved_tensors, type(ctx.saved_tensors))
+    # print("kwinners: indices:", indices, indices.shape)
+    # print()
 
     g = grad_output.reshape((batchSize, -1))
     grad_x = torch.zeros_like(g, requires_grad=False)
@@ -132,15 +136,7 @@ class KWinners(torch.autograd.Function):
     grad_x = grad_x.reshape(grad_output.shape)
 
 
-    # Probably a better way to do it, but this is not terrible as it only loops
-    # over the batch size.
-    # for i in range(grad_output.size(0)):
-    #   grad_x[i, indices[i]] = grad_output[i, indices[i]]
-
-    # for b in range(grad_output.shape[0]):
-    #   for i in range(grad_output.shape[2]):
-    #     for j in range(grad_output.shape[3]):
-    #       grad_x[b, indices[b, :, i, j], i, j] = grad_x[b, indices[b, :, i, j], i, j]
+    # print("kwinners: outgoing grad:", grad_x, grad_x.shape)
 
 
     return grad_x, None, None, None
