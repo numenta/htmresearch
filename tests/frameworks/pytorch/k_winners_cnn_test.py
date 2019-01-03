@@ -42,12 +42,14 @@ class KWinnersCNNTest(unittest.TestCase):
   def setUp(self):
     # Create vector with batch size 1, 3 filters, and width/height 2
     self.numFilters = 3
-    self.x = torch.ones((1,3,2,2))
-    x = self.x
+    x = torch.ones((1,3,2,2))
     x[0, 0, 1, 0] = 1.1
     x[0, 0, 1, 1] = 1.2
     x[0, 1, 0, 1] = 1.2
     x[0, 2, 1, 0] = 1.3
+    self.x = x
+
+    self.gradient = torch.rand(x.shape)
 
     self.dutyCycle = torch.zeros((1, self.numFilters, 1, 1))
     self.dutyCycle[:] = 1.0 / self.numFilters
@@ -79,6 +81,15 @@ class KWinnersCNNTest(unittest.TestCase):
     numCorrect = (indices == expectedIndices).sum()
     self.assertEqual(numCorrect, 4)
 
+    # Test that gradient values are in the right places, that their sum is
+    # equal, and that they have exactly the right number of nonzeros
+    grad_x, _, _, _ = KWinners.backward(ctx, self.gradient)
+    grad_x = grad_x.reshape(-1)
+    self.assertEqual(
+      (grad_x[indices] == self.gradient.reshape(-1)[indices]).sum(), 4)
+    self.assertAlmostEqual(
+      grad_x.sum(), self.gradient.reshape(-1)[indices].sum(), places=4)
+    self.assertEqual(len(grad_x.nonzero()), 4)
 
 
   def testTwo(self):
@@ -105,6 +116,16 @@ class KWinnersCNNTest(unittest.TestCase):
     expectedIndices = torch.tensor([3, 10,  5])
     numCorrect = (indices == expectedIndices).sum()
     self.assertEqual(numCorrect, 3)
+
+    # Test that gradient values are in the right places, that their sum is
+    # equal, and that they have exactly the right number of nonzeros
+    grad_x, _, _, _ = KWinners.backward(ctx, self.gradient)
+    grad_x = grad_x.reshape(-1)
+    self.assertEqual(
+      (grad_x[indices] == self.gradient.reshape(-1)[indices]).sum(), 3)
+    self.assertAlmostEqual(
+      grad_x.sum(), self.gradient.reshape(-1)[indices].sum(), places=4)
+    self.assertEqual(len(grad_x.nonzero()), 3)
 
 
   def testInitialNullInputLearnMode(self):

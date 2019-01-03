@@ -108,7 +108,7 @@ class SparseMNISTCNN(nn.Module):
     super(SparseMNISTCNN, self).__init__()
 
     assert(weightSparsity >= 0)
-    assert(c1k <= c1OutChannels)
+    # assert(c1k <= c1OutChannels)
 
     # Hyperparameters
     self.c1k = c1k
