@@ -93,6 +93,7 @@ class KWinners(torch.autograd.Function):
     :return: 
       A tensor representing the activity of x after k-winner take all.
     """
+    batchSize = x.shape[0]
     if boostStrength > 0.0:
       targetDensity = float(k) / x.shape[1]
       boostFactors = torch.exp((targetDensity - dutyCycles) * boostStrength)
@@ -103,15 +104,11 @@ class KWinners(torch.autograd.Function):
     # Take the boosted version of the input x, find the top k winners.
     # Compute an output that only contains the values of x corresponding to the top k
     # boosted values. The rest of the elements in the output should be 0.
-    res = torch.zeros_like(x)
+    boosted = boosted.reshape((batchSize, -1))
+    res = torch.zeros_like(boosted)
     topk, indices = boosted.topk(k, dim=1, sorted=False)
-    # for i in range(x.shape[0]):
-    #   res[i,indices[i]] = x[i,indices[i]]
-
-    for b in range(x.shape[0]):
-      for i in range(x.shape[2]):
-        for j in range(x.shape[3]):
-          res[b, indices[b, :, i, j], i, j] = x[b, indices[b, :, i, j], i, j]
+    res.scatter_(1, indices, boosted.gather(1, indices))
+    res = res.reshape(x.shape)
 
     ctx.save_for_backward(indices)
     return res
