@@ -49,8 +49,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     self.startTime = time.time()
     print(params)
-    torch.manual_seed(params["seed"])
-    np.random.seed(params["seed"])
+    torch.manual_seed(params["seed"] + repetition)
+    np.random.seed(params["seed"] + repetition)
 
     # Get our directories correct
     self.dataDir = params["datadir"]
