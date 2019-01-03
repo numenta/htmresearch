@@ -88,7 +88,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
       )
-      pass
+      print("c1OutputLength=", sp_model.c1OutputLength)
     else:
       sp_model = SparseMNISTNet(
         n=params["n"],
