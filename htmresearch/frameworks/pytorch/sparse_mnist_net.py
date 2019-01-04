@@ -27,6 +27,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from htmresearch.frameworks.pytorch.k_winners import KWinners
+from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
+  maxEntropy, binaryEntropy
+)
 
 class SparseMNISTNet(nn.Module):
 
@@ -147,3 +150,19 @@ class SparseMNISTNet(nn.Module):
     x = F.log_softmax(x, dim=1)
 
     return x
+
+
+  def maxEntropy(self):
+    """
+    Returns the maximum entropy we can expect from level 1
+    """
+    return maxEntropy(self.n, self.k)
+
+
+  def entropy(self):
+    """
+    Returns the current entropy
+    """
+    _, entropy = binaryEntropy(self.dutyCycle)
+    return entropy
+
