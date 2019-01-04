@@ -53,8 +53,7 @@ def updateDutyCycle(x, dutyCycle, dutyCyclePeriod, learningIterations):
 
 class KWinners(torch.autograd.Function):
   """
-  A simplistic K-winner take all autograd function for experimenting with
-  sparsity.
+  A simplistic K-winner take all autograd function for CNNs.
 
   Code adapted from this excellent tutorial:
   https://github.com/jcjohnson/pytorch-examples
