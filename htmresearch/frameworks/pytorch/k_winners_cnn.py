@@ -122,7 +122,7 @@ class KWinners(torch.autograd.Function):
     """
     batchSize = x.shape[0]
     if boostStrength > 0.0:
-      targetDensity = float(k) / x.shape[1]
+      targetDensity = float(k) / (x.shape[1] * x.shape[2] * x.shape[3])
       boostFactors = torch.exp((targetDensity - dutyCycles) * boostStrength)
       boosted = x.detach() * boostFactors
     else:

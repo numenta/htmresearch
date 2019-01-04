@@ -177,25 +177,22 @@ class SparseMNISTCNN(nn.Module):
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
 
-    #
-    # # Weight sparsification. For each unit, decide which weights are going to be zero
+    # Weight sparsification. For each unit in fc1, decide which weights are
+    # going to be zero
     self.zeroWts = []
-    # if self.weightSparsity < 1.0:
-    #   numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
-    #   for i in range(self.n):
-    #     self.zeroWts.append(
-    #       np.random.permutation(self.l1.weight.shape[1])[0:numZeros])
-    #
-    #   self.rezeroWeights()
+    if self.weightSparsity < 1.0:
+      numZeros = int(round((1.0 - self.weightSparsity) * self.fc1.weight.shape[1]))
+      for i in range(self.n):
+        self.zeroWts.append(
+          np.random.permutation(self.fc1.weight.shape[1])[0:numZeros])
+
+      self.rezeroWeights()
 
 
   def rezeroWeights(self):
-    pass
-    # if self.weightSparsity < 1.0:
-    #   # print("non zero before:",self.l1.weight.data.nonzero().shape)
-    #   for i in range(self.n):
-    #     self.l1.weight.data[i, self.zeroWts[i]] = 0.0
-    #   # print("non zero after:",self.l1.weight.data.nonzero().shape)
+    if self.weightSparsity < 1.0:
+      for i in range(self.n):
+        self.fc1.weight.data[i, self.zeroWts[i]] = 0.0
 
 
   def postEpoch(self):

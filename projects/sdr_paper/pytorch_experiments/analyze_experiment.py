@@ -82,15 +82,15 @@ def summarizeResults(expName, suite):
     print("Couldn't analyze experiment",expName)
 
 
-def lastNoiseCurve(expPath, suite):
+def lastNoiseCurve(expPath, suite, iteration="last"):
   """
   Print the noise errors from the last iteration of this experiment
   """
   noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
                             "0.35", "0.4", "0.45", "0.5"]
-  print("\nNOISE CURVE ================",expPath,"=====================")
+  print("\nNOISE CURVE =====",expPath,"====== ITERATION:",iteration,"=========")
   try:
-    result = suite.get_value(expPath, 0, noiseValues, "last")
+    result = suite.get_value(expPath, 0, noiseValues, iteration)
     info = []
     for k in noiseValues:
       info.append([k,result[k]["testerror"]])
@@ -136,27 +136,25 @@ if __name__ == '__main__':
   summarizeResults("./results", suite)
 
   for expName in [
-    "./results/standardOneLayer",
-    "./results/experiment28",
+    # "./results/standardOneLayer",
+    "./results/cnn1/boost_strength_factor0.90learning_rate0.010",
+    "./results/cnn2/boost_strength_factor0.90weight_sparsity0.40",
+    "./results/cnn2/boost_strength_factor0.90weight_sparsity0.60",
+    "./results/cnn2/boost_strength_factor0.90weight_sparsity1.0",
   ]:
     analyzeParameters(expName, suite)
+    learningCurve(expName, suite)
 
 
   # Print details of the best ones so far
 
-  expPath = "./results/standardOneLayer"
-  lastNoiseCurve(expPath, suite)
+  expPath = "./results/cnn1/boost_strength_factor0.90learning_rate0.010"
   learningCurve(expPath, suite)
+  lastNoiseCurve(expPath, suite)
+  lastNoiseCurve(expPath, suite, 0)
+  lastNoiseCurve(expPath, suite, 7)
 
-  expPath = "./results/exp31/boost_strength1.0k50.0n500.0"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
-
-  expPath = "./results/exp35/learning_rate_factor0.60learning_rate0.040"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
-
-  expPath = "./results/exp35/learning_rate_factor0.50learning_rate0.040"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
+  # expPath = "./results/cnn1/boost_strength_factor0.90learning_rate0.020"
+  # lastNoiseCurve(expPath, suite)
+  # learningCurve(expPath, suite)
 
