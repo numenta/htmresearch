@@ -34,8 +34,7 @@ from htmresearch.support.expsuite import PyExperimentSuite
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseMNISTNet
 from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
-from htmresearch.frameworks.pytorch.duty_cycle_metrics import \
-     binaryEntropy, maxEntropy, plotDutyCycles
+from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
 
 
 class MNISTSparseExperiment(PyExperimentSuite):
@@ -139,6 +138,10 @@ class MNISTSparseExperiment(PyExperimentSuite):
     self.learningRate = self.learningRate * params["learning_rate_factor"]
     self.createOptimizer(params, self.learningRate)
 
+    print("dutycycle:", self.model.dutyCycle.min(),
+          self.model.dutyCycle.max(),
+          self.model.dutyCycle.mean())
+
     return ret
 
 
@@ -184,10 +187,10 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
       # Log info every log_interval mini batches
       if batch_idx % params["log_interval"] == 0:
-        _,entropy = binaryEntropy(self.model.dutyCycle)
+        entropy = self.model.entropy()
         print("logging: ",self.model.learningIterations,
               " learning iterations, elapsedTime", time.time() - self.startTime,
-              " entropy:", float(entropy)," / ", maxEntropy(params["n"],params["k"]))
+              " entropy:", float(entropy)," / ", self.model.maxEntropy())
         if params["create_plots"]:
           plotDutyCycles(self.model.dutyCycle,
                          self.resultsDir + "/figure_"+str(epoch)+"_"+str(
@@ -217,7 +220,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     test_loss /= len(test_loader.dataset)
     test_error = 100. * correct / len(test_loader.dataset)
 
-    _, entropy = binaryEntropy(self.model.dutyCycle)
+    entropy = self.model.entropy()
     ret = {"num_correct": correct,
            "test_loss": test_loss,
            "testerror": test_error,

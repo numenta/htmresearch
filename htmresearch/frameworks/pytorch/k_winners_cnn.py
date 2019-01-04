@@ -23,6 +23,34 @@ from __future__ import print_function
 import torch
 
 
+def updateDutyCycle(x, dutyCycle, dutyCyclePeriod, learningIterations):
+  """
+  Updates our duty cycle estimates with the new value. Duty cycles are updated
+  according to the following formula:
+
+                  (period - batchSize)*dutyCycle + newValue
+      dutyCycle := ----------------------------------
+                              period
+
+  We want the expected duty cycle to be = k / c1OutputLength. For CNNs, since
+  the weights are shared, each filter can be used multiple times. We need to
+  divide newValue by the width and height to get the right scaling.
+
+  """
+  batchSize = x.shape[0]
+  scaleFactor = float(x.shape[2] * x.shape[3])
+  period = min(dutyCyclePeriod, learningIterations)
+  dutyCycle.mul_(period - batchSize)
+  s = x.gt(0).sum(dim=(0, 2, 3), dtype=torch.float) / scaleFactor
+  dutyCycle.reshape(-1).add_(s)
+  dutyCycle.div_(period)
+
+  if s.sum() == 0:
+    raise RuntimeError()
+
+  return dutyCycle
+
+
 class KWinners(torch.autograd.Function):
   """
   A simplistic K-winner take all autograd function for experimenting with
@@ -105,9 +133,10 @@ class KWinners(torch.autograd.Function):
     # Compute an output that only contains the values of x corresponding to the top k
     # boosted values. The rest of the elements in the output should be 0.
     boosted = boosted.reshape((batchSize, -1))
+    xr = x.reshape((batchSize, -1))
     res = torch.zeros_like(boosted)
     topk, indices = boosted.topk(k, dim=1, sorted=False)
-    res.scatter_(1, indices, boosted.gather(1, indices))
+    res.scatter_(1, indices, xr.gather(1, indices))
     res = res.reshape(x.shape)
 
     ctx.save_for_backward(indices)
@@ -123,21 +152,13 @@ class KWinners(torch.autograd.Function):
     compute and return the gradient of the loss with respect to the input to the
     forward function.
     """
-    # print("kwinners: incoming grad:", grad_output, grad_output.shape)
     batchSize = grad_output.shape[0]
     indices, = ctx.saved_tensors
-    # print(ctx.saved_tensors, type(ctx.saved_tensors))
-    # print("kwinners: indices:", indices, indices.shape)
-    # print()
 
     g = grad_output.reshape((batchSize, -1))
     grad_x = torch.zeros_like(g, requires_grad=False)
     grad_x.scatter_(1, indices, g.gather(1, indices))
     grad_x = grad_x.reshape(grad_output.shape)
-
-
-    # print("kwinners: outgoing grad:", grad_x, grad_x.shape)
-
 
     return grad_x, None, None, None
 

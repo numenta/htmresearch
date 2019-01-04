@@ -23,7 +23,9 @@ from __future__ import print_function
 import unittest
 
 import torch
-from htmresearch.frameworks.pytorch.k_winners_cnn import KWinners
+from htmresearch.frameworks.pytorch.k_winners_cnn import (
+  KWinners, updateDutyCycle
+)
 
 
 class TestContext(object):
@@ -180,6 +182,74 @@ class KWinnersCNNTest(unittest.TestCase):
     in_grad = self.gradient2.reshape(2, -1)
     self.assertEqual((out_grad == in_grad).sum(), 8)
     self.assertEqual(len(out_grad.nonzero()), 8)
+
+
+  def testFour(self):
+    """
+    Equal duty cycle, boost factor=0, k=3, batch size=2
+    """
+    x = self.x2
+
+    ctx = TestContext()
+
+    result = KWinners.forward(ctx, x, self.dutyCycle, k=3, boostStrength=0.0)
+
+    expected = torch.zeros_like(x)
+    expected[0, 0, 1, 1] = 1.2
+    expected[0, 1, 0, 1] = 1.2
+    expected[0, 2, 1, 0] = 1.3
+    expected[1, 1, 0, 0] = 1.5
+    expected[1, 1, 0, 1] = 1.6
+    expected[1, 2, 1, 1] = 1.7
+
+    self.assertEqual(result.shape, expected.shape)
+
+    numCorrect = (result == expected).sum()
+    self.assertEqual(numCorrect, result.reshape(-1).size()[0])
+
+    indices = ctx.saved_tensors[0]
+    expectedIndices = torch.tensor([[3, 10, 5], [4, 5, 11]])
+    numCorrect = (indices == expectedIndices).sum()
+    self.assertEqual(numCorrect, 6)
+
+    # Test that gradient values are in the right places, that their sum is
+    # equal, and that they have exactly the right number of nonzeros
+    out_grad, _, _, _ = KWinners.backward(ctx, self.gradient2)
+    out_grad = out_grad.reshape(2, -1)
+    in_grad = self.gradient2.reshape(2, -1)
+    self.assertEqual((out_grad == in_grad).sum(), 6)
+    self.assertEqual(len(out_grad.nonzero()), 6)
+
+
+  def testDutyCycleUpdate(self):
+    """
+    Start with equal duty cycle, boost factor=0, k=4, batch size=2
+    """
+    x = self.x2
+
+    expected = torch.zeros_like(x)
+    expected[0, 0, 1, 0] = 1.1
+    expected[0, 0, 1, 1] = 1.2
+    expected[0, 1, 0, 1] = 1.2
+    expected[0, 2, 1, 0] = 1.3
+    expected[1, 0, 0, 0] = 1.4
+    expected[1, 1, 0, 0] = 1.5
+    expected[1, 1, 0, 1] = 1.6
+    expected[1, 2, 1, 1] = 1.7
+
+    dutyCycle = torch.zeros((1, 3, 1, 1))
+    dutyCycle[:] = 1.0 / 3.0
+    updateDutyCycle(expected, dutyCycle, 2, 2)
+    newDuty = torch.tensor([1.5000, 1.5000, 1.0000])
+    diff = (dutyCycle.reshape(-1) - newDuty).abs().sum()
+    self.assertLessEqual(diff, 0.001)
+
+    dutyCycle[:] = 1.0 / 3.0
+    updateDutyCycle(expected, dutyCycle, 4, 4)
+    newDuty = torch.tensor([0.91667, 0.91667, 0.66667])
+    diff = (dutyCycle.reshape(-1) - newDuty).abs().sum()
+    self.assertLessEqual(diff, 0.001)
+
 
 
 if __name__ == "__main__":

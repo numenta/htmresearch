@@ -28,7 +28,12 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htmresearch.frameworks.pytorch.k_winners_cnn import KWinners
+from htmresearch.frameworks.pytorch.k_winners_cnn import (
+  KWinners, updateDutyCycle
+)
+from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
+  maxEntropy, binaryEntropy
+)
 
 import matplotlib
 matplotlib.use('Agg')
@@ -206,20 +211,19 @@ class SparseMNISTCNN(nn.Module):
     batchSize = x.shape[0]
 
     if not self.training:
-      k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutChannels)
+      k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
     else:
       k = self.c1k
 
     x = self.c1(x)
     x = F.max_pool2d(x, 2)
 
-    if self.c1k < self.c1OutputLength:
-      x = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
+    if k < self.c1OutputLength:
+      xk = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
     else:
-      x = F.relu(x)
+      xk = F.relu(x)
 
-    x = x.view(-1, self.c1MaxpoolWidth * self.c1MaxpoolWidth *
-                   self.c1OutChannels)
+    x = xk.view(-1, self.c1OutputLength)
 
     x = self.fc1(x)
     x = F.relu(x)
@@ -232,24 +236,28 @@ class SparseMNISTCNN(nn.Module):
       # During inference this is kept static.
       self.learningIterations += batchSize
 
-      # Only need to update C1 dutycycle if c1k < c1OutChannels
-      # if k < self.c1OutChannels:
-      #   period = min(self.dutyCyclePeriod, self.learningIterations)
-      #   self.dutyCycle.mul_(period - batchSize)
-      #   self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
-      #   self.dutyCycle.div_(period)
+      # Only need to update dutycycle if c1k < c1OutChannels
+      if k < self.c1OutputLength:
+        updateDutyCycle(xk, self.dutyCycle,
+                        self.dutyCyclePeriod, self.learningIterations)
 
     x = F.log_softmax(x, dim=1)
 
     return x
 
+  def maxEntropy(self):
+    """
+    Returns the maximum entropy we can expect from level 1
+    """
+    return maxEntropy(self.c1OutputLength, self.c1k)
 
-  def printMetrics(self):
-    print("Learning Iterations:", self.learningIterations)
-    # print("non zero weights:", self.l1.weight.data.nonzero().shape,
-    #       "all weights:", self.l1.weight.data.shape)
-    # print("duty cycles min/max/mean:",
-    #       self.dutyCycle.min(), self.dutyCycle.max(), self.dutyCycle.mean())
+
+  def entropy(self):
+    """
+    Returns the current entropy, scaled properly
+    """
+    _, entropy = binaryEntropy(self.dutyCycle)
+    return entropy * self.c1MaxpoolWidth * self.c1MaxpoolWidth
 
 
   def printParameters(self):
