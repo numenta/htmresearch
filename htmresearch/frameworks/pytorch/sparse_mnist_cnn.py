@@ -28,8 +28,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htmresearch.frameworks.pytorch.k_winners_cnn import (
-  KWinners, updateDutyCycle
+from htmresearch.frameworks.pytorch.k_winners import (
+  KWinnersCNN, updateDutyCycleCNN
 )
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
   maxEntropy, binaryEntropy
@@ -71,6 +71,7 @@ class SparseMNISTCNN(nn.Module):
                c1OutChannels=20,
                c1k=20,
                n=50,
+               k=50,
                useDropout=True,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
@@ -143,12 +144,12 @@ class SparseMNISTCNN(nn.Module):
     super(SparseMNISTCNN, self).__init__()
 
     assert(weightSparsity >= 0)
-    # assert(c1k <= c1OutChannels)
 
     # Hyperparameters
     self.c1k = c1k
     self.c1OutChannels = c1OutChannels
     self.n = n
+    self.fc1k = k
     self.kInferenceFactor = kInferenceFactor
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.useDropout = useDropout
@@ -176,6 +177,7 @@ class SparseMNISTCNN(nn.Module):
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
+    self.register_buffer("fc1DutyCycle", torch.zeros((1, self.n, 1, 1)))
 
     # Weight sparsification. For each unit in fc1, decide which weights are
     # going to be zero
@@ -207,20 +209,23 @@ class SparseMNISTCNN(nn.Module):
   def forward(self, x):
     batchSize = x.shape[0]
 
+    # CNN layer
+
     if not self.training:
-      k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
+      c1k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
     else:
-      k = self.c1k
+      c1k = self.c1k
 
     x = self.c1(x)
     x = F.max_pool2d(x, 2)
 
-    if k < self.c1OutputLength:
-      xk = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
+    if c1k < self.c1OutputLength:
+      xc1 = KWinnersCNN.apply(x, self.dutyCycle, c1k, self.boostStrength)
     else:
-      xk = F.relu(x)
+      xc1 = F.relu(x)
 
-    x = xk.view(-1, self.c1OutputLength)
+    # Fully connected layer
+    x = xc1.view(-1, self.c1OutputLength)
 
     x = self.fc1(x)
     x = F.relu(x)
@@ -234,8 +239,8 @@ class SparseMNISTCNN(nn.Module):
       self.learningIterations += batchSize
 
       # Only need to update dutycycle if c1k < c1OutChannels
-      if k < self.c1OutputLength:
-        updateDutyCycle(xk, self.dutyCycle,
+      if c1k < self.c1OutputLength:
+        updateDutyCycleCNN(xc1, self.dutyCycle,
                         self.dutyCyclePeriod, self.learningIterations)
 
     x = F.log_softmax(x, dim=1)
