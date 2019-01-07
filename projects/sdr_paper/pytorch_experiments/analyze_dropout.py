@@ -23,6 +23,7 @@ from __future__ import (absolute_import, division,
 
 import logging
 import os
+from collections import OrderedDict, defaultdict
 from os.path import basename
 
 logging.basicConfig(level=logging.ERROR)
@@ -41,7 +42,7 @@ NOISE_VALUES = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3", "0.35",
 
 
 
-def plotNoiseCurve(suite, values, results,  metric, plotPath, format):
+def plotNoiseCurve(suite, values, results, metric, plotPath, format):
   fig, ax = plt.subplots()
   fig.suptitle("Noise curve")
   ax.set_xlabel("Noise")
@@ -52,8 +53,21 @@ def plotNoiseCurve(suite, values, results,  metric, plotPath, format):
     ax.plot(df[metric], **format[exp])
 
   plt.legend()
+  plt.savefig(plotPath)
+  plt.close()
 
-  # save
+
+
+def plotDropoutByTotalCorrect(results, plotPath, format):
+  fig, ax = plt.subplots()
+  fig.suptitle("Dropout by Total Correct")
+  ax.set_xlabel("Dropout")
+  ax.set_ylabel("Total Correct")
+  for exp in results:
+    data = OrderedDict(sorted(results[exp].items(), key=lambda x: x[0]))
+    ax.plot(data.keys(), data.values(), **format[exp])
+
+  plt.legend()
   plt.savefig(plotPath)
   plt.close()
 
@@ -61,29 +75,51 @@ def plotNoiseCurve(suite, values, results,  metric, plotPath, format):
 
 if __name__ == '__main__':
 
+  # Initialize experiment options and parameters
   suite = MNISTSparseExperiment()
   suite.parse_opt()
   suite.parse_cfg()
+  path = suite.cfgparser.defaults()['path']
 
+  # Load "dense" experiment results
   dense_path = suite.get_exp("DropoutExperimentDense")[0]
   dense = suite.get_exps(path=dense_path)
+
+  # Load "sparse" experiment results
+  sparse_path = suite.get_exp("DropoutExperimentSparse")[0]
+  sparse = suite.get_exps(path=sparse_path)
+
+  # Plot Noise curve
+  results = dense + sparse
+
   dense_format = {exp: {
     "label": "dense,{}".format(basename(exp)),
     "linestyle": "--"
   } for exp in dense}
-
-  sparse_path = suite.get_exp("DropoutExperimentSparse")[0]
-  sparse = suite.get_exps(path=sparse_path)
   sparse_format = {exp: {
     "label": "sparse,{}".format(basename(exp)),
     "linestyle": "-"
   } for exp in sparse}
-
-  results = dense + sparse
   format = dict(sparse_format)
   format.update(dense_format)
-
-  path = suite.cfgparser.defaults()['path']
   plotPath = os.path.join(path, "DropoutExperiment_testerror.pdf")
   plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results,
                  format=format, metric="testerror", plotPath=plotPath)
+
+  # Plot Dropout by Noise
+  results = defaultdict(dict)
+  for exp in sparse:
+    dropout = suite.get_params(exp)["dropout"]
+    totalCorrect = suite.get_value(exp, 0, "totalCorrect", "last")
+    results["sparse"][dropout] = totalCorrect
+
+  for exp in dense:
+    dropout = suite.get_params(exp)["dropout"]
+    totalCorrect = suite.get_value(exp, 0, "totalCorrect", "last")
+    results["dense"][dropout] = totalCorrect
+
+  format = {"sparse": {"label": "Sparse", "linestyle": "-"},
+            "dense": {"label": "Dense", "linestyle": "--"}}
+
+  plotPath = os.path.join(path, "DropoutExperiment_total_correct.pdf")
+  plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
