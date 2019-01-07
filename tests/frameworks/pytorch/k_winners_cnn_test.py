@@ -240,13 +240,13 @@ class KWinnersCNNTest(unittest.TestCase):
     dutyCycle = torch.zeros((1, 3, 1, 1))
     dutyCycle[:] = 1.0 / 3.0
     updateDutyCycleCNN(expected, dutyCycle, 2, 2)
-    newDuty = torch.tensor([1.5000, 1.5000, 1.0000])
+    newDuty = torch.tensor([1.5000, 1.5000, 1.0000]) / 4.0
     diff = (dutyCycle.reshape(-1) - newDuty).abs().sum()
     self.assertLessEqual(diff, 0.001)
 
     dutyCycle[:] = 1.0 / 3.0
     updateDutyCycleCNN(expected, dutyCycle, 4, 4)
-    newDuty = torch.tensor([0.91667, 0.91667, 0.66667])
+    newDuty = torch.tensor([0.3541667, 0.3541667, 0.2916667])
     diff = (dutyCycle.reshape(-1) - newDuty).abs().sum()
     self.assertLessEqual(diff, 0.001)
 
