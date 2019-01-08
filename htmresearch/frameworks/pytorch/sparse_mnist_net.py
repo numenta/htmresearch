@@ -38,7 +38,8 @@ class SparseMNISTNet(nn.Module):
                kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
-               boostStrengthFactor=1.0):
+               boostStrengthFactor=1.0,
+               dropout=0.0):
     """
     A network with one hidden layer, which is a k-sparse linear layer, designed
     for MNIST.
@@ -61,7 +62,9 @@ class SparseMNISTNet(nn.Module):
     :param boostStrengthFactor:
       boost strength is multiplied by this factor after each epoch.
       A value < 1.0 will decrement it every epoch.
-
+    :param dropout:
+      dropout probability used to train the second and subsequent layers.
+      A value 0.0 implies no dropout
     """
     super(SparseMNISTNet, self).__init__()
 
@@ -75,6 +78,7 @@ class SparseMNISTNet(nn.Module):
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.l2 = nn.Linear(self.n, 10)
     self.learningIterations = 0
+    self.dropout = dropout
 
     # Boosting related variables
     self.dutyCyclePeriod = 1000
@@ -144,6 +148,10 @@ class SparseMNISTNet(nn.Module):
         self.dutyCycle.mul_(period - batchSize)
         self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
         self.dutyCycle.div_(period)
+
+    # Dropout
+    if self.dropout > 0.0:
+      x = F.dropout(x, p=self.dropout, training=self.training)
 
     # Output layer
     x = self.l2(x)

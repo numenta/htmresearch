@@ -72,7 +72,7 @@ class SparseMNISTCNN(nn.Module):
                c1k=20,
                n=50,
                k=50,
-               useDropout=True,
+               dropout=0.5,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
@@ -93,8 +93,9 @@ class SparseMNISTCNN(nn.Module):
     :param n:
       Number of units in the fully connected hidden layer
 
-    :param useDropout:
-      If True, dropout will be used to train the second and subsequent layers.
+    :param dropout:
+      dropout probability used to train the second and subsequent layers.
+      A value 0.0 implies no dropout
 
     :param kInferenceFactor:
       During inference (training=False) we increase c1k and l2k by this factor.
@@ -152,7 +153,7 @@ class SparseMNISTCNN(nn.Module):
     self.fc1k = k
     self.kInferenceFactor = kInferenceFactor
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
-    self.useDropout = useDropout
+    self.dropout = dropout
     self.kernelSize = 5
 
     # First convolutional layer
@@ -229,8 +230,8 @@ class SparseMNISTCNN(nn.Module):
 
     x = self.fc1(x)
     x = F.relu(x)
-    if self.useDropout:
-      x = F.dropout(x, training=self.training)
+    if self.dropout > 0.0:
+      x = F.dropout(x, p=self.dropout, training=self.training)
     x = self.fc2(x)
 
     if self.training:
