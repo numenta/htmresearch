@@ -132,7 +132,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       ret.update(self.runNoiseTests(params))
       print("Noise test results: totalCorrect=", ret["totalCorrect"],
             "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
-      if ret["totalCorrect"] > 93000:
+      if ret["totalCorrect"] > 100000 and ret["testerror"] > 98.3:
         print("*******")
         print(params)
     else:
