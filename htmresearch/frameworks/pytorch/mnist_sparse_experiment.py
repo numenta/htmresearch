@@ -90,7 +90,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       sp_model = SparseMNISTCNN(
         c1OutChannels=params["c1_out_channels"],
         c1k=params["c1_k"],
-        useDropout=params["use_dropout"],
+        dropout=params["dropout"],
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
         boostStrengthFactor=params["boost_strength_factor"],
@@ -105,7 +105,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
         weightSparsity=params["weight_sparsity"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
-        )
+        dropout=params["dropout"],
+      )
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")
       sp_model = torch.nn.DataParallel(sp_model)
