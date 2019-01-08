@@ -26,6 +26,8 @@ import os
 from collections import OrderedDict, defaultdict
 from os.path import basename
 
+import numpy as np
+
 logging.basicConfig(level=logging.ERROR)
 
 import matplotlib
@@ -42,15 +44,15 @@ NOISE_VALUES = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3", "0.35",
 
 
 
-def plotNoiseCurve(suite, values, results, metric, plotPath, format):
+def plotNoiseCurve(suite, values, results, plotPath, format):
   fig, ax = plt.subplots()
   fig.suptitle("Noise curve")
   ax.set_xlabel("Noise")
-  ax.set_ylabel(metric)
+  ax.set_ylabel("Accuracy")
   for exp in results:
     values = suite.get_value(exp, 0, values, "last")
     df = pd.DataFrame.from_dict(values, orient='index')
-    ax.plot(df[metric], **format[exp])
+    ax.plot(df["testerror"], **format[exp])
 
   plt.legend()
   plt.savefig(plotPath)
@@ -67,6 +69,8 @@ def plotDropoutByTotalCorrect(results, plotPath, format):
     data = OrderedDict(sorted(results[exp].items(), key=lambda x: x[0]))
     ax.plot(data.keys(), data.values(), **format[exp])
 
+  xticks = data.keys()
+  ax.xaxis.set_ticks(np.arange(min(xticks), max(xticks) + 0.1, 0.1))
   plt.legend()
   plt.savefig(plotPath)
   plt.close()
@@ -90,8 +94,6 @@ if __name__ == '__main__':
   sparse = suite.get_exps(path=sparse_path)
 
   # Plot Noise curve
-  results = dense + sparse
-
   dense_format = {exp: {
     "label": "dense,{}".format(basename(exp)),
     "linestyle": "--"
@@ -102,9 +104,14 @@ if __name__ == '__main__':
   } for exp in sparse}
   format = dict(sparse_format)
   format.update(dense_format)
+
+  # Filter results to dropouts 0.0 and 0.5 only
+  results = [exp for exp in dense + sparse if any(map(lambda v: v in exp,
+                                                      ["dropout0.0", "dropout0.50"]))]
+
   plotPath = os.path.join(path, "DropoutExperiment_testerror.pdf")
   plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results,
-                 format=format, metric="testerror", plotPath=plotPath)
+                 format=format, plotPath=plotPath)
 
   # Plot Dropout by Noise
   results = defaultdict(dict)
