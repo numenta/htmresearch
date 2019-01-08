@@ -91,6 +91,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
         c1OutChannels=params["c1_out_channels"],
         c1k=params["c1_k"],
         dropout=params["dropout"],
+        n=params["n"],
+        k=params["k"],
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
         boostStrengthFactor=params["boost_strength_factor"],

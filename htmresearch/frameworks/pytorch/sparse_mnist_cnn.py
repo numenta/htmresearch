@@ -29,7 +29,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from htmresearch.frameworks.pytorch.k_winners import (
-  KWinnersCNN, updateDutyCycleCNN
+  KWinnersCNN, updateDutyCycleCNN, KWinners
 )
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
   maxEntropy, binaryEntropy
@@ -178,7 +178,7 @@ class SparseMNISTCNN(nn.Module):
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
-    self.register_buffer("fc1DutyCycle", torch.zeros((1, self.n, 1, 1)))
+    self.register_buffer("fc1DutyCycle", torch.zeros(self.n))
 
     # Weight sparsification. For each unit in fc1, decide which weights are
     # going to be zero
@@ -193,6 +193,9 @@ class SparseMNISTCNN(nn.Module):
 
 
   def rezeroWeights(self):
+    """
+    For each layer with sparse weights, set the appropriate weights to zero.
+    """
     if self.weightSparsity < 1.0:
       for i in range(self.n):
         self.fc1.weight.data[i, self.zeroWts[i]] = 0.0
@@ -210,13 +213,15 @@ class SparseMNISTCNN(nn.Module):
   def forward(self, x):
     batchSize = x.shape[0]
 
-    # CNN layer
-
+    # Figure out the right values of k for each layer
     if not self.training:
       c1k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
+      fc1k = min(int(round(self.fc1k * self.kInferenceFactor)), self.n)
     else:
+      fc1k = self.fc1k
       c1k = self.c1k
 
+    # CNN layer
     x = self.c1(x)
     x = F.max_pool2d(x, 2)
 
@@ -227,26 +232,41 @@ class SparseMNISTCNN(nn.Module):
 
     # Fully connected layer
     x = xc1.view(-1, self.c1OutputLength)
-
     x = self.fc1(x)
-    x = F.relu(x)
-    if self.dropout > 0.0:
-      x = F.dropout(x, p=self.dropout, training=self.training)
-    x = self.fc2(x)
+    if self.fc1k < self.n:
+      xfc1 = KWinners.apply(x, self.fc1DutyCycle, fc1k, self.boostStrength)
+    else:
+      xfc1 = F.relu(x)
 
+    if self.dropout > 0.0:
+      x = F.dropout(xfc1, p=self.dropout, training=self.training)
+    else:
+      x = xfc1
+
+    # Compute output layer
+    x = self.fc2(x)
+    x = F.log_softmax(x, dim=1)
+
+    # Update duty cycle variables, after learning iterations are updated.
     if self.training:
       # Update moving average of duty cycle for training iterations only
       # During inference this is kept static.
       self.learningIterations += batchSize
 
-      # Only need to update dutycycle if c1k < c1OutChannels
+      # Only need to update CNN dutycycle if c1k < c1OutChannels
       if c1k < self.c1OutputLength:
         updateDutyCycleCNN(xc1, self.dutyCycle,
                         self.dutyCyclePeriod, self.learningIterations)
 
-    x = F.log_softmax(x, dim=1)
+      # Only need to update fc1 dutycycle if fc1k < n
+      if self.fc1k < self.n:
+        period = min(self.dutyCyclePeriod, self.learningIterations)
+        self.fc1DutyCycle.mul_(period - batchSize)
+        self.fc1DutyCycle.add_(xfc1.gt(0).sum(dim=0, dtype=torch.float))
+        self.fc1DutyCycle.div_(period)
 
     return x
+
 
   def maxEntropy(self):
     """
