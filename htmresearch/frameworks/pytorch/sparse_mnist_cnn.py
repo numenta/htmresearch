@@ -28,8 +28,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htmresearch.frameworks.pytorch.k_winners_cnn import (
-  KWinners, updateDutyCycle
+from htmresearch.frameworks.pytorch.k_winners import (
+  KWinnersCNN, updateDutyCycleCNN, KWinners
 )
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
   maxEntropy, binaryEntropy
@@ -71,7 +71,8 @@ class SparseMNISTCNN(nn.Module):
                c1OutChannels=20,
                c1k=20,
                n=50,
-               useDropout=True,
+               k=50,
+               dropout=0.5,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
@@ -86,20 +87,29 @@ class SparseMNISTCNN(nn.Module):
       Number of channels (filters) in the first convolutional layer C1.
 
     :param c1k:
-      Number of ON (non-zero) filters per iteration in the first convolutional
-      layer C1.
+      Number of ON (non-zero) units per iteration in the first convolutional
+      layer C1. The sparsity of this layer will be c1k / self.c1OutputLength.
+      If c1k >= self.c1OutputLength, the layer acts as a traditional
+      convolutional layer.
 
     :param n:
       Number of units in the fully connected hidden layer
 
-    :param useDropout:
-      If True, dropout will be used to train the second and subsequent layers.
+    :param k:
+      Number of ON units in the fully connected hidden layer. The sparsity of
+      this layer will be k / n. If k >= n, the layer acts as a traditional
+      fully connected RELU layer.
+
+    :param dropout:
+      dropout probability used to train the second and subsequent layers.
+      A value 0.0 implies no dropout
 
     :param kInferenceFactor:
       During inference (training=False) we increase c1k and l2k by this factor.
 
     :param weightSparsity:
-      Pct of weights that are allowed to be non-zero in the convolutional layer.
+      Pct of weights that are allowed to be non-zero in the fully connected
+      layer.
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
@@ -109,14 +119,15 @@ class SparseMNISTCNN(nn.Module):
       A value < 1.0 will decrement it every epoch.
 
 
-    We consider three possibilities for sparse CNNs:
+    We considered three possibilities for sparse CNNs. The second one is
+    currently implemented.
 
     1) Treat the output as a sparse linear layer as if the weights were not
        shared. Do global inhibition across the whole layer, and accumulate
        duty cycles across all units as if they were all distinct. This makes
        little sense.
 
-    2) Treat the output as a sparse linear layer but do consider weight sharing.
+    2) Treat the output as a sparse global layer but do consider weight sharing.
        Do global inhibition across the whole layer, but accumulate duty cycles
        across the c1OutChannels filters (it is possible that a given filter has
        multiple active outputs per image). This is simpler to implement and may
@@ -135,23 +146,19 @@ class SparseMNISTCNN(nn.Module):
        larger color images and complex domains but may be too heavy handed for
        MNIST.
 
-    In all of the above cases we would ensure that each filter has a sparse
-    set of weights. In addition we can optionally enforce sparsity in the
-    linear layers after the CNN layers.
-
     """
     super(SparseMNISTCNN, self).__init__()
 
     assert(weightSparsity >= 0)
-    # assert(c1k <= c1OutChannels)
 
     # Hyperparameters
     self.c1k = c1k
     self.c1OutChannels = c1OutChannels
     self.n = n
+    self.fc1k = k
     self.kInferenceFactor = kInferenceFactor
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
-    self.useDropout = useDropout
+    self.dropout = dropout
     self.kernelSize = 5
 
     # First convolutional layer
@@ -176,26 +183,27 @@ class SparseMNISTCNN(nn.Module):
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
+    self.register_buffer("fc1DutyCycle", torch.zeros(self.n))
 
-    #
-    # # Weight sparsification. For each unit, decide which weights are going to be zero
+    # Weight sparsification. For each unit in fc1, decide which weights are
+    # going to be zero
     self.zeroWts = []
-    # if self.weightSparsity < 1.0:
-    #   numZeros = int(round((1.0 - self.weightSparsity) * self.l1.weight.shape[1]))
-    #   for i in range(self.n):
-    #     self.zeroWts.append(
-    #       np.random.permutation(self.l1.weight.shape[1])[0:numZeros])
-    #
-    #   self.rezeroWeights()
+    if self.weightSparsity < 1.0:
+      numZeros = int(round((1.0 - self.weightSparsity) * self.fc1.weight.shape[1]))
+      for i in range(self.n):
+        self.zeroWts.append(
+          np.random.permutation(self.fc1.weight.shape[1])[0:numZeros])
+
+      self.rezeroWeights()
 
 
   def rezeroWeights(self):
-    pass
-    # if self.weightSparsity < 1.0:
-    #   # print("non zero before:",self.l1.weight.data.nonzero().shape)
-    #   for i in range(self.n):
-    #     self.l1.weight.data[i, self.zeroWts[i]] = 0.0
-    #   # print("non zero after:",self.l1.weight.data.nonzero().shape)
+    """
+    For each layer with sparse weights, set the appropriate weights to zero.
+    """
+    if self.weightSparsity < 1.0:
+      for i in range(self.n):
+        self.fc1.weight.data[i, self.zeroWts[i]] = 0.0
 
 
   def postEpoch(self):
@@ -204,46 +212,65 @@ class SparseMNISTCNN(nn.Module):
     boostStrength
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    print("boostStrength is now:", self.boostStrength)
 
 
   def forward(self, x):
     batchSize = x.shape[0]
 
+    # Figure out the right values of k for each layer
     if not self.training:
-      k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
+      c1k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
+      fc1k = min(int(round(self.fc1k * self.kInferenceFactor)), self.n)
     else:
-      k = self.c1k
+      fc1k = self.fc1k
+      c1k = self.c1k
 
+    # CNN layer
     x = self.c1(x)
     x = F.max_pool2d(x, 2)
 
-    if k < self.c1OutputLength:
-      xk = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
+    if c1k < self.c1OutputLength:
+      xc1 = KWinnersCNN.apply(x, self.dutyCycle, c1k, self.boostStrength)
     else:
-      xk = F.relu(x)
+      xc1 = F.relu(x)
 
-    x = xk.view(-1, self.c1OutputLength)
-
+    # Fully connected layer
+    x = xc1.view(-1, self.c1OutputLength)
     x = self.fc1(x)
-    x = F.relu(x)
-    if self.useDropout:
-      x = F.dropout(x, training=self.training)
-    x = self.fc2(x)
+    if self.fc1k < self.n:
+      xfc1 = KWinners.apply(x, self.fc1DutyCycle, fc1k, self.boostStrength)
+    else:
+      xfc1 = F.relu(x)
 
+    if self.dropout > 0.0:
+      x = F.dropout(xfc1, p=self.dropout, training=self.training)
+    else:
+      x = xfc1
+
+    # Compute output layer
+    x = self.fc2(x)
+    x = F.log_softmax(x, dim=1)
+
+    # Update duty cycle variables, after learning iterations are updated.
     if self.training:
       # Update moving average of duty cycle for training iterations only
       # During inference this is kept static.
       self.learningIterations += batchSize
 
-      # Only need to update dutycycle if c1k < c1OutChannels
-      if k < self.c1OutputLength:
-        updateDutyCycle(xk, self.dutyCycle,
+      # Only need to update CNN dutycycle if c1k < c1OutChannels
+      if c1k < self.c1OutputLength:
+        updateDutyCycleCNN(xc1, self.dutyCycle,
                         self.dutyCyclePeriod, self.learningIterations)
 
-    x = F.log_softmax(x, dim=1)
+      # Only need to update fc1 dutycycle if fc1k < n
+      if self.fc1k < self.n:
+        period = min(self.dutyCyclePeriod, self.learningIterations)
+        self.fc1DutyCycle.mul_(period - batchSize)
+        self.fc1DutyCycle.add_(xfc1.gt(0).sum(dim=0, dtype=torch.float))
+        self.fc1DutyCycle.div_(period)
 
     return x
+
 
   def maxEntropy(self):
     """

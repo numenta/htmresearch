@@ -38,16 +38,18 @@ def analyzeParameters(expName, suite):
     pprint.pprint(expParams)
 
     for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
-              "k_inference_factor", "boost_strength_factor"]:
+              "k_inference_factor", "boost_strength_factor",
+              "c1_out_channels", "c1_k", "learning_rate_factor",
+              "batches_in_epoch",
+              ]:
       if p in expParams and type(expParams[p]) == list:
-        print(p)
+        print("\n",p)
         for v1 in expParams[p]:
           # Retrieve the last totalCorrect from each experiment
           # Print them sorted from best to worst
           values, params = suite.get_values_fix_params(
-            expName, 0, "totalCorrect", "last", **{p:v1})
+            expName, 0, "testerror", "last", **{p:v1})
           v = np.array(values)
-          print(v1,v)
           try:
             print("Average/min/max for", p, v1, "=", v.mean(), v.min(), v.max())
             # sortedIndices = v.argsort()
@@ -81,21 +83,35 @@ def summarizeResults(expName, suite):
   except:
     print("Couldn't analyze experiment",expName)
 
+  try:
+    # Retrieve the last totalCorrect from each experiment
+    # Print them sorted from best to worst
+    values, params = suite.get_values_fix_params(
+      expName, 0, "testerror", "last")
+    v = np.array(values)
+    sortedIndices = v.argsort()
+    for i in sortedIndices[::-1]:
+      print(v[i], params[i]["name"])
 
-def lastNoiseCurve(expPath, suite):
+    print()
+  except:
+    print("Couldn't analyze experiment",expName)
+
+
+def lastNoiseCurve(expPath, suite, iteration="last"):
   """
   Print the noise errors from the last iteration of this experiment
   """
   noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
                             "0.35", "0.4", "0.45", "0.5"]
-  print("\nNOISE CURVE ================",expPath,"=====================")
+  print("\nNOISE CURVE =====",expPath,"====== ITERATION:",iteration,"=========")
   try:
-    result = suite.get_value(expPath, 0, noiseValues, "last")
+    result = suite.get_value(expPath, 0, noiseValues, iteration)
     info = []
     for k in noiseValues:
       info.append([k,result[k]["testerror"]])
     print(tabulate(info, headers=["noise","Test Error"], tablefmt="grid"))
-    print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", "last"))
+    print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", iteration))
   except:
     print("Couldn't load experiment",expPath)
 
@@ -125,38 +141,33 @@ if __name__ == '__main__':
 
   suite = MNISTSparseExperiment()
 
-  # model = torch.load("results/experimentQuick/k10.0/model.pt")
-  # model.eval()
-  # print(model.l1.weight.data)
-
-  # List of all experiments
-  # experiments = suite.get_exps("./results")
-  # pprint.pprint(experiments)
-
   summarizeResults("./results", suite)
 
   for expName in [
-    "./results/standardOneLayer",
-    "./results/experiment28",
+    # "./results/standardOneLayer",
+
+    # Best sparse CNN net so far
+    "./results/cnn13/learning_rate0.020boost_strength1.40",
+
+    # This is the best sparse net (non CNN) so far, as of Jan 7.
+    "./results/exp35/learning_rate_factor0.50learning_rate0.040",
+
+    "./results/cnn14/learning_rate0.050boost_strength1.50",
+
+    # Iteration 5 of this one is great. The other one is not bad too.
+    "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0",
+    "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n500.0",
   ]:
     analyzeParameters(expName, suite)
-
+    learningCurve(expName, suite)
 
   # Print details of the best ones so far
 
-  expPath = "./results/standardOneLayer"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
+  lastNoiseCurve("./results/cnn13/learning_rate0.020boost_strength1.40", suite)
 
-  expPath = "./results/exp31/boost_strength1.0k50.0n500.0"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
+  lastNoiseCurve("./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0", suite, 5)
 
-  expPath = "./results/exp35/learning_rate_factor0.60learning_rate0.040"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
-
-  expPath = "./results/exp35/learning_rate_factor0.50learning_rate0.040"
-  lastNoiseCurve(expPath, suite)
-  learningCurve(expPath, suite)
+  # Learning rate exploration
+  analyzeParameters("./results/cnn10", suite)
+  summarizeResults("./results/cnn10", suite)
 
