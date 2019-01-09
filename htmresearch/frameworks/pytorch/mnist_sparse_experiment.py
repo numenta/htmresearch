@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 import os
+import sys
+import traceback
 import numpy as np
 import time
 
@@ -146,43 +148,50 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once for each training iteration (== epoch here).
     """
-    t1 = time.time()
-    ret = {}
-    self.train(params, epoch=iteration)
+    try:
+      t1 = time.time()
+      ret = {}
+      self.train(params, epoch=iteration)
 
-    # Run noise test
-    if (params["test_noise_every_epoch"] or 
-        iteration == params["iterations"] - 1):
-      ret.update(self.runNoiseTests(params))
-      print("Noise test results: totalCorrect=", ret["totalCorrect"],
-            "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
-      if ret["totalCorrect"] > 100000 and ret["testerror"] > 98.3:
-        print("*******")
-        print(params)
-    else:
-      ret.update(self.test(params, self.test_loader))
-      print("Test error=", ret["testerror"], ", entropy=", ret["entropy"])
+      # Run noise test
+      if (params["test_noise_every_epoch"] or
+          iteration == params["iterations"] - 1):
+        ret.update(self.runNoiseTests(params))
+        print("Noise test results: totalCorrect=", ret["totalCorrect"],
+              "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
+        if ret["totalCorrect"] > 100000 and ret["testerror"] > 98.3:
+          print("*******")
+          print(params)
+      else:
+        ret.update(self.test(params, self.test_loader))
+        print("Test error=", ret["testerror"], ", entropy=", ret["entropy"])
 
-      if self.validation_loader is not None:
-        validation = self.test(params, self.validation_loader)
-        ret["validation"] = validation
-        print("Validation: Test error=", validation["testerror"],
-              "entropy=", validation["entropy"])
+        if self.validation_loader is not None:
+          validation = self.test(params, self.validation_loader)
+          ret["validation"] = validation
+          print("Validation: Test error=", validation["testerror"],
+                "entropy=", validation["entropy"])
 
-    ret.update({"elapsedTime": time.time() - self.startTime})
-    ret.update({"learningRate": self.learningRate})
+      ret.update({"elapsedTime": time.time() - self.startTime})
+      ret.update({"learningRate": self.learningRate})
 
-    print("Iteration =", iteration,
-          ", iteration time= {0:.3f} secs, "
-          "total elapsed time= {1:.3f} mins".format(
-            time.time() - t1,ret["elapsedTime"]/60.0))
+      print("Iteration =", iteration,
+            ", iteration time= {0:.3f} secs, "
+            "total elapsed time= {1:.3f} mins".format(
+              time.time() - t1,ret["elapsedTime"]/60.0))
 
-    self.learningRate = self.learningRate * params["learning_rate_factor"]
-    self.createOptimizer(params, self.learningRate)
+      self.learningRate = self.learningRate * params["learning_rate_factor"]
+      self.createOptimizer(params, self.learningRate)
 
-    print("dutycycle:", self.model.dutyCycle.min(),
-          self.model.dutyCycle.max(),
-          self.model.dutyCycle.mean())
+      print("dutycycle:", self.model.dutyCycle.min(),
+            self.model.dutyCycle.max(),
+            self.model.dutyCycle.mean())
+
+    except Exception as e:
+      # Tracebacks are not printed if using multiprocessing so we do it here
+      tb = sys.exc_info()[2]
+      traceback.print_tb(tb)
+      raise RuntimeError("Something went wrong in iterate")
 
     return ret
 

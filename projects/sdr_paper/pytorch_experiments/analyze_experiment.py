@@ -40,6 +40,7 @@ def analyzeParameters(expName, suite):
     for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
               "k_inference_factor", "boost_strength_factor",
               "c1_out_channels", "c1_k", "learning_rate_factor",
+              "batches_in_epoch",
               ]:
       if p in expParams and type(expParams[p]) == list:
         print("\n",p)
@@ -47,7 +48,7 @@ def analyzeParameters(expName, suite):
           # Retrieve the last totalCorrect from each experiment
           # Print them sorted from best to worst
           values, params = suite.get_values_fix_params(
-            expName, 0, "totalCorrect", "last", **{p:v1})
+            expName, 0, "testerror", "last", **{p:v1})
           v = np.array(values)
           try:
             print("Average/min/max for", p, v1, "=", v.mean(), v.min(), v.max())
@@ -73,6 +74,20 @@ def summarizeResults(expName, suite):
     # Print them sorted from best to worst
     values, params = suite.get_values_fix_params(
       expName, 0, "totalCorrect", "last")
+    v = np.array(values)
+    sortedIndices = v.argsort()
+    for i in sortedIndices[::-1]:
+      print(v[i], params[i]["name"])
+
+    print()
+  except:
+    print("Couldn't analyze experiment",expName)
+
+  try:
+    # Retrieve the last totalCorrect from each experiment
+    # Print them sorted from best to worst
+    values, params = suite.get_values_fix_params(
+      expName, 0, "testerror", "last")
     v = np.array(values)
     sortedIndices = v.argsort()
     for i in sortedIndices[::-1]:
@@ -126,36 +141,33 @@ if __name__ == '__main__':
 
   suite = MNISTSparseExperiment()
 
-  # model = torch.load("results/experimentQuick/k10.0/model.pt")
-  # model.eval()
-  # print(model.l1.weight.data)
-
-  # List of all experiments
-  # experiments = suite.get_exps("./results")
-  # pprint.pprint(experiments)
-
   summarizeResults("./results", suite)
 
   for expName in [
     # "./results/standardOneLayer",
-    "./results/cnn6/learning_rate_factor0.70weight_sparsity0.30c1_k450.0c1_out_channels30.0n100.0",
+
+    # Best sparse CNN net so far
+    "./results/cnn13/learning_rate0.020boost_strength1.40",
 
     # This is the best sparse net (non CNN) so far, as of Jan 7.
     "./results/exp35/learning_rate_factor0.50learning_rate0.040",
+
+    "./results/cnn14/learning_rate0.050boost_strength1.50",
+
+    # Iteration 5 of this one is great. The other one is not bad too.
+    "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0",
+    "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n500.0",
   ]:
     analyzeParameters(expName, suite)
     learningCurve(expName, suite)
 
-  analyzeParameters("./results/cnn6", suite)
-
-  analyzeParameters("./results/cnn7", suite)
-
   # Print details of the best ones so far
 
-  # lastNoiseCurve("./results/standardOneLayer", suite, 8)
-  # lastNoiseCurve("./results/cnn5/learning_rate_factor0.80weight_sparsity0.40boost_strength1.20", suite)
-  # lastNoiseCurve("./results/cnn4/boost_strength_factor0.90learning_rate_factor0.70weight_sparsity0.40learning_rate0.010", suite, 6)
-  lastNoiseCurve("./results/cnn6/learning_rate_factor0.70weight_sparsity0.30c1_k450.0c1_out_channels30.0n100.0", suite)
-  analyzeParameters("./results/cnn6/learning_rate_factor0.70weight_sparsity0.30c1_k450.0c1_out_channels30.0n100.0", suite)
+  lastNoiseCurve("./results/cnn13/learning_rate0.020boost_strength1.40", suite)
 
-  lastNoiseCurve("./results/exp35/learning_rate_factor0.50learning_rate0.040", suite)
+  lastNoiseCurve("./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0", suite, 5)
+
+  # Learning rate exploration
+  analyzeParameters("./results/cnn10", suite)
+  summarizeResults("./results/cnn10", suite)
+
