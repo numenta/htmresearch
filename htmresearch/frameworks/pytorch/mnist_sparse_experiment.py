@@ -35,6 +35,7 @@ from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseMNISTNet
 from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
+from htmresearch.frameworks.pytorch.dataset_utils import createValidationDataSampler
 
 
 class MNISTSparseExperiment(PyExperimentSuite):
@@ -82,10 +83,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
     # where X can be tuned via the "validation" parameter
     validation = params.get("validation", 50000.0 / 60000.0)
     if validation < 1.0:
-      indices = np.random.permutation(len(train_dataset))
-      training_count = int(len(indices) * validation)
-      self.train_sampler = torch.utils.data.SubsetRandomSampler(indices=indices[:training_count])
-      self.validation_sampler = torch.utils.data.SubsetRandomSampler(indices=indices[training_count:])
+      self.train_sampler, self.validation_sampler = createValidationDataSampler(
+        train_dataset, validation)
 
       self.train_loader = torch.utils.data.DataLoader(train_dataset,
                                                       batch_size=params["batch_size"],
