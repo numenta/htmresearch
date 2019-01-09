@@ -71,19 +71,44 @@ class MNISTSparseExperiment(PyExperimentSuite):
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 
-    self.train_loader = torch.utils.data.DataLoader(
-      datasets.MNIST(self.dataDir, train=True, download=True,
-                     transform=transforms.Compose([
-                       transforms.ToTensor(),
-                       transforms.Normalize((0.1307,), (0.3081,))
-                     ])),
-      batch_size=params["batch_size"], shuffle=True, **kwargs)
+    transform = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Normalize((0.1307,), (0.3081,))])
+
+    train_dataset = datasets.MNIST(self.dataDir, train=True, download=True,
+                                   transform=transform)
+
+    # Create training and validation sampler from MNIST dataset by training on
+    # random X% of the training set and validating on the remaining (1-X)%,
+    # where X can be tuned via the "validation" parameter
+    validation = params.get("validation", 50000.0 / 60000.0)
+    if validation < 1.0:
+      indices = np.random.permutation(len(train_dataset))
+      training_count = int(len(indices) * validation)
+      self.train_sampler = torch.utils.data.SubsetRandomSampler(indices=indices[:training_count])
+      self.validation_sampler = torch.utils.data.SubsetRandomSampler(indices=indices[training_count:])
+
+      self.train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                      batch_size=params["batch_size"],
+                                                      sampler=self.train_sampler,
+                                                      **kwargs)
+
+      self.validation_loader = torch.utils.data.DataLoader(train_dataset,
+                                                           batch_size=params["batch_size"],
+                                                           sampler=self.validation_sampler,
+                                                           **kwargs)
+    else:
+      # No validation. Normal training dataset
+      self.validation_loader = None
+      self.validation_sampler = None
+      self.train_sampler = None
+      self.train_loader = torch.utils.data.DataLoader(train_dataset,
+                                                      batch_size=params["batch_size"],
+                                                      shuffle=True,
+                                                      **kwargs)
+
 
     self.test_loader = torch.utils.data.DataLoader(
-      datasets.MNIST(self.dataDir, train=False, transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-      ])),
+      datasets.MNIST(self.dataDir, train=False, transform=transform),
       batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
     if params["use_cnn"]:
@@ -138,6 +163,12 @@ class MNISTSparseExperiment(PyExperimentSuite):
     else:
       ret.update(self.test(params, self.test_loader))
       print("Test error=", ret["testerror"], ", entropy=", ret["entropy"])
+
+      if self.validation_loader is not None:
+        validation = self.test(params, self.validation_loader)
+        ret["validation"] = validation
+        print("Validation: Test error=", validation["testerror"],
+              "entropy=", validation["entropy"])
 
     ret.update({"elapsedTime": time.time() - self.startTime})
     ret.update({"learningRate": self.learningRate})
@@ -229,8 +260,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
         pred = output.max(1, keepdim=True)[1]
         correct += pred.eq(target.view_as(pred)).sum().item()
 
-    test_loss /= len(test_loader.dataset)
-    test_error = 100. * correct / len(test_loader.dataset)
+    test_loss /= len(test_loader.sampler)
+    test_error = 100. * correct / len(test_loader.sampler)
 
     entropy = self.model.entropy()
     ret = {"num_correct": correct,
@@ -248,27 +279,45 @@ class MNISTSparseExperiment(PyExperimentSuite):
     ret = {}
     kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 
+    # Noise on validation data
+    validation = {} if self.validation_sampler is not None else None
+
     # Test with noise
     total_correct = 0
+    validation_total_correct = 0
     for noise in [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+      transform = transforms.Compose([
+        transforms.ToTensor(),
+        RandomNoise(noise, whiteValue=0.1307 + 2*0.3081),
+        transforms.Normalize((0.1307,), (0.3081,))
+      ])
       test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(self.dataDir, train=False, transform=transforms.Compose([
-          transforms.ToTensor(),
-          RandomNoise(noise,
-                      whiteValue=0.1307 + 2*0.3081,
-                      # logDir="data/debug"
-                      ),
-          transforms.Normalize((0.1307,), (0.3081,))
-        ])),
+        datasets.MNIST(self.dataDir, train=False, transform=transform),
         batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
       testResult = self.test(params, test_loader)
       total_correct += testResult["num_correct"]
       ret[noise]= testResult
 
+      if validation is not None:
+        validation_loader = torch.utils.data.DataLoader(
+          datasets.MNIST(self.dataDir, train=True, transform=transform),
+          sampler=self.validation_sampler,
+          batch_size=params["test_batch_size"], **kwargs)
+
+        validationResult = self.test(params, validation_loader)
+        validation_total_correct += validationResult["num_correct"]
+        validation[noise] = validationResult
+
     ret["totalCorrect"] = total_correct
     ret["testerror"] = ret[0.0]["testerror"]
     ret["entropy"] = ret[0.0]["entropy"]
+
+    if validation is not None:
+      validation["totalCorrect"] = validation_total_correct
+      validation["testerror"] = validation[0.0]["testerror"]
+      validation["entropy"] = validation[0.0]["entropy"]
+      ret["validation"] = validation
 
     return ret
 
