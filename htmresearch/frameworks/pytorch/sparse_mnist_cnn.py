@@ -87,11 +87,18 @@ class SparseMNISTCNN(nn.Module):
       Number of channels (filters) in the first convolutional layer C1.
 
     :param c1k:
-      Number of ON (non-zero) filters per iteration in the first convolutional
-      layer C1.
+      Number of ON (non-zero) units per iteration in the first convolutional
+      layer C1. The sparsity of this layer will be c1k / self.c1OutputLength.
+      If c1k >= self.c1OutputLength, the layer acts as a traditional
+      convolutional layer.
 
     :param n:
       Number of units in the fully connected hidden layer
+
+    :param k:
+      Number of ON units in the fully connected hidden layer. The sparsity of
+      this layer will be k / n. If k >= n, the layer acts as a traditional
+      fully connected RELU layer.
 
     :param dropout:
       dropout probability used to train the second and subsequent layers.
@@ -101,7 +108,8 @@ class SparseMNISTCNN(nn.Module):
       During inference (training=False) we increase c1k and l2k by this factor.
 
     :param weightSparsity:
-      Pct of weights that are allowed to be non-zero in the convolutional layer.
+      Pct of weights that are allowed to be non-zero in the fully connected
+      layer.
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
@@ -111,14 +119,15 @@ class SparseMNISTCNN(nn.Module):
       A value < 1.0 will decrement it every epoch.
 
 
-    We consider three possibilities for sparse CNNs:
+    We considered three possibilities for sparse CNNs. The second one is
+    currently implemented.
 
     1) Treat the output as a sparse linear layer as if the weights were not
        shared. Do global inhibition across the whole layer, and accumulate
        duty cycles across all units as if they were all distinct. This makes
        little sense.
 
-    2) Treat the output as a sparse linear layer but do consider weight sharing.
+    2) Treat the output as a sparse global layer but do consider weight sharing.
        Do global inhibition across the whole layer, but accumulate duty cycles
        across the c1OutChannels filters (it is possible that a given filter has
        multiple active outputs per image). This is simpler to implement and may
@@ -136,10 +145,6 @@ class SparseMNISTCNN(nn.Module):
        filters to get SDR properties. Overall this may be a good approach for
        larger color images and complex domains but may be too heavy handed for
        MNIST.
-
-    In all of the above cases we would ensure that each filter has a sparse
-    set of weights. In addition we can optionally enforce sparsity in the
-    linear layers after the CNN layers.
 
     """
     super(SparseMNISTCNN, self).__init__()
@@ -207,7 +212,6 @@ class SparseMNISTCNN(nn.Module):
     boostStrength
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    print("boostStrength is now:", self.boostStrength)
 
 
   def forward(self, x):
