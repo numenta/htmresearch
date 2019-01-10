@@ -183,10 +183,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
       self.learningRate = self.learningRate * params["learning_rate_factor"]
       self.createOptimizer(params, self.learningRate)
 
-      print("dutycycle:", self.model.dutyCycle.min(),
-            self.model.dutyCycle.max(),
-            self.model.dutyCycle.mean())
-
     except Exception as e:
       # Tracebacks are not printed if using multiprocessing so we do it here
       tb = sys.exc_info()[2]

@@ -20,14 +20,11 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
-import numpy as np
-
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
-  maxEntropy, binaryEntropy
+  maxEntropy
 )
 from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
 
@@ -87,12 +84,8 @@ class SparseMNISTNet(nn.Module):
     self.l2 = nn.Linear(self.n, 10)
     self.learningIterations = 0
     self.dropout = dropout
-
-    # Boosting related variables
-    self.dutyCyclePeriod = 1000
-    self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
-    self.register_buffer("dutyCycle", torch.zeros(self.n))
+    self.boostStrength = boostStrength
 
     self.rezeroWeights()
 
@@ -111,11 +104,10 @@ class SparseMNISTNet(nn.Module):
 
 
   def forward(self, x):
-    self.learningIterations += x[0]
+    self.learningIterations += x.shape[0]
 
     # First hidden layer
     x = x.view(-1, 28*28)
-
     x = self.l1(x)
 
     # Dropout
@@ -140,5 +132,6 @@ class SparseMNISTNet(nn.Module):
     """
     Returns the current entropy
     """
-    return self.l1.entropy()
+    entropy = self.l1.entropy()
+    return entropy
 

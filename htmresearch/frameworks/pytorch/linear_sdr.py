@@ -122,7 +122,7 @@ class LinearSDR(nn.Module):
 
   def entropy(self):
     """
-    Returns the current entropy of this layer
+    Returns the current total entropy of this layer
     """
     _, entropy = binaryEntropy(self.dutyCycle)
     return entropy
