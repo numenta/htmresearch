@@ -118,6 +118,9 @@ class SparseMNISTCNN(nn.Module):
       boost strength is multiplied by this factor after each epoch.
       A value < 1.0 will decrement it every epoch.
 
+    :param imageSize:
+      A tuple representing (in_channels,height,width).
+
 
     We considered three possibilities for sparse CNNs. The second one is
     currently implemented.
