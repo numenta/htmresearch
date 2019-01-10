@@ -275,6 +275,10 @@ class SparseMNISTCNN(nn.Module):
     return x
 
 
+  def getLearningIterations(self):
+    return self.l1.learningIterations
+
+
   def maxEntropy(self):
     """
     Returns the maximum entropy we can expect from level 1
@@ -289,12 +293,3 @@ class SparseMNISTCNN(nn.Module):
     _, entropy = binaryEntropy(self.dutyCycle)
     return entropy * self.c1MaxpoolWidth * self.c1MaxpoolWidth
 
-
-  def printParameters(self):
-    print("                1k :", self.l1k)
-    print("                 n :", self.n)
-    print("    weightSparsity :", self.weightSparsity)
-    print("     boostStrength :", self.boostStrength)
-    print("   dutyCyclePeriod :", self.dutyCyclePeriod)
-    print("   kInferenceFactor:", self.kInferenceFactor)
-    print("boostStrengthFactor:", self.boostStrengthFactor)

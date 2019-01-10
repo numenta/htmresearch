@@ -149,9 +149,17 @@ class MNISTSparseExperiment(PyExperimentSuite):
     Called once for each training iteration (== epoch here).
     """
     try:
+      print("\nStarting iteration",iteration)
       t1 = time.time()
       ret = {}
       self.train(params, epoch=iteration)
+
+      # Run validation test
+      if self.validation_loader is not None:
+        validation = self.test(params, self.validation_loader)
+        ret["validation"] = validation
+        print("Validation: Test error=", validation["testerror"],
+              "entropy=", validation["entropy"])
 
       # Run noise test
       if (params["test_noise_every_epoch"] or
@@ -162,21 +170,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
         if ret["totalCorrect"] > 100000 and ret["testerror"] > 98.3:
           print("*******")
           print(params)
-      else:
-        ret.update(self.test(params, self.test_loader))
-        print("Test error=", ret["testerror"], ", entropy=", ret["entropy"])
-
-        if self.validation_loader is not None:
-          validation = self.test(params, self.validation_loader)
-          ret["validation"] = validation
-          print("Validation: Test error=", validation["testerror"],
-                "entropy=", validation["entropy"])
 
       ret.update({"elapsedTime": time.time() - self.startTime})
       ret.update({"learningRate": self.learningRate})
 
-      print("Iteration =", iteration,
-            ", iteration time= {0:.3f} secs, "
+      print("Iteration time= {0:.3f} secs, "
             "total elapsed time= {1:.3f} mins".format(
               time.time() - t1,ret["elapsedTime"]/60.0))
 
@@ -230,18 +228,18 @@ class MNISTSparseExperiment(PyExperimentSuite):
       loss = F.nll_loss(output, target)
       loss.backward()
       self.optimizer.step()
-      self.model.rezeroWeights()
+      self.model.rezeroWeights()  # Will remove once CNN is updated
 
       # Log info every log_interval mini batches
       if batch_idx % params["log_interval"] == 0:
         entropy = self.model.entropy()
-        print("logging: ",self.model.learningIterations,
+        print("logging: ",self.model.getLearningIterations(),
               " learning iterations, elapsedTime", time.time() - self.startTime,
               " entropy:", float(entropy)," / ", self.model.maxEntropy())
         if params["create_plots"]:
           plotDutyCycles(self.model.dutyCycle,
                          self.resultsDir + "/figure_"+str(epoch)+"_"+str(
-                           self.model.learningIterations))
+                           self.model.getLearningIterations()))
 
       if batch_idx >= params["batches_in_epoch"]:
         break

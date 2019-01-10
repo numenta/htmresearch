@@ -82,10 +82,12 @@ class LinearSDR(nn.Module):
 
   def forward(self, x):
 
-    if not self.training:
-      k = min(int(round(self.k * self.kInferenceFactor)), self.n)
-    else:
+    if self.training:
+      self.rezeroWeights()
       k = self.k
+    else:
+      k = min(int(round(self.k * self.kInferenceFactor)), self.n)
+
 
     # Apply k-winner algorithm if k < n, otherwise default to standard RELU
     if k != self.n:
@@ -93,14 +95,14 @@ class LinearSDR(nn.Module):
     else:
       x = F.relu(self.l1(x))
 
+    # Update moving average of duty cycle for training iterations only
+    # During inference this is kept static.
     if self.training:
-      # Update moving average of duty cycle for training iterations only
-      # During inference this is kept static.
       batchSize = x.shape[0]
       self.learningIterations += batchSize
 
-      # Only need to update dutycycle if if k < n
-      if k != self.n:
+      # Only need to update dutycycle if k < n
+      if k < self.n:
         period = min(self.dutyCyclePeriod, self.learningIterations)
         self.dutyCycle.mul_(period - batchSize)
         self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))

@@ -60,6 +60,7 @@ class SparseMNISTNet(nn.Module):
     :param boostStrengthFactor:
       boost strength is multiplied by this factor after each epoch.
       A value < 1.0 will decrement it every epoch.
+      
     :param dropout:
       dropout probability used to train the second and subsequent layers.
       A value 0.0 implies no dropout
@@ -79,19 +80,17 @@ class SparseMNISTNet(nn.Module):
                         weightSparsity=weightSparsity,
                         boostStrength=boostStrength
                         )
-    # self.l1 = nn.Linear(28*28, self.n)
+
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.l2 = nn.Linear(self.n, 10)
-    self.learningIterations = 0
     self.dropout = dropout
     self.boostStrengthFactor = boostStrengthFactor
     self.boostStrength = boostStrength
 
-    self.rezeroWeights()
-
 
   def rezeroWeights(self):
-    self.l1.rezeroWeights()
+    # Will remove once CNN is updated
+    pass
 
 
   def postEpoch(self):
@@ -104,7 +103,6 @@ class SparseMNISTNet(nn.Module):
 
 
   def forward(self, x):
-    self.learningIterations += x.shape[0]
 
     # First hidden layer
     x = x.view(-1, 28*28)
@@ -120,6 +118,10 @@ class SparseMNISTNet(nn.Module):
 
     return x
 
+
+  def getLearningIterations(self):
+    return self.l1.learningIterations
+  
 
   def maxEntropy(self):
     """
