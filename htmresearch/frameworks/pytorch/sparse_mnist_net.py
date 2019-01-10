@@ -26,10 +26,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from htmresearch.frameworks.pytorch.k_winners import KWinners
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
   maxEntropy, binaryEntropy
 )
+from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
+
 
 class SparseMNISTNet(nn.Module):
 
@@ -74,7 +75,14 @@ class SparseMNISTNet(nn.Module):
     self.k = k
     self.kInferenceFactor = kInferenceFactor
     self.n = n
-    self.l1 = nn.Linear(28*28, self.n)
+    self.l1 = LinearSDR(inputFeatures=28*28,
+                        n=n,
+                        k=k,
+                        kInferenceFactor=kInferenceFactor,
+                        weightSparsity=weightSparsity,
+                        boostStrength=boostStrength
+                        )
+    # self.l1 = nn.Linear(28*28, self.n)
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.l2 = nn.Linear(self.n, 10)
     self.learningIterations = 0
@@ -86,30 +94,11 @@ class SparseMNISTNet(nn.Module):
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros(self.n))
 
-    # For each L1 unit, decide which weights are going to be zero
-    if self.weightSparsity < 1.0:
-      outputSize, inputSize = self.l1.weight.shape
-      numZeros = int(round((1.0 - self.weightSparsity) * inputSize))
-
-      outputIndices = np.arange(outputSize)
-      inputIndices = np.array([np.random.permutation(inputSize)[:numZeros]
-                               for _ in outputIndices], dtype=np.long)
-
-      # Create tensor indices for all non-zero weights
-      zeroIndices = np.empty((outputSize, numZeros, 2), dtype=np.long)
-      zeroIndices[:, :, 0] = outputIndices[:, None]
-      zeroIndices[:, :, 1] = inputIndices
-      zeroIndices = torch.LongTensor(zeroIndices.reshape(-1, 2))
-
-      self.zeroWts = (zeroIndices[:, 0], zeroIndices[:, 1])
-      self.rezeroWeights()
+    self.rezeroWeights()
 
 
   def rezeroWeights(self):
-    if self.weightSparsity < 1.0:
-      # print("non zero before:",self.l1.weight.data.nonzero().shape)
-      self.l1.weight.data[self.zeroWts] = 0.0
-      # print("non zero after:",self.l1.weight.data.nonzero().shape)
+    self.l1.rezeroWeights()
 
 
   def postEpoch(self):
@@ -117,37 +106,17 @@ class SparseMNISTNet(nn.Module):
     Call this once after each training epoch.
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
+    self.l1.setBoostStrength(self.boostStrength)
     print("boostStrength is now:", self.boostStrength)
 
 
   def forward(self, x):
-
-    if not self.training:
-      k = min(int(round(self.k * self.kInferenceFactor)), self.n)
-    else:
-      k = self.k
+    self.learningIterations += x[0]
 
     # First hidden layer
     x = x.view(-1, 28*28)
 
-    # Apply k-winner algorithm if k < n, otherwise default to standard RELU
-    if k != self.n:
-      x = KWinners.apply(self.l1(x), self.dutyCycle, k, self.boostStrength)
-    else:
-      x = F.relu(self.l1(x))
-
-    if self.training:
-      # Update moving average of duty cycle for training iterations only
-      # During inference this is kept static.
-      batchSize = x.shape[0]
-      self.learningIterations += batchSize
-
-      # Only need to update dutycycle if if k < n
-      if k != self.n:
-        period = min(self.dutyCyclePeriod, self.learningIterations)
-        self.dutyCycle.mul_(period - batchSize)
-        self.dutyCycle.add_(x.gt(0).sum(dim=0, dtype=torch.float))
-        self.dutyCycle.div_(period)
+    x = self.l1(x)
 
     # Dropout
     if self.dropout > 0.0:
@@ -171,6 +140,5 @@ class SparseMNISTNet(nn.Module):
     """
     Returns the current entropy
     """
-    _, entropy = binaryEntropy(self.dutyCycle)
-    return entropy
+    return self.l1.entropy()
 
