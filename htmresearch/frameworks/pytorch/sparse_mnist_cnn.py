@@ -36,36 +36,7 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
 )
 
 from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
-
-
-import matplotlib
-matplotlib.use('Agg')
-
-def CNNOutputSize(imageShape, outChannels, kernelSize, stride=1, padding=0):
-  """
-  Computes the output shape of the CNN for a given image before maxPooling,
-  ignoring dilation and groups.
-
-  math::
-  H_{out} = \lfloor
-    \frac{H_{in} + 2 \times \text{padding} - \text{kernelSize}} {\text{stride}}
-    + 1 \rfloor
-
-  W_{out} = \lfloor
-    \frac{W_{in} + 2 \times \text{padding} - \text{kernelSize}} {\text{stride}}
-    + 1 \rfloor
-
-  :param imageShape: tuple: (H_in, W_in)
-
-  :return: (C_out, H_out, W_out, N) where N = C_out * H_out * W_out)
-
-  """
-  hout = math.floor(
-    (imageShape[0] + 2 * padding - kernelSize) / stride + 1)
-  wout = math.floor(
-    (imageShape[1] + 2 * padding - kernelSize) / stride + 1)
-
-  return outChannels, hout, wout, outChannels*hout*wout
+from htmresearch.frameworks.pytorch.cnn_sdr import CNNSDR2d
 
 
 class SparseMNISTCNN(nn.Module):
@@ -91,8 +62,8 @@ class SparseMNISTCNN(nn.Module):
 
     :param c1k:
       Number of ON (non-zero) units per iteration in the first convolutional
-      layer C1. The sparsity of this layer will be c1k / self.c1OutputLength.
-      If c1k >= self.c1OutputLength, the layer acts as a traditional
+      layer C1. The sparsity of this layer will be c1k / self.c1.outputLength.
+      If c1k >= self.c1.outputLength, the layer acts as a traditional
       convolutional layer.
 
     :param n:
@@ -112,7 +83,7 @@ class SparseMNISTCNN(nn.Module):
 
     :param weightSparsity:
       Pct of weights that are allowed to be non-zero in the fully connected
-      layer.
+      layers.
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
@@ -166,33 +137,26 @@ class SparseMNISTCNN(nn.Module):
     self.kernelSize = 5
 
     # First convolutional layer
-    self.c1 = nn.Conv2d(imageSize[0], c1OutChannels, kernel_size=5)
+    self.c1 = CNNSDR2d(imageShape=imageSize, outChannels=c1OutChannels,
+                       k=c1k, kernelSize=self.kernelSize,
+                       kInferenceFactor=kInferenceFactor,
+                       boostStrength=boostStrength)
 
-    # Compute the number of outputs of c1 after maxpool. We always use a stride
-    # of 1 for CNN1, 2 for maxpool, with no padding for either.
-    self.c1Shape = CNNOutputSize((imageSize[1], imageSize[2]), c1OutChannels,
-                                 kernelSize=self.kernelSize)
-    self.c1MaxpoolWidth = int(math.floor(self.c1Shape[2]/2.0))
-    self.c1OutputLength = int(self.c1MaxpoolWidth * self.c1MaxpoolWidth
-                           * c1OutChannels)
-
-    # First fully connected layer and the fully connected output layer
-    self.fc1 = LinearSDR(inputFeatures=self.c1OutputLength,
+    # First fully connected layer
+    self.fc1 = LinearSDR(inputFeatures=self.c1.outputLength,
                          n=n,
                          k=k,
                          kInferenceFactor=kInferenceFactor,
                          weightSparsity=weightSparsity,
                          boostStrength=boostStrength
                          )
+
+    # ...and the fully connected output layer
     self.fc2 = nn.Linear(n, 10)
 
-    self.learningIterations = 0
-
     # Boosting related variables
-    self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
-    self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
 
 
   def postEpoch(self):
@@ -201,47 +165,25 @@ class SparseMNISTCNN(nn.Module):
     boostStrength
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
+    self.fc1.setBoostStrength(self.boostStrength)
+    self.c1.setBoostStrength(self.boostStrength)
 
 
   def forward(self, x):
-    batchSize = x.shape[0]
-
-    # Figure out the right values of k for each layer
-    if not self.training:
-      c1k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
-    else:
-      c1k = self.c1k
-
     # CNN layer
     x = self.c1(x)
-    x = F.max_pool2d(x, 2)
-
-    if c1k < self.c1OutputLength:
-      xc1 = KWinnersCNN.apply(x, self.dutyCycle, c1k, self.boostStrength)
-    else:
-      xc1 = F.relu(x)
 
     # Fully connected layer
-    x = xc1.view(-1, self.c1OutputLength)
+    x = x.view(-1, self.c1.outputLength)
     x = self.fc1(x)
 
+    # If requested, apply dropout to fully connected layer
     if self.dropout > 0.0:
       x = F.dropout(x, p=self.dropout, training=self.training)
 
     # Compute output layer
     x = self.fc2(x)
     x = F.log_softmax(x, dim=1)
-
-    # Update duty cycle variables, after learning iterations are updated.
-    if self.training:
-      # Update moving average of duty cycle for training iterations only
-      # During inference this is kept static.
-      self.learningIterations += batchSize
-
-      # Only need to update CNN dutycycle if c1k < c1OutChannels
-      if c1k < self.c1OutputLength:
-        updateDutyCycleCNN(xc1, self.dutyCycle,
-                        self.dutyCyclePeriod, self.learningIterations)
 
     return x
 
@@ -254,13 +196,12 @@ class SparseMNISTCNN(nn.Module):
     """
     Returns the maximum entropy we can expect from level 1
     """
-    return maxEntropy(self.c1OutputLength, self.c1k) + self.fc1.maxEntropy()
+    return self.c1.maxEntropy() + self.fc1.maxEntropy()
 
 
   def entropy(self):
     """
     Returns the current entropy, scaled properly
     """
-    _, entropy = binaryEntropy(self.dutyCycle)
-    return entropy * self.c1MaxpoolWidth * self.c1MaxpoolWidth + self.fc1.entropy()
+    return self.c1.entropy() + self.fc1.entropy()
 
