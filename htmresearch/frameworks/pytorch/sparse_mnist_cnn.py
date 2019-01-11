@@ -51,9 +51,9 @@ class SparseMNISTCNN(nn.Module):
 
     :param c1k:
       Number of ON (non-zero) units per iteration in the first convolutional
-      layer C1. The sparsity of this layer will be c1k / self.c1.outputLength.
-      If c1k >= self.c1.outputLength, the layer acts as a traditional
-      convolutional layer.
+      layer C1. The sparsity of this layer will be
+      c1k / self.cnnSdr1.outputLength. If c1k >= self.cnnSdr1.outputLength, the
+      layer acts as a traditional convolutional layer.
 
     :param n:
       Number of units in the fully connected hidden layer

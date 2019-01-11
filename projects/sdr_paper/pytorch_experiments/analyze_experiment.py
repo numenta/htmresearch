@@ -147,27 +147,29 @@ if __name__ == '__main__':
     # "./results/standardOneLayer",
 
     # Best sparse CNN net so far
-    "./results/cnn13/learning_rate0.020boost_strength1.40",
+    "./results/bestSparseCNN",
 
     # This is the best sparse net (non CNN) so far, as of Jan 7.
     "./results/exp35/learning_rate_factor0.50learning_rate0.040",
 
-    "./results/cnn14/learning_rate0.050boost_strength1.50",
+    # "./results/cnn14/learning_rate0.050boost_strength1.50",
 
     # Iteration 5 of this one is great. The other one is not bad too.
-    "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0",
-    "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n500.0",
+    # "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0",
+    # "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n500.0",
   ]:
     analyzeParameters(expName, suite)
     learningCurve(expName, suite)
 
   # Print details of the best ones so far
 
-  lastNoiseCurve("./results/cnn13/learning_rate0.020boost_strength1.40", suite)
+  lastNoiseCurve("./results/bestSparseCNN", suite)
 
-  lastNoiseCurve("./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0", suite, 5)
+  # lastNoiseCurve("./results/cnn13/learning_rate0.020boost_strength1.40", suite)
+
+  # lastNoiseCurve("./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0", suite, 5)
 
   # Learning rate exploration
-  analyzeParameters("./results/cnn10", suite)
-  summarizeResults("./results/cnn10", suite)
+  # analyzeParameters("./results/cnn10", suite)
+  # summarizeResults("./results/cnn10", suite)
 
