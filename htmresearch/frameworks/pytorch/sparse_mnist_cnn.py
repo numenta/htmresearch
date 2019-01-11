@@ -137,22 +137,22 @@ class SparseMNISTCNN(nn.Module):
     self.kernelSize = 5
 
     # First convolutional layer
-    self.c1 = CNNSDR2d(imageShape=imageSize, outChannels=c1OutChannels,
-                       k=c1k, kernelSize=self.kernelSize,
-                       kInferenceFactor=kInferenceFactor,
-                       boostStrength=boostStrength)
+    self.cnnSdr1 = CNNSDR2d(imageShape=imageSize, outChannels=c1OutChannels,
+                            k=c1k, kernelSize=self.kernelSize,
+                            kInferenceFactor=kInferenceFactor,
+                            boostStrength=boostStrength)
 
-    # First fully connected layer
-    self.fc1 = LinearSDR(inputFeatures=self.c1.outputLength,
-                         n=n,
-                         k=k,
-                         kInferenceFactor=kInferenceFactor,
-                         weightSparsity=weightSparsity,
-                         boostStrength=boostStrength
-                         )
+    # First linear SDR layer
+    self.linearSdr1 = LinearSDR(inputFeatures=self.cnnSdr1.outputLength,
+                                n=n,
+                                k=k,
+                                kInferenceFactor=kInferenceFactor,
+                                weightSparsity=weightSparsity,
+                                boostStrength=boostStrength
+                                )
 
-    # ...and the fully connected output layer
-    self.fc2 = nn.Linear(n, 10)
+    # ...and the fully connected linear output layer
+    self.linearOutput = nn.Linear(n, 10)
 
     # Boosting related variables
     self.boostStrength = boostStrength
@@ -165,43 +165,43 @@ class SparseMNISTCNN(nn.Module):
     boostStrength
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    self.fc1.setBoostStrength(self.boostStrength)
-    self.c1.setBoostStrength(self.boostStrength)
+    self.linearSdr1.setBoostStrength(self.boostStrength)
+    self.cnnSdr1.setBoostStrength(self.boostStrength)
 
 
   def forward(self, x):
     # CNN layer
-    x = self.c1(x)
+    x = self.cnnSdr1(x)
 
     # Fully connected layer
-    x = x.view(-1, self.c1.outputLength)
-    x = self.fc1(x)
+    x = x.view(-1, self.cnnSdr1.outputLength)
+    x = self.linearSdr1(x)
 
     # If requested, apply dropout to fully connected layer
     if self.dropout > 0.0:
       x = F.dropout(x, p=self.dropout, training=self.training)
 
     # Compute output layer
-    x = self.fc2(x)
+    x = self.linearOutput(x)
     x = F.log_softmax(x, dim=1)
 
     return x
 
 
   def getLearningIterations(self):
-    return self.fc1.getLearningIterations()
+    return self.linearSdr1.getLearningIterations()
 
 
   def maxEntropy(self):
     """
     Returns the maximum entropy we can expect from level 1
     """
-    return self.c1.maxEntropy() + self.fc1.maxEntropy()
+    return self.cnnSdr1.maxEntropy() + self.linearSdr1.maxEntropy()
 
 
   def entropy(self):
     """
     Returns the current entropy, scaled properly
     """
-    return self.c1.entropy() + self.fc1.entropy()
+    return self.cnnSdr1.entropy() + self.linearSdr1.entropy()
 

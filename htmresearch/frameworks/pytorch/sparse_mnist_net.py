@@ -73,13 +73,13 @@ class SparseMNISTNet(nn.Module):
     self.k = k
     self.kInferenceFactor = kInferenceFactor
     self.n = n
-    self.l1 = LinearSDR(inputFeatures=28*28,
-                        n=n,
-                        k=k,
-                        kInferenceFactor=kInferenceFactor,
-                        weightSparsity=weightSparsity,
-                        boostStrength=boostStrength
-                        )
+    self.linearSdr1 = LinearSDR(inputFeatures=28 * 28,
+                                n=n,
+                                k=k,
+                                kInferenceFactor=kInferenceFactor,
+                                weightSparsity=weightSparsity,
+                                boostStrength=boostStrength
+                                )
 
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.l2 = nn.Linear(self.n, 10)
@@ -93,7 +93,7 @@ class SparseMNISTNet(nn.Module):
     Call this once after each training epoch.
     """
     self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    self.l1.setBoostStrength(self.boostStrength)
+    self.linearSdr1.setBoostStrength(self.boostStrength)
     print("boostStrength is now:", self.boostStrength)
 
 
@@ -101,7 +101,7 @@ class SparseMNISTNet(nn.Module):
 
     # First hidden layer
     x = x.view(-1, 28*28)
-    x = self.l1(x)
+    x = self.linearSdr1(x)
 
     # Dropout
     if self.dropout > 0.0:
@@ -115,7 +115,7 @@ class SparseMNISTNet(nn.Module):
 
 
   def getLearningIterations(self):
-    return self.l1.learningIterations
+    return self.linearSdr1.learningIterations
   
 
   def maxEntropy(self):
@@ -129,6 +129,5 @@ class SparseMNISTNet(nn.Module):
     """
     Returns the current entropy
     """
-    entropy = self.l1.entropy()
-    return entropy
+    return self.linearSdr1.entropy()
 
