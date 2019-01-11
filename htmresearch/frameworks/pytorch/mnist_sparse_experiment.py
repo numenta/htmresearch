@@ -31,6 +31,8 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 
+from htmresearch.frameworks.pytorch.benchmark_utils import (
+  register_nonzero_counter, unregister_counter_nonzero)
 from htmresearch.support.expsuite import PyExperimentSuite
 
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
@@ -253,6 +255,13 @@ class MNISTSparseExperiment(PyExperimentSuite):
     self.model.eval()
     test_loss = 0
     correct = 0
+
+    nonzeros = None
+    count_nonzeros = params.get("count_nonzeros", False)
+    if count_nonzeros:
+      nonzeros = {}
+      register_nonzero_counter(self.model, nonzeros)
+
     with torch.no_grad():
       for data, target in test_loader:
         data, target = data.to(self.device), target.to(self.device)
@@ -260,6 +269,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
         test_loss += F.nll_loss(output, target, reduction='sum').item()
         pred = output.max(1, keepdim=True)[1]
         correct += pred.eq(target.view_as(pred)).sum().item()
+
+        # count nonzeros only once
+        if count_nonzeros:
+          count_nonzeros = False
+          unregister_counter_nonzero(self.model)
 
     test_loss /= len(test_loader.sampler)
     test_error = 100. * correct / len(test_loader.sampler)
@@ -269,6 +283,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
            "test_loss": test_loss,
            "testerror": test_error,
            "entropy": float(entropy)}
+
+    if nonzeros is not None:
+      ret["nonzeros"] = nonzeros
 
     return ret
 
@@ -313,6 +330,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
     ret["totalCorrect"] = total_correct
     ret["testerror"] = ret[0.0]["testerror"]
     ret["entropy"] = ret[0.0]["entropy"]
+
+    if "nonzeros" in ret[0.0]:
+      ret["nonzeros"] = ret[0.0]["nonzeros"]
 
     if validation is not None:
       validation["totalCorrect"] = validation_total_correct
