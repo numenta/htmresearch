@@ -127,6 +127,8 @@ class SparseMNISTCNN(nn.Module):
     super(SparseMNISTCNN, self).__init__()
 
     assert(weightSparsity >= 0)
+    assert(imageShape[1] == imageShape[2],
+           "sparseCNN only supports square images")
 
     # Hyperparameters
     self.c1k = c1k
@@ -173,7 +175,7 @@ class SparseMNISTCNN(nn.Module):
     # CNN layer
     x = self.cnnSdr1(x)
 
-    # Fully connected layer
+    # Linear layer
     x = x.view(-1, self.cnnSdr1.outputLength)
     x = self.linearSdr1(x)
 
@@ -181,7 +183,7 @@ class SparseMNISTCNN(nn.Module):
     if self.dropout > 0.0:
       x = F.dropout(x, p=self.dropout, training=self.training)
 
-    # Compute output layer
+    # Linear output layer
     x = self.linearOutput(x)
     x = F.log_softmax(x, dim=1)
 
