@@ -51,7 +51,7 @@ class SparseMNISTCNN(nn.Module):
                weightSparsity=0.5,
                boostStrength=1.0,
                boostStrengthFactor=1.0,
-               imageSize=(1,28,28)):
+               imageShape=(1, 28, 28)):
     """
     A network with hidden CNN layers, which can be k-sparse linear layers. The
     CNN layers are followed by a fully connected hidden layer followed by an
@@ -92,7 +92,7 @@ class SparseMNISTCNN(nn.Module):
       boost strength is multiplied by this factor after each epoch.
       A value < 1.0 will decrement it every epoch.
 
-    :param imageSize:
+    :param imageShape:
       A tuple representing (in_channels,height,width).
 
 
@@ -137,7 +137,7 @@ class SparseMNISTCNN(nn.Module):
     self.kernelSize = 5
 
     # First convolutional layer
-    self.cnnSdr1 = CNNSDR2d(imageShape=imageSize, outChannels=c1OutChannels,
+    self.cnnSdr1 = CNNSDR2d(imageShape=imageShape, outChannels=c1OutChannels,
                             k=c1k, kernelSize=self.kernelSize,
                             kInferenceFactor=kInferenceFactor,
                             boostStrength=boostStrength)
