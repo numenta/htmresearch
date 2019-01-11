@@ -21,14 +21,13 @@
 
 from __future__ import print_function
 import math
-import numpy as np
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from htmresearch.frameworks.pytorch.k_winners import (
-  KWinnersCNN, updateDutyCycleCNN, KWinners
+  KWinnersCNN, updateDutyCycleCNN
 )
 
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
@@ -36,18 +35,39 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
 )
 
 class CNNSDR2d(nn.Module):
-  """
-  A sparse CNN layer with fixed sparsity and boosting. We do not yet support
-  weight sparsity for CNNs.
-  """
+
   def __init__(self,
                imageShape=(1, 28, 28),
                outChannels=20,
                k=20,
                kernelSize=5,
-               kInferenceFactor=1.0,
+               kInferenceFactor=1.5,
                boostStrength=1.0,
                ):
+    """
+    A sparse CNN layer with fixed sparsity and boosting. We do not yet support
+    weight sparsity for CNNs.
+
+    :param imageShape:
+      A tuple representing (in_channels,height,width).
+
+    :param outChannels:
+      Number of channels (filters) in this convolutional layer.
+
+    :param k:
+      Number of ON (non-zero) units per iteration in this convolutional layer.
+      The sparsity of this layer will be k / self.outputLength. If k >=
+      self.outputLength, the layer acts as a traditional convolutional layer.
+
+    :param kernelSize:
+      Size of the CNN kernel.
+
+    :param kInferenceFactor:
+      During inference (training=False) we increase k by this factor.
+
+    :param boostStrength:
+      boost strength (0.0 implies no boosting).
+    """
 
     super(CNNSDR2d, self).__init__()
     self.outChannels = outChannels
@@ -58,7 +78,7 @@ class CNNSDR2d(nn.Module):
     self.stride = 1
     self.padding = 0
 
-    self.c1 = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize)
+    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize)
 
     # Compute the number of outputs of c1 after maxpool. We always use a stride
     # of 1 for CNN, 2 for maxpool, with no padding for either.
@@ -82,7 +102,7 @@ class CNNSDR2d(nn.Module):
     else:
       k = min(int(round(self.k * self.kInferenceFactor)), self.outputLength)
 
-    x = self.c1(x)
+    x = self.cnn(x)
     x = F.max_pool2d(x, 2)
 
     if k < self.outputLength:

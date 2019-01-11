@@ -32,25 +32,45 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
 )
 
 class LinearSDR(nn.Module):
-  """
-  A sparse linear layer with fixed sparsity, weight sparsity, and boosting.
-  """
   def __init__(self,
                inputFeatures,
-               n=2000,
-               k=200,
-               kInferenceFactor=1.0,
-               weightSparsity=0.5,
+               n=500,
+               k=50,
+               kInferenceFactor=1.5,
+               weightSparsity=0.4,
                boostStrength=1.0,
                ):
+    """
+    A sparse linear layer with fixed sparsity, weight sparsity, and boosting.
 
+    :param inputFeatures:
+      The size of the input to this layer
+
+    :param n:
+      Number of units in this layer
+
+    :param k:
+      Number of ON units in this layer. The sparsity of this layer will be
+      k / n. If k >= n, the layer acts as a traditional fully connected RELU
+      layer.
+
+    :param kInferenceFactor:
+      During inference (training=False) we increase k by this factor.
+
+    :param weightSparsity:
+      Pct of weights that are allowed to be non-zero in the layer.
+
+    :param boostStrength:
+      Boost strength (0.0 implies no boosting).
+
+    """
     super(LinearSDR, self).__init__()
     self.in_features = inputFeatures
     self.k = k
     self.kInferenceFactor = kInferenceFactor
     self.n = n
     self.l1 = nn.Linear(inputFeatures, self.n)
-    self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
+    self.weightSparsity = weightSparsity
     self.learningIterations = 0
 
     # Boosting related variables
@@ -83,13 +103,11 @@ class LinearSDR(nn.Module):
 
 
   def forward(self, x):
-
     if self.training:
       self.rezeroWeights()
       k = self.k
     else:
       k = min(int(round(self.k * self.kInferenceFactor)), self.n)
-
 
     # Apply k-winner algorithm if k < n, otherwise default to standard RELU
     if k != self.n:
@@ -123,7 +141,7 @@ class LinearSDR(nn.Module):
 
   def maxEntropy(self):
     """
-    Returns the maximum entropy we can expect from level 1
+    Returns the maximum total entropy we can expect from this layer
     """
     return maxEntropy(self.n, self.k)
 
@@ -134,5 +152,3 @@ class LinearSDR(nn.Module):
     """
     _, entropy = binaryEntropy(self.dutyCycle)
     return entropy
-
-

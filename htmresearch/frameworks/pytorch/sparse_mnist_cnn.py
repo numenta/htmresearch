@@ -20,20 +20,9 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
-import math
 
-import numpy as np
-
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from htmresearch.frameworks.pytorch.k_winners import (
-  KWinnersCNN, updateDutyCycleCNN, KWinners
-)
-from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
-  maxEntropy, binaryEntropy
-)
 
 from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
 from htmresearch.frameworks.pytorch.cnn_sdr import CNNSDR2d
@@ -166,9 +155,13 @@ class SparseMNISTCNN(nn.Module):
     Call this once after each training epoch. Currently just updates
     boostStrength
     """
-    self.boostStrength = self.boostStrength * self.boostStrengthFactor
-    self.linearSdr1.setBoostStrength(self.boostStrength)
-    self.cnnSdr1.setBoostStrength(self.boostStrength)
+    self.setBoostStrength(self.boostStrength * self.boostStrengthFactor)
+
+
+  def setBoostStrength(self, b):
+    self.boostStrength = b
+    self.linearSdr1.setBoostStrength(b)
+    self.cnnSdr1.setBoostStrength(b)
 
 
   def forward(self, x):
