@@ -157,9 +157,9 @@ class SparseMNISTCNN(nn.Module):
     """
     self.setBoostStrength(self.boostStrength * self.boostStrengthFactor)
 
-    # The optimizer is updating the weights during training after the forward
-    # step. Therefore we need to re-zero the weights after every epoch
     if self.training:
+      # The optimizer is updating the weights during training after the forward
+      # step. Therefore we need to re-zero the weights after every epoch
       self.linearSdr1.rezeroWeights()
 
 
