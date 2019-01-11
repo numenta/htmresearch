@@ -88,11 +88,6 @@ class SparseMNISTNet(nn.Module):
     self.boostStrength = boostStrength
 
 
-  def rezeroWeights(self):
-    # Will remove once CNN is updated
-    pass
-
-
   def postEpoch(self):
     """
     Call this once after each training epoch.

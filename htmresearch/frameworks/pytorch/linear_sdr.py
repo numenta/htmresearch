@@ -32,7 +32,9 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
 )
 
 class LinearSDR(nn.Module):
-
+  """
+  A sparse linear layer with fixed sparsity, weight sparsity, and boosting.
+  """
   def __init__(self,
                inputFeatures,
                n=2000,
@@ -113,6 +115,10 @@ class LinearSDR(nn.Module):
 
   def setBoostStrength(self, b):
     self.boostStrength = b
+
+
+  def getLearningIterations(self):
+    return self.learningIterations
 
 
   def maxEntropy(self):

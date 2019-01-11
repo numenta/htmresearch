@@ -35,6 +35,9 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
   maxEntropy, binaryEntropy
 )
 
+from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
+
+
 import matplotlib
 matplotlib.use('Agg')
 
@@ -157,8 +160,6 @@ class SparseMNISTCNN(nn.Module):
     # Hyperparameters
     self.c1k = c1k
     self.c1OutChannels = c1OutChannels
-    self.n = n
-    self.fc1k = k
     self.kInferenceFactor = kInferenceFactor
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.dropout = dropout
@@ -176,7 +177,13 @@ class SparseMNISTCNN(nn.Module):
                            * c1OutChannels)
 
     # First fully connected layer and the fully connected output layer
-    self.fc1 = nn.Linear(self.c1OutputLength, n)
+    self.fc1 = LinearSDR(inputFeatures=self.c1OutputLength,
+                         n=n,
+                         k=k,
+                         kInferenceFactor=kInferenceFactor,
+                         weightSparsity=weightSparsity,
+                         boostStrength=boostStrength
+                         )
     self.fc2 = nn.Linear(n, 10)
 
     self.learningIterations = 0
@@ -186,27 +193,6 @@ class SparseMNISTCNN(nn.Module):
     self.boostStrength = boostStrength
     self.boostStrengthFactor = boostStrengthFactor
     self.register_buffer("dutyCycle", torch.zeros((1, self.c1OutChannels, 1, 1)))
-    self.register_buffer("fc1DutyCycle", torch.zeros(self.n))
-
-    # Weight sparsification. For each unit in fc1, decide which weights are
-    # going to be zero
-    self.zeroWts = []
-    if self.weightSparsity < 1.0:
-      numZeros = int(round((1.0 - self.weightSparsity) * self.fc1.weight.shape[1]))
-      for i in range(self.n):
-        self.zeroWts.append(
-          np.random.permutation(self.fc1.weight.shape[1])[0:numZeros])
-
-      self.rezeroWeights()
-
-
-  def rezeroWeights(self):
-    """
-    For each layer with sparse weights, set the appropriate weights to zero.
-    """
-    if self.weightSparsity < 1.0:
-      for i in range(self.n):
-        self.fc1.weight.data[i, self.zeroWts[i]] = 0.0
 
 
   def postEpoch(self):
@@ -223,9 +209,7 @@ class SparseMNISTCNN(nn.Module):
     # Figure out the right values of k for each layer
     if not self.training:
       c1k = min(int(round(self.c1k * self.kInferenceFactor)), self.c1OutputLength)
-      fc1k = min(int(round(self.fc1k * self.kInferenceFactor)), self.n)
     else:
-      fc1k = self.fc1k
       c1k = self.c1k
 
     # CNN layer
@@ -240,15 +224,9 @@ class SparseMNISTCNN(nn.Module):
     # Fully connected layer
     x = xc1.view(-1, self.c1OutputLength)
     x = self.fc1(x)
-    if self.fc1k < self.n:
-      xfc1 = KWinners.apply(x, self.fc1DutyCycle, fc1k, self.boostStrength)
-    else:
-      xfc1 = F.relu(x)
 
     if self.dropout > 0.0:
-      x = F.dropout(xfc1, p=self.dropout, training=self.training)
-    else:
-      x = xfc1
+      x = F.dropout(x, p=self.dropout, training=self.training)
 
     # Compute output layer
     x = self.fc2(x)
@@ -265,25 +243,18 @@ class SparseMNISTCNN(nn.Module):
         updateDutyCycleCNN(xc1, self.dutyCycle,
                         self.dutyCyclePeriod, self.learningIterations)
 
-      # Only need to update fc1 dutycycle if fc1k < n
-      if self.fc1k < self.n:
-        period = min(self.dutyCyclePeriod, self.learningIterations)
-        self.fc1DutyCycle.mul_(period - batchSize)
-        self.fc1DutyCycle.add_(xfc1.gt(0).sum(dim=0, dtype=torch.float))
-        self.fc1DutyCycle.div_(period)
-
     return x
 
 
   def getLearningIterations(self):
-    return self.l1.learningIterations
+    return self.fc1.getLearningIterations()
 
 
   def maxEntropy(self):
     """
     Returns the maximum entropy we can expect from level 1
     """
-    return maxEntropy(self.c1OutputLength, self.c1k)
+    return maxEntropy(self.c1OutputLength, self.c1k) + self.fc1.maxEntropy()
 
 
   def entropy(self):
@@ -291,5 +262,5 @@ class SparseMNISTCNN(nn.Module):
     Returns the current entropy, scaled properly
     """
     _, entropy = binaryEntropy(self.dutyCycle)
-    return entropy * self.c1MaxpoolWidth * self.c1MaxpoolWidth
+    return entropy * self.c1MaxpoolWidth * self.c1MaxpoolWidth + self.fc1.entropy()
 

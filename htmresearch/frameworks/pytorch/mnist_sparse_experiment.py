@@ -228,7 +228,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
       loss = F.nll_loss(output, target)
       loss.backward()
       self.optimizer.step()
-      self.model.rezeroWeights()  # Will remove once CNN is updated
 
       # Log info every log_interval mini batches
       if batch_idx % params["log_interval"] == 0:
