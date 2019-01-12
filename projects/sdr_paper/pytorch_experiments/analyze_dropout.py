@@ -77,56 +77,125 @@ def plotDropoutByTotalCorrect(results, plotPath, format):
 
 
 
-if __name__ == '__main__':
+def filterResults(results, filter):
+  """
+  Filter results containing the given condition
+  :param results: list of experiments returned by `suite.get_exps`
+  :param filter: list of conditions on the experiment parameters. For example:
+                 ["dropout0.0", "dropout0.50"]
+  :return: filtered results
+  """
+  return [exp for exp in results if any(map(lambda v: v in exp, filter))]
 
+
+
+def configureNoisePlot(suite, experiments, labels, linestyles, filter):
+  """
+  Load experiment results anc configure the "Noise curve" Plot
+  :param suite: The configured experiment suite. Must call `parse_opt` and `
+                parse_cfg` before calling this functions
+  :param experiments: list containing the experiments to load
+  :param experiments: list containing the experiments to load
+  :param labels: list containing the plot labels for each experiment
+  :param linestyles: list containing the plot linestyle for each experiment
+  :param filter: list containing the specific parameters to filter
+  :return: tuple containing the experiment results and plot formats to be passed
+           to `plotNoiseCurve` function
+  """
+  formats = dict()
+  results = []
+  for i in xrange(len(experiments)):
+    path = suite.get_exp(experiments[i])[0]
+    data = suite.get_exps(path=path)
+    data = filterResults(data, filter)
+
+    # Format Linear Noise curve
+    format = {exp: {
+      "label": "{},{}".format(labels[i], basename(exp)),
+      "linestyle": "{}".format(linestyles[i])
+    } for exp in data}
+    formats.update(format)
+    results.extend(data)
+
+  return (results, formats)
+
+
+
+def configureDropoutByTotalCorrectPlot(suite, experiments, labels, linestyles):
+  """
+  Load experiment results anc configure the "Dropout By Total Correct" Plot
+  :param suite: The configured experiment suite. Must call `parse_opt` and `
+                parse_cfg` before calling this functions
+  :param experiments: list containing the experiments to load
+  :param labels: list containing the plot labels for each experiment
+  :param linestyles: list containing the plot linestyle for each experiment
+  :return: tuple containing the experiment results and plot formats to be passed
+           to `plotDropoutByTotalCorrect` function
+  """
+  results = defaultdict(dict)
+  formats = dict()
+  for i in xrange(len(experiments)):
+    experiment = experiments[i]
+    formats[experiment] = {"label": labels[i], "linestyle": linestyles[i]}
+
+    path = suite.get_exp(experiment)[0]
+    data = suite.get_exps(path=path)
+    for exp in data:
+      dropout = suite.get_params(exp)["dropout"]
+      totalCorrect = suite.get_value(exp, 0, "totalCorrect", "last")
+      results[experiment][dropout] = totalCorrect
+
+  return (results, formats)
+
+
+
+if __name__ == '__main__':
   # Initialize experiment options and parameters
   suite = MNISTSparseExperiment()
   suite.parse_opt()
   suite.parse_cfg()
   path = suite.cfgparser.defaults()['path']
 
-  # Load "dense" experiment results
-  dense_path = suite.get_exp("DropoutExperimentDense")[0]
-  dense = suite.get_exps(path=dense_path)
+  # Plot Noise Curve (LinearNN)
+  results, format = configureNoisePlot(suite,
+                                       experiments=["DropoutExperimentDense",
+                                                    "DropoutExperimentSparse"],
+                                       labels=["dense", "sparse"],
+                                       linestyles=["--", "-"],
+                                       filter=["dropout0.0", "dropout0.50"])
 
-  # Load "sparse" experiment results
-  sparse_path = suite.get_exp("DropoutExperimentSparse")[0]
-  sparse = suite.get_exps(path=sparse_path)
+  plotPath = os.path.join(path, "DropoutExperiment_accuracy.pdf")
+  plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+                 plotPath=plotPath)
 
-  # Plot Noise curve
-  dense_format = {exp: {
-    "label": "dense,{}".format(basename(exp)),
-    "linestyle": "--"
-  } for exp in dense}
-  sparse_format = {exp: {
-    "label": "sparse,{}".format(basename(exp)),
-    "linestyle": "-"
-  } for exp in sparse}
-  format = dict(sparse_format)
-  format.update(dense_format)
+  # Plot Noise Curve (CNN)
+  results, format = configureNoisePlot(suite,
+                                       experiments=["DropoutExperimentDenseCNN",
+                                                    "DropoutExperimentSparseCNN"],
+                                       labels=["denseCNN", "sparseCNN"],
+                                       linestyles=["--", "-"],
+                                       filter=["dropout0.0", "dropout0.50"])
 
-  # Filter results to dropouts 0.0 and 0.5 only
-  results = [exp for exp in dense + sparse if any(map(lambda v: v in exp,
-                                                      ["dropout0.0", "dropout0.50"]))]
+  plotPath = os.path.join(path, "DropoutExperimentCNN_accuracy.pdf")
+  plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+                 plotPath=plotPath)
 
-  plotPath = os.path.join(path, "DropoutExperiment_testerror.pdf")
-  plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results,
-                 format=format, plotPath=plotPath)
-
-  # Plot Dropout by Noise
-  results = defaultdict(dict)
-  for exp in sparse:
-    dropout = suite.get_params(exp)["dropout"]
-    totalCorrect = suite.get_value(exp, 0, "totalCorrect", "last")
-    results["sparse"][dropout] = totalCorrect
-
-  for exp in dense:
-    dropout = suite.get_params(exp)["dropout"]
-    totalCorrect = suite.get_value(exp, 0, "totalCorrect", "last")
-    results["dense"][dropout] = totalCorrect
-
-  format = {"sparse": {"label": "Sparse", "linestyle": "-"},
-            "dense": {"label": "Dense", "linestyle": "--"}}
+  # Plot Dropout by Noise (LinearNN)
+  results, format = configureDropoutByTotalCorrectPlot(suite,
+                                                       experiments=["DropoutExperimentDense",
+                                                                    "DropoutExperimentSparse"],
+                                                       labels=["Dense", "Sparse"],
+                                                       linestyles=["--", "-"])
 
   plotPath = os.path.join(path, "DropoutExperiment_total_correct.pdf")
+  plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
+
+  # Plot Dropout by Noise (CNN)
+  results, format = configureDropoutByTotalCorrectPlot(suite,
+                                                       experiments=["DropoutExperimentDenseCNN",
+                                                                    "DropoutExperimentSparseCNN"],
+                                                       labels=["DenseCNN", "SparseCNN"],
+                                                       linestyles=["--", "-"])
+
+  plotPath = os.path.join(path, "DropoutExperimentCNN_total_correct.pdf")
   plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
