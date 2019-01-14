@@ -31,8 +31,10 @@ from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
 
 class SparseMNISTNet(nn.Module):
 
-  def __init__(self, n=2000,
+  def __init__(self,
+               n=2000,
                k=200,
+               inputSize=28*28,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
@@ -47,6 +49,10 @@ class SparseMNISTNet(nn.Module):
 
     :param k:
       Number of ON (non-zero) units per iteration.
+
+    :param inputSize:
+      Total dimensionality of input vector. We apply view(-1, inputSize)
+      to the data before passing it to LinearSDR.
 
     :param kInferenceFactor:
       During inference (training=False) we increase k by this factor.
@@ -73,7 +79,8 @@ class SparseMNISTNet(nn.Module):
     self.k = k
     self.kInferenceFactor = kInferenceFactor
     self.n = n
-    self.linearSdr1 = LinearSDR(inputFeatures=28 * 28,
+    self.inputSize = inputSize
+    self.linearSdr1 = LinearSDR(inputFeatures=inputSize,
                                 n=n,
                                 k=k,
                                 kInferenceFactor=kInferenceFactor,
@@ -105,7 +112,7 @@ class SparseMNISTNet(nn.Module):
   def forward(self, x):
 
     # First hidden layer
-    x = x.view(-1, 28*28)
+    x = x.view(-1, self.inputSize)
     x = self.linearSdr1(x)
 
     # Dropout
