@@ -71,6 +71,18 @@ You can perform a more thorough test by running the test script from the reposit
 
     %> ./run_tests.sh 
 
+##### Troubleshooting pytorch Installation on Mac OSX
+   
+   If you encounter this error after installing `pytorch` on `Mac OSX`:
+      
+    ImportError: dlopen(~/Library/Python/2.7/lib/python/site-packages/torch/_C.so, 9): Library not loaded: @rpath/libc++.1.dylib
+        Referenced from: ~/Library/Python/2.7/lib/python/site-packages/torch/_C.so
+        Reason: image not found
+    
+   Use the following command to fix your `pytorch` installation:
+   
+     install_name_tool -change  @rpath/libc++.1.dylib /usr/lib/libc++.1.dylib  ~/Library/Python/2.7/lib/python/site-packages/torch/_C.so
+  
 
 Archive
 =======
