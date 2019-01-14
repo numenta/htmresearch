@@ -29,7 +29,7 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
 from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
 
 
-class SparseMNISTNet(nn.Module):
+class SparseLinearNet(nn.Module):
 
   def __init__(self,
                n=2000,
@@ -41,8 +41,7 @@ class SparseMNISTNet(nn.Module):
                boostStrengthFactor=1.0,
                dropout=0.0):
     """
-    A network with one hidden layer, which is a k-sparse linear layer, designed
-    for MNIST.
+    A network with one hidden layer, which is a k-sparse linear layer.
 
     :param n:
       Number of units in the hidden layer.
@@ -71,7 +70,7 @@ class SparseMNISTNet(nn.Module):
       dropout probability used to train the second and subsequent layers.
       A value 0.0 implies no dropout
     """
-    super(SparseMNISTNet, self).__init__()
+    super(SparseLinearNet, self).__init__()
 
     assert(weightSparsity >= 0)
     assert(k <= n)
