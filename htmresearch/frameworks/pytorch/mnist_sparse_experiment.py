@@ -36,7 +36,7 @@ from htmresearch.frameworks.pytorch.benchmark_utils import (
 from htmresearch.support.expsuite import PyExperimentSuite
 
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
-from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseMNISTNet
+from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseLinearNet
 from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
 from htmresearch.frameworks.pytorch.dataset_utils import createValidationDataSampler
@@ -128,7 +128,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       )
       print("c1OutputLength=", sp_model.cnnSdr1.outputLength)
     else:
-      sp_model = SparseMNISTNet(
+      sp_model = SparseLinearNet(
         n=params["n"],
         k=params["k"],
         boostStrength=params["boost_strength"],

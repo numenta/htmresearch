@@ -29,24 +29,29 @@ from htmresearch.frameworks.pytorch.duty_cycle_metrics import (
 from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
 
 
-class SparseMNISTNet(nn.Module):
+class SparseLinearNet(nn.Module):
 
-  def __init__(self, n=2000,
+  def __init__(self,
+               n=2000,
                k=200,
+               inputSize=28*28,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
                boostStrengthFactor=1.0,
                dropout=0.0):
     """
-    A network with one hidden layer, which is a k-sparse linear layer, designed
-    for MNIST.
+    A network with one hidden layer, which is a k-sparse linear layer.
 
     :param n:
       Number of units in the hidden layer.
 
     :param k:
       Number of ON (non-zero) units per iteration.
+
+    :param inputSize:
+      Total dimensionality of input vector. We apply view(-1, inputSize)
+      to the data before passing it to LinearSDR.
 
     :param kInferenceFactor:
       During inference (training=False) we increase k by this factor.
@@ -65,7 +70,7 @@ class SparseMNISTNet(nn.Module):
       dropout probability used to train the second and subsequent layers.
       A value 0.0 implies no dropout
     """
-    super(SparseMNISTNet, self).__init__()
+    super(SparseLinearNet, self).__init__()
 
     assert(weightSparsity >= 0)
     assert(k <= n)
@@ -73,7 +78,8 @@ class SparseMNISTNet(nn.Module):
     self.k = k
     self.kInferenceFactor = kInferenceFactor
     self.n = n
-    self.linearSdr1 = LinearSDR(inputFeatures=28 * 28,
+    self.inputSize = inputSize
+    self.linearSdr1 = LinearSDR(inputFeatures=inputSize,
                                 n=n,
                                 k=k,
                                 kInferenceFactor=kInferenceFactor,
@@ -105,7 +111,7 @@ class SparseMNISTNet(nn.Module):
   def forward(self, x):
 
     # First hidden layer
-    x = x.view(-1, 28*28)
+    x = x.view(-1, self.inputSize)
     x = self.linearSdr1(x)
 
     # Dropout
