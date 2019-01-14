@@ -143,7 +143,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     self.model = sp_model.to(self.device)
     self.learningRate = params["learning_rate"]
-    self.createOptimizer(params, self.learningRate)
+    self.optimizer = self.createOptimizer(params, self.model)
+    self.lr_scheduler = self.createLearningRateScheduler(params, self.optimizer)
 
 
   def iterate(self, params, repetition, iteration):
@@ -154,11 +155,24 @@ class MNISTSparseExperiment(PyExperimentSuite):
       print("\nStarting iteration",iteration)
       t1 = time.time()
       ret = {}
+
+      # Update learning rate using learning rate scheduler if configured
+      if self.lr_scheduler is not None:
+        # ReduceLROnPlateau lr_scheduler step should be called after validation,
+        # all other lr_schedulers should be called before training
+        if params["lr_scheduler"] != "ReduceLROnPlateau":
+          self.lr_scheduler.step()
+
       self.train(params, epoch=iteration)
 
       # Run validation test
       if self.validation_loader is not None:
         validation = self.test(params, self.validation_loader)
+
+        # ReduceLROnPlateau step should be called after validation
+        if params["lr_scheduler"] == "ReduceLROnPlateau":
+          self.lr_scheduler.step(validation["test_loss"])
+
         ret["validation"] = validation
         print("Validation: Test error=", validation["testerror"],
               "entropy=", validation["entropy"])
@@ -174,14 +188,12 @@ class MNISTSparseExperiment(PyExperimentSuite):
           print(params)
 
       ret.update({"elapsedTime": time.time() - self.startTime})
-      ret.update({"learningRate": self.learningRate})
+      ret.update({"learningRate": self.learningRate if self.lr_scheduler is None
+                                                    else self.lr_scheduler.get_lr()})
 
       print("Iteration time= {0:.3f} secs, "
             "total elapsed time= {1:.3f} mins".format(
               time.time() - t1,ret["elapsedTime"]/60.0))
-
-      self.learningRate = self.learningRate * params["learning_rate_factor"]
-      self.createOptimizer(params, self.learningRate)
 
     except Exception as e:
       # Tracebacks are not printed if using multiprocessing so we do it here
@@ -200,20 +212,41 @@ class MNISTSparseExperiment(PyExperimentSuite):
     torch.save(self.model, saveDir)
 
 
-  def createOptimizer(self, params, lr):
+  def createLearningRateScheduler(self, params, optimizer):
     """
-    Create a new instance of the optimizer with the given learning rate.
+    Creates the learning rate scheduler and attach the optimizer
     """
-    print("Creating optimizer with learning rate=",lr)
+    lr_scheduler = params.get("lr_scheduler", None)
+    if lr_scheduler is None:
+      return None
+
+    lr_scheduler_params = params.get("lr_scheduler_params", None)
+    if lr_scheduler_params is None:
+      raise ValueError("Missing 'lr_scheduler_params' for {}".format(lr_scheduler))
+
+    # Get lr_scheduler class by name
+    clazz = eval("torch.optim.lr_scheduler.{}".format(lr_scheduler))
+
+    # Parse scheduler parameters from config
+    lr_scheduler_params = eval(lr_scheduler_params)
+
+    return clazz(optimizer, **lr_scheduler_params)
+
+  def createOptimizer(self, params, model):
+    """
+    Create a new instance of the optimizer
+    """
+    lr = params["learning_rate"]
+    print("Creating optimizer with learning rate=", lr)
     if params["optimizer"] == "SGD":
-      self.optimizer = optim.SGD(self.model.parameters(),
-                                 lr=lr,
-                                 momentum=params["momentum"])
+      optimizer = optim.SGD(model.parameters(), lr=lr,
+                            momentum=params["momentum"])
     elif params["optimizer"] == "Adam":
-      self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+      optimizer = optim.Adam(model.parameters(), lr=lr)
     else:
       raise LookupError("Incorrect optimizer value")
 
+    return optimizer
 
   def train(self, params, epoch):
     """
