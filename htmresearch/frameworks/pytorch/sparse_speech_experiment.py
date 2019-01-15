@@ -87,7 +87,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     elif params["model_type"] == "resnet9":
       sp_model = resnet9(num_classes= len(self.train_loader.dataset.classes),
                          in_channels=1)
-    else:
+    elif params["model_type"] == "linear":
       sp_model = SparseLinearNet(
         n=params["n"],
         k=params["k"],
@@ -99,6 +99,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
         kInferenceFactor=params["k_inference_factor"],
         dropout=params["dropout"],
       )
+    else:
+      raise RuntimeError("Unknown model type")
+
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")
       sp_model = torch.nn.DataParallel(sp_model)
@@ -369,20 +372,20 @@ class SparseSpeechExperiment(PyExperimentSuite):
                                    batch_size=params["batch_size"],
                                    sampler=sampler,
                                    pin_memory=self.use_cuda,
-                                   num_workers=2)
+                                   )
 
     self.validation_loader = DataLoader(validationDataset,
                                         batch_size=params["batch_size"],
                                         shuffle=False,
                                         pin_memory=self.use_cuda,
-                                        num_workers=2)
+                                        )
 
     self.test_loader = DataLoader(testDataset,
                                   batch_size=params["batch_size"],
                                   sampler=None,
                                   shuffle=False,
                                   pin_memory=self.use_cuda,
-                                  num_workers=2)
+                                  )
 
 
 
