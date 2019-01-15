@@ -81,6 +81,13 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     self.loadDatasets(params)
 
+    # Parse 'n' and 'k' parameters
+    n = params["n"]
+    k = params["k"]
+    if isinstance(n, basestring):
+      n = map(int, n.split("_"))
+    if isinstance(k, basestring):
+      k = map(int, k.split("_"))
 
     if params["model_type"] == "cnn":
       assert(False)
@@ -89,8 +96,8 @@ class SparseSpeechExperiment(PyExperimentSuite):
                          in_channels=1)
     elif params["model_type"] == "linear":
       sp_model = SparseLinearNet(
-        n=params["n"],
-        k=params["k"],
+        n=n,
+        k=k,
         inputSize=32*32,
         outputSize=len(self.train_loader.dataset.classes),
         boostStrength=params["boost_strength"],
