@@ -35,6 +35,7 @@ class SparseLinearNet(nn.Module):
                n=2000,
                k=200,
                inputSize=28*28,
+               outputSize=10,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
                boostStrength=1.0,
@@ -79,6 +80,7 @@ class SparseLinearNet(nn.Module):
     self.kInferenceFactor = kInferenceFactor
     self.n = n
     self.inputSize = inputSize
+    self.outputSize = outputSize
     self.linearSdr1 = LinearSDR(inputFeatures=inputSize,
                                 n=n,
                                 k=k,
@@ -88,7 +90,7 @@ class SparseLinearNet(nn.Module):
                                 )
 
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
-    self.l2 = nn.Linear(self.n, 10)
+    self.l2 = nn.Linear(self.n, outputSize)
     self.dropout = dropout
     self.boostStrengthFactor = boostStrengthFactor
     self.boostStrength = boostStrength
