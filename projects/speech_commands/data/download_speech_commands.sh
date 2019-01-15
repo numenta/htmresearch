@@ -1,19 +1,19 @@
 #!/usr/bin/env sh
 set -e
 
-FILE_NAME=speech_commands_v0.01.tar
+FILE_NAME=speech_commands_v0.01.tar.gz
 URL=http://download.tensorflow.org/data/$FILE_NAME
-DATASET_FOLDER=datasets/speech_commands
-
 echo "downloading $URL...\n"
-wget -O datasets/$FILE_NAME $URL
+#wget $URL
 
+DATASET_FOLDER=speech_commands_test
 echo "extracting $FILE_NAME..."
-TEMP_DIRECTORY=$DATASET_FOLDER/audio
-mkdir -p $TEMP_DIRECTORY
-tar -xf datasets/$FILE_NAME -C $TEMP_DIRECTORY
+mkdir -p $DATASET_FOLDER
+tar -xzf $FILE_NAME -C $DATASET_FOLDER
+
+#mv speech_commands_v0.01 $DATASET_FOLDER
 
 echo "splitting the dataset into train, validation and test sets..."
-python split_dataset.py $DATASET_FOLDER
+python split_dataset.py --root=$DATASET_FOLDER --size=small
 
 echo "done"
