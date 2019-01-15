@@ -21,8 +21,6 @@
 
 from __future__ import print_function
 import os
-import sys
-import traceback
 import time
 
 import torch.nn.functional as F
@@ -113,6 +111,8 @@ class SparseSpeechExperiment(PyExperimentSuite):
     Called once for each training iteration (== epoch here).
     """
     print("\nStarting iteration",iteration)
+    print("Learning rate:", self.learningRate if self.lr_scheduler is None
+                                              else self.lr_scheduler.get_lr())
     t1 = time.time()
     ret = {}
 
@@ -151,8 +151,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
     print("Iteration time= {0:.3f} secs, "
           "total elapsed time= {1:.3f} mins".format(
             time.time() - t1,ret["elapsedTime"]/60.0))
-    print("Learning rate:", self.learningRate if self.lr_scheduler is None
-                                              else self.lr_scheduler.get_lr())
 
     return ret
 
@@ -326,7 +324,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
       transforms.Compose([
         LoadAudio(),
         dataAugmentationTransform,
-        add_bg_noise,
+        # add_bg_noise,
         trainFeatureTransform
       ]))
 
