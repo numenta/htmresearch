@@ -45,6 +45,9 @@ from htmresearch.frameworks.pytorch.resnet_models import resnet9
 
 class SparseSpeechExperiment(PyExperimentSuite):
   """
+  This experiment tests the Google Speech Commands dataset, available here:
+  http://download.tensorflow.org/data/speech_commands_v0.01.tar
+
   Allows running multiple sparse speech experiments in parallel
   """
 
@@ -134,15 +137,15 @@ class SparseSpeechExperiment(PyExperimentSuite):
         self.lr_scheduler.step(validation["test_loss"])
 
       ret["validation"] = validation
-      print("Validation: Test error=", validation["testerror"],
+      print("Validation error=", validation["testerror"],
             "entropy=", validation["entropy"])
 
-    # Run validation test
-    if self.validation_loader is not None:
-      validation = self.test(params, self.validation_loader)
-      ret["validation"] = validation
-      print("Validation: Test error=", validation["testerror"],
-            "entropy=", validation["entropy"])
+    # Run test set
+    if self.test_loader is not None:
+      testResults = self.test(params, self.test_loader)
+      ret["testResults"] = testResults
+      print("Test error=", testResults["testerror"],
+            "entropy=", testResults["entropy"])
 
     ret.update({"elapsedTime": time.time() - self.startTime})
     ret.update({"learningRate": self.learningRate if self.lr_scheduler is None
@@ -288,6 +291,13 @@ class SparseSpeechExperiment(PyExperimentSuite):
     return ret
 
   def loadDatasets(self, params):
+    """
+    The GSC dataset specifies specific files to be used as training, test,
+    and validation.  We assume the data has already been processed according
+    to those files into separate train, test, and valid directories.
+
+    For our experiment we use a subset of the data (10 categories out of 30)
+    """
     n_mels = 32
 
     trainDataDir = os.path.join(self.dataDir, "train")
@@ -303,7 +313,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
       ToSTFT(),
       StretchAudioOnSTFT(),
       TimeshiftAudioOnSTFT(),
-      FixSTFTDimension()
+      FixSTFTDimension(),
     ])
 
     bg_dataset = BackgroundNoiseDataset(
@@ -312,7 +322,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     add_bg_noise = AddBackgroundNoiseOnSTFT(bg_dataset)
 
-    trainFeatureTransform = transforms.Compose(
+    featureTransform = transforms.Compose(
       [
         ToMelSpectrogramFromSTFT(n_mels=n_mels),
         DeleteSTFT(),
@@ -324,27 +334,36 @@ class SparseSpeechExperiment(PyExperimentSuite):
       transforms.Compose([
         LoadAudio(),
         dataAugmentationTransform,
-        # add_bg_noise,
-        trainFeatureTransform
+        # add_bg_noise,               # Uncomment to allow adding BG noise
+                                      # during training
+        featureTransform
       ]))
 
-    validationFeatureTransform = transforms.Compose([
+    testFeatureTransform = transforms.Compose([
+      LoadAudio(),
+      FixAudioLength(),
       ToMelSpectrogram(n_mels=n_mels),
       ToTensor('mel_spectrogram', 'input')
     ])
+
     validationDataset = SpeechCommandsDataset(
       validationDataDir,
-      transforms.Compose([
-        LoadAudio(),
-        FixAudioLength(),
-        validationFeatureTransform
-      ]))
+      testFeatureTransform,
+      silence_percentage=0,
+    )
+
+    testDataset = SpeechCommandsDataset(
+      testDataDir,
+      testFeatureTransform,
+      silence_percentage=0,
+    )
 
     weights = trainDataset.make_weights_for_balanced_classes()
     sampler = WeightedRandomSampler(weights, len(weights))
 
     print("Number of training samples=",len(trainDataset))
     print("Number of validation samples=",len(validationDataset))
+    print("Number of test samples=",len(testDataset))
 
     self.train_loader = DataLoader(trainDataset,
                                    batch_size=params["batch_size"],
@@ -357,6 +376,14 @@ class SparseSpeechExperiment(PyExperimentSuite):
                                         shuffle=False,
                                         pin_memory=self.use_cuda,
                                         num_workers=2)
+
+    self.test_loader = DataLoader(testDataset,
+                                  batch_size=params["batch_size"],
+                                  sampler=None,
+                                  shuffle=False,
+                                  pin_memory=self.use_cuda,
+                                  num_workers=2)
+
 
 
 if __name__ == '__main__':
