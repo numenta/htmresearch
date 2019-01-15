@@ -114,13 +114,21 @@ class MNISTSparseExperiment(PyExperimentSuite):
       datasets.MNIST(self.dataDir, train=False, transform=transform),
       batch_size=params["test_batch_size"], shuffle=True, **kwargs)
 
+    # Parse 'n' and 'k' parameters
+    n = params["n"]
+    k = params["k"]
+    if isinstance(n, basestring):
+      n = map(int, n.split("_"))
+    if isinstance(k, basestring):
+      k = map(int, k.split("_"))
+
     if params["use_cnn"]:
       sp_model = SparseMNISTCNN(
         c1OutChannels=params["c1_out_channels"],
         c1k=params["c1_k"],
         dropout=params["dropout"],
-        n=params["n"],
-        k=params["k"],
+        n=n,
+        k=k,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
         boostStrengthFactor=params["boost_strength_factor"],
@@ -129,8 +137,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
       print("c1OutputLength=", sp_model.cnnSdr1.outputLength)
     else:
       sp_model = SparseLinearNet(
-        n=params["n"],
-        k=params["k"],
+        n=n,
+        k=k,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
         boostStrengthFactor=params["boost_strength_factor"],
