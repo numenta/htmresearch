@@ -67,7 +67,36 @@ class CNNSDR2d(nn.Module):
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
-    """
+
+    .. note::
+
+      We considered three possibilities for sparse CNNs. The second one is
+      currently implemented.
+
+      1) Treat the output as a sparse linear layer as if the weights were not
+         shared. Do global inhibition across the whole layer, and accumulate
+         duty cycles across all units as if they were all distinct. This makes
+         little sense.
+
+      2) Treat the output as a sparse global layer but do consider weight
+         sharing. Do global inhibition across the whole layer, but accumulate
+         duty cycles across the outChannels filters (it is possible that a given
+         filter has multiple active outputs per image). This is simpler to
+         implement and may be a decent approach for smaller images such as
+         MNIST. It requires fewer filters to get our SDR properties.
+
+      3) Do local inhibition. Do inhibition within each set of filters such that
+         each location has at least k active units. Accumulate duty cycles
+         across the outChannels filters (it is possible that a given filter has
+         multiple active outputs per image). The downside of this approach is
+         that we will force activity even in blank areas of the image, which
+         could even be negative. To counteract that we would want something like
+         the spatial pooler's stimulusThreshold, so that only positive activity
+         gets transmitted. Another downside is that we may need a large number
+         of filters to get SDR properties. Overall this may be a good approach
+         for larger color images and complex domains but may be too heavy handed
+         for MNIST.
+        """
 
     super(CNNSDR2d, self).__init__()
     self.outChannels = outChannels

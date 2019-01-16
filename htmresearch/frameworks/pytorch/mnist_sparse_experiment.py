@@ -36,8 +36,7 @@ from htmresearch.frameworks.pytorch.benchmark_utils import (
 from htmresearch.support.expsuite import PyExperimentSuite
 
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
-from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseLinearNet
-from htmresearch.frameworks.pytorch.sparse_mnist_cnn import SparseMNISTCNN
+from htmresearch.frameworks.pytorch.sparse_net import SparseNet
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
 from htmresearch.frameworks.pytorch.dataset_utils import createValidationDataSampler
 
@@ -123,9 +122,17 @@ class MNISTSparseExperiment(PyExperimentSuite):
       k = map(int, k.split("_"))
 
     if params["use_cnn"]:
-      sp_model = SparseMNISTCNN(
-        c1OutChannels=params["c1_out_channels"],
-        c1k=params["c1_k"],
+      c1_out_channels = params["c1_out_channels"]
+      c1_k = params["c1_k"]
+      if isinstance(c1_out_channels, basestring):
+        c1_out_channels = map(int, c1_out_channels.split("_"))
+      if isinstance(c1_k, basestring):
+        c1_k = map(int, c1_k.split("_"))
+
+      sp_model = SparseNet(
+        inputSize=params.get("c1_input_shape", (1, 28, 28)),
+        outChannels=c1_out_channels,
+        c_k=c1_k,
         dropout=params["dropout"],
         n=n,
         k=k,
@@ -134,9 +141,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
       )
-      print("c1OutputLength=", sp_model.cnnSdr1.outputLength)
+      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     else:
-      sp_model = SparseLinearNet(
+      sp_model = SparseNet(
         n=n,
         k=k,
         boostStrength=params["boost_strength"],
