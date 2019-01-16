@@ -65,7 +65,7 @@ class SparseNet(nn.Module):
     """
     A network with one or more hidden layers, which can be a sequence of
     k-sparse CNN followed by a sequence of k-sparse linear layer with optional
-    dropout layers in between the  k-sparse linear layers.
+    dropout layers in between the k-sparse linear layers.
 
         [CNNSDR] x len(outChannels)
             |
@@ -182,12 +182,15 @@ class SparseNet(nn.Module):
         # Feed this layer output into next layer input
         inputFeatures = (outChannels[i], module.maxpoolWidth, module.maxpoolWidth)
 
-    # Linear layers
-    self.linearSdr = nn.Sequential()
     if len(self.cnnSdr) > 0:
       inputFeatures = self.cnnSdr[-1].outputLength
 
-    self.linearSdr.add_module("flatten", Flatten(inputFeatures))
+    # Flatten input before passing to linear layers
+    self.flatten = Flatten(inputFeatures)
+
+    # Linear layers
+    self.linearSdr = nn.Sequential()
+
     for i in range(len(n)):
       if n[i] != 0:
         self.linearSdr.add_module("linearSdr{}".format(i+1),
@@ -233,8 +236,10 @@ class SparseNet(nn.Module):
 
 
   def forward(self, x):
-    for module in self.children():
-      x = module.forward(x)
+    x = self.cnnSdr(x)
+    x = self.flatten(x)
+    x = self.linearSdr(x)
+    x = self.fc(x)
 
     if self.training:
       batchSize = x.shape[0]
