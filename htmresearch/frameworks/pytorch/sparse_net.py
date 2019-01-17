@@ -22,6 +22,7 @@
 from __future__ import print_function
 
 import collections
+import torch
 
 import torch.nn as nn
 
@@ -289,3 +290,21 @@ class SparseNet(nn.Module):
         entropy += module.entropy()
 
     return entropy
+
+
+  def pruneWeights(self, minWeight):
+    """
+    Prune all the weights whose absolute magnitude is less than minWeight
+    :param minWeight: min weight to prune
+    :type minWeight: float
+    """
+    if minWeight == 0.0:
+      return
+
+    # Collect all weights
+    weights = [v for k, v in self.named_parameters() if 'weight' in k]
+    for w in weights:
+      # Filter weights above threshold
+      mask = torch.ge(torch.abs(w.data), minWeight)
+      # Zero other weights
+      w.data.mul_(mask.type(torch.float32))
