@@ -62,7 +62,7 @@ class SparseNet(nn.Module):
                boostStrength=1.0,
                boostStrengthFactor=1.0,
                dropout=0.0,
-               useBatchNorm=False):
+               useBatchNorm=True):
     """
     A network with one or more hidden layers, which can be a sequence of
     k-sparse CNN followed by a sequence of k-sparse linear layer with optional
@@ -131,6 +131,10 @@ class SparseNet(nn.Module):
       A value 0.0 implies no dropout
     :type dropout: float
 
+    :param useBatchNorm:
+      If True, applies batchNorm for each layer.
+    :type useBatchNorm: bool
+
     """
     super(SparseNet, self).__init__()
 
@@ -179,6 +183,7 @@ class SparseNet(nn.Module):
                           kernelSize=self.kernelSize,
                           kInferenceFactor=kInferenceFactor,
                           boostStrength=boostStrength,
+                          useBatchNorm=useBatchNorm,
                           )
         self.cnnSdr.add_module("cnnSdr{}".format(i), module)
         # Feed this layer output into next layer input

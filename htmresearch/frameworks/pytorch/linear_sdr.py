@@ -39,7 +39,7 @@ class LinearSDR(nn.Module):
                kInferenceFactor=1.5,
                weightSparsity=0.4,
                boostStrength=1.0,
-               useBatchNorm=False,
+               useBatchNorm=True,
                ):
     """
     A sparse linear layer with fixed sparsity, weight sparsity, and boosting.
@@ -63,6 +63,10 @@ class LinearSDR(nn.Module):
 
     :param boostStrength:
       Boost strength (0.0 implies no boosting).
+
+    :param useBatchNorm:
+      If True, applies batchNorm1D after the linear step, before k-winners
+      is applied.
 
     """
     super(LinearSDR, self).__init__()

@@ -140,6 +140,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         weightSparsity=params["weight_sparsity"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
+        useBatchNorm=params["use_batch_norm"],
       )
       print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     else:
@@ -151,6 +152,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         dropout=params["dropout"],
+        useBatchNorm=params["use_batch_norm"],
       )
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")

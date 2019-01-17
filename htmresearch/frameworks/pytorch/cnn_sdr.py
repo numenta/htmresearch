@@ -43,6 +43,7 @@ class CNNSDR2d(nn.Module):
                kernelSize=5,
                kInferenceFactor=1.5,
                boostStrength=1.0,
+               useBatchNorm=True,
                ):
     """
     A sparse CNN layer with fixed sparsity and boosting. We do not yet support
@@ -67,6 +68,10 @@ class CNNSDR2d(nn.Module):
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
+
+    :param useBatchNorm:
+      If True, applies batchNorm2D after the CNN step, before k-winners is
+      applied.
 
     .. note::
 
@@ -109,6 +114,11 @@ class CNNSDR2d(nn.Module):
 
     self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize)
 
+    self.bn = None
+    if useBatchNorm:
+      self.bn = nn.BatchNorm2d(outChannels, affine=False)
+
+
     # Compute the number of outputs of c1 after maxpool. We always use a stride
     # of 1 for CNN, 2 for maxpool, with no padding for either.
     shape = self.outputSize()
@@ -132,6 +142,11 @@ class CNNSDR2d(nn.Module):
       k = min(int(round(self.k * self.kInferenceFactor)), self.outputLength)
 
     x = self.cnn(x)
+
+    # Use batch norm if requested
+    if self.bn is not None:
+      x = self.bn(x)
+
     x = F.max_pool2d(x, 2)
 
     if k < self.outputLength:
