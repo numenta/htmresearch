@@ -35,7 +35,7 @@ from htmresearch.frameworks.pytorch.benchmark_utils import (
   register_nonzero_counter, unregister_counter_nonzero)
 from htmresearch.support.expsuite import PyExperimentSuite
 
-from htmresearch.frameworks.pytorch.sparse_mnist_net import SparseLinearNet
+from htmresearch.frameworks.pytorch.sparse_net import SparseNet
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
 from htmresearch.frameworks.pytorch.speech_commands_dataset import (
   SpeechCommandsDataset, BackgroundNoiseDataset
@@ -81,16 +81,44 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     self.loadDatasets(params)
 
+    # Parse 'n' and 'k' parameters
+    n = params["n"]
+    k = params["k"]
+    if isinstance(n, basestring):
+      n = map(int, n.split("_"))
+    if isinstance(k, basestring):
+      k = map(int, k.split("_"))
 
     if params["model_type"] == "cnn":
-      assert(False)
+      c1_out_channels = params["c1_out_channels"]
+      c1_k = params["c1_k"]
+      if isinstance(c1_out_channels, basestring):
+        c1_out_channels = map(int, c1_out_channels.split("_"))
+      if isinstance(c1_k, basestring):
+        c1_k = map(int, c1_k.split("_"))
+
+      sp_model = SparseNet(
+        inputSize=params.get("c1_input_shape", (1, 32, 32)),
+        outputSize=len(self.train_loader.dataset.classes),
+        outChannels=c1_out_channels,
+        c_k=c1_k,
+        dropout=params["dropout"],
+        n=n,
+        k=k,
+        boostStrength=params["boost_strength"],
+        weightSparsity=params["weight_sparsity"],
+        boostStrengthFactor=params["boost_strength_factor"],
+        kInferenceFactor=params["k_inference_factor"],
+        useBatchNorm=params["use_batch_norm"],
+      )
+      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     elif params["model_type"] == "resnet9":
-      sp_model = resnet9(num_classes= len(self.train_loader.dataset.classes),
+      sp_model = resnet9(num_classes=len(self.train_loader.dataset.classes),
                          in_channels=1)
     elif params["model_type"] == "linear":
-      sp_model = SparseLinearNet(
-        n=params["n"],
-        k=params["k"],
+      sp_model = SparseNet(
+        n=n,
+        k=k,
         inputSize=32*32,
         outputSize=len(self.train_loader.dataset.classes),
         boostStrength=params["boost_strength"],
@@ -98,6 +126,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         dropout=params["dropout"],
+        useBatchNorm=params["use_batch_norm"],
       )
     else:
       raise RuntimeError("Unknown model type")
@@ -140,15 +169,26 @@ class SparseSpeechExperiment(PyExperimentSuite):
         self.lr_scheduler.step(validation["test_loss"])
 
       ret["validation"] = validation
-      print("Validation error=", validation["testerror"],
-            "entropy=", validation["entropy"])
+      print("Validation: error=", validation["testerror"],
+            "entropy=", validation["entropy"],
+            "loss=", validation["test_loss"])
+      ret.update({"validationerror": validation["testerror"]})
 
     # Run test set
     if self.test_loader is not None:
       testResults = self.test(params, self.test_loader)
       ret["testResults"] = testResults
-      print("Test error=", testResults["testerror"],
-            "entropy=", testResults["entropy"])
+      print("Test: error=", testResults["testerror"],
+            "entropy=", testResults["entropy"],
+            "loss=", testResults["test_loss"])
+      ret.update({"testerror": testResults["testerror"]})
+
+    # Run bg noise set
+    if self.bg_noise_loader is not None:
+      bgResults = self.test(params, self.bg_noise_loader)
+      ret["bgResults"] = bgResults
+      print("BG noise error=", bgResults["testerror"])
+      ret.update({"bgerror": bgResults["testerror"]})
 
     ret.update({"elapsedTime": time.time() - self.startTime})
     ret.update({"learningRate": self.learningRate if self.lr_scheduler is None
@@ -177,9 +217,13 @@ class SparseSpeechExperiment(PyExperimentSuite):
     if lr_scheduler is None:
       return None
 
-    lr_scheduler_params = params.get("lr_scheduler_params", None)
-    if lr_scheduler_params is None:
-      raise ValueError("Missing 'lr_scheduler_params' for {}".format(lr_scheduler))
+    if lr_scheduler == "StepLR":
+      lr_scheduler_params = "{'step_size': 1, 'gamma':" + str(params["learning_rate_factor"]) + "}"
+
+    else:
+      lr_scheduler_params = params.get("lr_scheduler_params", None)
+      if lr_scheduler_params is None:
+        raise ValueError("Missing 'lr_scheduler_params' for {}".format(lr_scheduler))
 
     # Get lr_scheduler class by name
     clazz = eval("torch.optim.lr_scheduler.{}".format(lr_scheduler))
@@ -218,7 +262,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     self.model.train()
     for batch_idx, batch in enumerate(self.train_loader):
       data = batch["input"]
-      if params["model_type"] == "resnet9":
+      if params["model_type"] in ["resnet9", "cnn"]:
         data = torch.unsqueeze(data, 1)
       target = batch["target"]
       data, target = data.to(self.device), target.to(self.device)
@@ -230,11 +274,11 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
       # Log info every log_interval mini batches
       if batch_idx % params["log_interval"] == 0:
-        # entropy = self.model.entropy()
+        entropy = self.model.entropy()
         print(
           "logging: ",self.model.getLearningIterations(),
           " learning iterations, elapsedTime", time.time() - self.startTime,
-          # " entropy:", float(entropy)," / ", self.model.maxEntropy(),
+          " entropy:", float(entropy)," / ", self.model.maxEntropy(),
           "loss:", loss.item())
         if params["create_plots"]:
           plotDutyCycles(self.model.dutyCycle,
@@ -264,7 +308,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     with torch.no_grad():
       for batch in test_loader:
         data = batch["input"]
-        if params["model_type"] == "resnet9":
+        if params["model_type"] in ["resnet9", "cnn"]:
           data = torch.unsqueeze(data, 1)
         target = batch["target"]
         data, target = data.to(self.device), target.to(self.device)
@@ -281,8 +325,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     test_loss /= len(test_loader.sampler)
     test_error = 100. * correct / len(test_loader.sampler)
 
-    # entropy = self.model.entropy()
-    entropy = 0
+    entropy = self.model.entropy()
     ret = {"num_correct": correct,
            "test_loss": test_loss,
            "testerror": test_error,
@@ -318,12 +361,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
       TimeshiftAudioOnSTFT(),
       FixSTFTDimension(),
     ])
-
-    bg_dataset = BackgroundNoiseDataset(
-      backgroundNoiseDir,
-      dataAugmentationTransform)
-
-    add_bg_noise = AddBackgroundNoiseOnSTFT(bg_dataset)
 
     featureTransform = transforms.Compose(
       [
@@ -364,9 +401,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
     weights = trainDataset.make_weights_for_balanced_classes()
     sampler = WeightedRandomSampler(weights, len(weights))
 
-    print("Number of training samples=",len(trainDataset))
-    print("Number of validation samples=",len(validationDataset))
-    print("Number of test samples=",len(testDataset))
+    # print("Number of training samples=",len(trainDataset))
+    # print("Number of validation samples=",len(validationDataset))
+    # print("Number of test samples=",len(testDataset))
 
     self.train_loader = DataLoader(trainDataset,
                                    batch_size=params["batch_size"],
@@ -381,6 +418,35 @@ class SparseSpeechExperiment(PyExperimentSuite):
                                         )
 
     self.test_loader = DataLoader(testDataset,
+                                  batch_size=params["batch_size"],
+                                  sampler=None,
+                                  shuffle=False,
+                                  pin_memory=self.use_cuda,
+                                  )
+
+
+    bg_dataset = BackgroundNoiseDataset(
+      backgroundNoiseDir,
+      transforms.Compose([FixAudioLength(), ToSTFT()]),
+    )
+
+    bgNoiseTransform = transforms.Compose([
+      LoadAudio(),
+      FixAudioLength(),
+      ToSTFT(),
+      AddBackgroundNoiseOnSTFT(bg_dataset),
+      ToMelSpectrogramFromSTFT(n_mels=n_mels),
+      DeleteSTFT(),
+      ToTensor('mel_spectrogram', 'input')
+    ])
+
+    bgNoiseDataset = SpeechCommandsDataset(
+      testDataDir,
+      bgNoiseTransform,
+      silence_percentage=0,
+    )
+
+    self.bg_noise_loader = DataLoader(bgNoiseDataset,
                                   batch_size=params["batch_size"],
                                   sampler=None,
                                   shuffle=False,

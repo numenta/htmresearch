@@ -39,6 +39,7 @@ class LinearSDR(nn.Module):
                kInferenceFactor=1.5,
                weightSparsity=0.4,
                boostStrength=1.0,
+               useBatchNorm=True,
                ):
     """
     A sparse linear layer with fixed sparsity, weight sparsity, and boosting.
@@ -63,6 +64,10 @@ class LinearSDR(nn.Module):
     :param boostStrength:
       Boost strength (0.0 implies no boosting).
 
+    :param useBatchNorm:
+      If True, applies batchNorm1D after the linear step, before k-winners
+      is applied.
+
     """
     super(LinearSDR, self).__init__()
     self.in_features = inputFeatures
@@ -72,6 +77,11 @@ class LinearSDR(nn.Module):
     self.l1 = nn.Linear(inputFeatures, self.n)
     self.weightSparsity = weightSparsity
     self.learningIterations = 0
+
+    self.bn = None
+    if useBatchNorm:
+      self.bn = nn.BatchNorm1d(self.n, affine=False)
+
 
     # Boosting related variables
     self.dutyCyclePeriod = 1000
@@ -109,11 +119,17 @@ class LinearSDR(nn.Module):
     else:
       k = min(int(round(self.k * self.kInferenceFactor)), self.n)
 
+    x = self.l1(x)
+
+    # Use batch norm if requested
+    if self.bn is not None:
+      x = self.bn(x)
+
     # Apply k-winner algorithm if k < n, otherwise default to standard RELU
     if k != self.n:
-      x = KWinners.apply(self.l1(x), self.dutyCycle, k, self.boostStrength)
+      x = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
     else:
-      x = F.relu(self.l1(x))
+      x = F.relu(x)
 
     # Update moving average of duty cycle for training iterations only
     # During inference this is kept static.
