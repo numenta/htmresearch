@@ -154,8 +154,10 @@ def updateDutyCycleCNN(x, dutyCycle, dutyCyclePeriod, learningIterations):
   dutyCycle.reshape(-1).add_(s)
   dutyCycle.div_(period)
 
+  # This seems to happen, but very rarely. Keep an eye on it.
   if s.sum() == 0:
-    raise RuntimeError()
+    print("x's are not zero", s)
+    # raise RuntimeError()
 
   return dutyCycle
 
