@@ -406,17 +406,10 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
   def pruneDutyCycles(self, params):
     """
-    Prune the DutyCycles whose absolute magnitude is <= params["min_dutycycle"]
+    Prune the DutyCycles whose absolute magnitude is < params["min_dutycycle"]
     """
-    threshold = params.get("min_dutycycle", 0.0)
+    self.model.pruneDutyCycles(params.get("min_dutycycle", 0.0))
 
-    # Collect all weights
-    dutyCycles = [v for k, v in self.model.named_buffers() if 'dutyCycle' in k]
-    for w in dutyCycles:
-      # Filter dutyCycles above threshold
-      mask = torch.ge(torch.abs(w.data), threshold)
-      # Zero other dutyCycles
-      w.data.mul_(mask.type(torch.float32))
 
 if __name__ == '__main__':
   suite = MNISTSparseExperiment()
