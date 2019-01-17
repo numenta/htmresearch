@@ -21,6 +21,8 @@
 
 from __future__ import print_function
 
+import sys
+
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -33,16 +35,22 @@ import torch
 # python projects/sdr_paper/pytorch_experiments/analyze_model.py model_path
 
 if __name__ == '__main__':
-
-  model = torch.load("projects/sdr_paper/pytorch_experiments/results/experiment10best/weight_sparsity0.40learning_rate0.040n500.0boost_strength1.0k50.0momentum0.250/model.pt")
+  if len(sys.argv) != 2:
+    print("Usage.")
+    print("python {} model_path".format(sys.argv[0]))
+    exit(-1)
+  model_path = sys.argv[1]
+  model = torch.load(model_path)
   model.eval()
-  print(model.l1.weight.data)
+  linearSdr1= model.linearSdr.linearSdr1
+  l1 = linearSdr1.l1
 
-  dutyCycle = model.dutyCycle.numpy()
+  print(l1.weight.data)
+  dutyCycle = linearSdr1.dutyCycle.numpy()
   dutyCycleSortedIndices = dutyCycle.argsort()[::-1]
 
   for i in range(20):
-    w1 = model.l1.weight.data[dutyCycleSortedIndices[i]]
+    w1 = l1.weight.data[dutyCycleSortedIndices[i]]
     w1 = w1.numpy().reshape((28, 28))
     plt.imshow(w1,clim=(0.0, 0.3))
     plt.colorbar()
