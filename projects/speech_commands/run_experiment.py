@@ -22,6 +22,8 @@
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import tarfile
+from os import path
 
 from htmresearch.frameworks.pytorch.sparse_speech_experiment import \
   SparseSpeechExperiment
@@ -33,4 +35,14 @@ from htmresearch.frameworks.pytorch.sparse_speech_experiment import \
 # python projects/speech_commands/run_experiment.py -c projects/speech_commands/experiments.cfg -d
 if __name__ == '__main__':
   suite = SparseSpeechExperiment()
+
+  suite.parse_opt()
+  projectDir = path.dirname(suite.options.config)
+  dataDir = path.join(path.abspath(projectDir), "data")
+
+  if not path.isdir(path.join(dataDir, "speech_commands")):
+    tar = tarfile.open(path.join(dataDir, "speech_commands.tar.gz"))
+    tar.extractall(path=dataDir)
+    tar.close()
+
   suite.start()
