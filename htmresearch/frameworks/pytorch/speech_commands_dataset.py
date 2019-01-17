@@ -40,19 +40,19 @@ CLASSES = 'unknown, silence, zero, one, two, three, four, five, six, seven, eigh
 
 
 class SpeechCommandsDataset(Dataset):
-  """Google speech commands dataset. Only 'yes', 'no', 'up', 'down', 'left',
-  'right', 'on', 'off', 'stop' and 'go' are treated as known classes.
-  All other classes are used as 'unknown' samples.
-  See for more information: https://www.kaggle.com/c/tensorflow-speech-recognition-challenge
+  """
+  Google speech commands dataset. Only labels in CLASSES, plus silence, are
+  treated as known classes. All other classes are used as 'unknown' samples.
+
+  Similar to the Kaggle challenge here:
+  https://www.kaggle.com/c/tensorflow-speech-recognition-challenge
   """
 
   def __init__(self, folder, transform=None, classes=CLASSES,
                silence_percentage=0.1):
-    print("folder=", folder)
     all_classes = [d for d in os.listdir(folder) if
                    os.path.isdir(os.path.join(folder, d)) and not d.startswith(
                      '_')]
-    print "all class directories: ", all_classes
     for c in classes[2:]:
       assert c in all_classes
 
