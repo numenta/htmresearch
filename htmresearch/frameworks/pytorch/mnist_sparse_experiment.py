@@ -396,17 +396,9 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
   def pruneWeights(self, params):
     """
-    Prune the weights whose absolute magnitude is <= params["min_weight"]
+    Prune the weights whose absolute magnitude is < params["min_weight"]
     """
-    minWeight = params.get("min_weight", 0.0)
-
-    # Collect all weights
-    weights = [v for k, v in self.model.named_parameters() if 'weight' in k]
-    for w in weights:
-      # Filter weights above threshold
-      mask = torch.ge(torch.abs(w.data), minWeight)
-      # Zero other weights
-      w.data.mul_(mask.type(torch.float32))
+    self.model.pruneWeights(params.get("min_weight", 0.0))
 
 if __name__ == '__main__':
   suite = MNISTSparseExperiment()
