@@ -221,8 +221,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
   def finalize(self, params, rep):
     """
-    Save the full model once we are done.
+    Called once we are done.
     """
+    self.pruneWeights(params)
+
+    # Save the full model once we are done.
     saveDir = os.path.join(params["path"], params["name"], "model.pt")
     torch.save(self.model, saveDir)
 
@@ -393,10 +396,17 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
   def pruneWeights(self, params):
     """
-    TODO: Prune the weights whose absolute magnitude is <= params["minWeight"]
+    Prune the weights whose absolute magnitude is <= params["min_weight"]
     """
-    pass
+    minWeight = params.get("min_weight", 0.0)
 
+    # Collect all weights
+    weights = [v for k, v in self.model.named_parameters() if 'weight' in k]
+    for w in weights:
+      # Filter weights above threshold
+      mask = torch.ge(torch.abs(w.data), minWeight)
+      # Zero other weights
+      w.data.mul_(mask.type(torch.float32))
 
 if __name__ == '__main__':
   suite = MNISTSparseExperiment()
