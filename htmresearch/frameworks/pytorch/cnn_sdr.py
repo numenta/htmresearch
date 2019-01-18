@@ -210,7 +210,10 @@ class CNNSDR2d(nn.Module):
     """
     Returns the current total entropy of this layer
     """
-    _, entropy = binaryEntropy(self.dutyCycle)
-    return entropy * self.maxpoolWidth * self.maxpoolWidth
+    if self.k < self.outputLength:
+      _, entropy = binaryEntropy(self.dutyCycle)
+      return entropy * self.maxpoolWidth * self.maxpoolWidth
+    else:
+      return 0
 
 
