@@ -183,9 +183,9 @@ class CNNSDR2d(nn.Module):
 
     """
     hout = math.floor(
-      (self.imageShape[0] + 2 * self.padding - self.kernelSize) / self.stride + 1)
-    wout = math.floor(
       (self.imageShape[1] + 2 * self.padding - self.kernelSize) / self.stride + 1)
+    wout = math.floor(
+      (self.imageShape[2] + 2 * self.padding - self.kernelSize) / self.stride + 1)
 
     return self.outChannels, hout, wout, self.outChannels * hout * wout
 
