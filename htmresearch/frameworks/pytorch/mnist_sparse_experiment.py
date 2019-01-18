@@ -226,6 +226,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     Called once we are done.
     """
     self.pruneWeights(params)
+    self.pruneDutyCycles(params)
 
     # Save the full model once we are done.
     saveDir = os.path.join(params["path"], params["name"], "model.pt")
@@ -401,6 +402,14 @@ class MNISTSparseExperiment(PyExperimentSuite):
     Prune the weights whose absolute magnitude is < params["min_weight"]
     """
     self.model.pruneWeights(params.get("min_weight", 0.0))
+
+
+  def pruneDutyCycles(self, params):
+    """
+    Prune the DutyCycles whose absolute magnitude is < params["min_dutycycle"]
+    """
+    self.model.pruneDutyCycles(params.get("min_dutycycle", 0.0))
+
 
 if __name__ == '__main__':
   suite = MNISTSparseExperiment()

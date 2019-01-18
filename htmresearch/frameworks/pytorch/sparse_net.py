@@ -308,3 +308,20 @@ class SparseNet(nn.Module):
       mask = torch.ge(torch.abs(w.data), minWeight)
       # Zero other weights
       w.data.mul_(mask.type(torch.float32))
+
+  def pruneDutyCycles(self, threshold):
+    """
+    Prune all the dutycycles whose absolute magnitude is less than threshold
+    :param threshold: min threshold to prune
+    :type threshold: float
+    """
+    if threshold == 0.0:
+      return
+
+    # Collect all dutyCycles
+    dutyCycles = [v for k, v in self.model.named_buffers() if 'dutyCycle' in k]
+    for w in dutyCycles:
+      # Filter dutyCycles above threshold
+      mask = torch.ge(torch.abs(w.data), threshold)
+      # Zero other dutyCycles
+      w.data.mul_(mask.type(torch.float32))

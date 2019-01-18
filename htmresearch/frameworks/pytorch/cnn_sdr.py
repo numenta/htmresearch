@@ -129,7 +129,8 @@ class CNNSDR2d(nn.Module):
     self.learningIterations = 0
     self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
-    self.register_buffer("dutyCycle", torch.zeros((1, self.outChannels, 1, 1)))
+    if k < self.outputLength:
+      self.register_buffer("dutyCycle", torch.zeros((1, self.outChannels, 1, 1)))
 
 
   def forward(self, x):

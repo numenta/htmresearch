@@ -86,7 +86,8 @@ class LinearSDR(nn.Module):
     # Boosting related variables
     self.dutyCyclePeriod = 1000
     self.boostStrength = boostStrength
-    self.register_buffer("dutyCycle", torch.zeros(self.n))
+    if k < n:
+      self.register_buffer("dutyCycle", torch.zeros(self.n))
 
     # For each unit, decide which weights are going to be zero
     if self.weightSparsity < 1.0:
@@ -126,7 +127,7 @@ class LinearSDR(nn.Module):
       x = self.bn(x)
 
     # Apply k-winner algorithm if k < n, otherwise default to standard RELU
-    if k != self.n:
+    if k < self.n:
       x = KWinners.apply(x, self.dutyCycle, k, self.boostStrength)
     else:
       x = F.relu(x)
