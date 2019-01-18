@@ -48,11 +48,17 @@ def _nonzero_counter_hook(module, inputs, output):
   module.__counter_nonzero__["output"] = size
 
   for name, param in module._parameters.items():
+    if param is None:
+      continue
+
     size = module.__counter_nonzero__.get(name, 0)
     size += torch.nonzero(param.data).size(0)
     module.__counter_nonzero__[name] = size
 
   for name, buffer in module._buffers.items():
+    if buffer is None:
+      continue
+
     size = module.__counter_nonzero__.get(name, 0)
     size += torch.nonzero(buffer).size(0)
     module.__counter_nonzero__[name] = size
