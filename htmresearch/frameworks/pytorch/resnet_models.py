@@ -109,9 +109,23 @@ class ResNet(nn.Module):
 
     def postEpoch(self):
         """
-        Call this once after each training epoch.
+        Does nothing. For compatibility with our scripts.
         """
         pass
+
+    def maxEntropy(self):
+        """
+        Does nothing. For compatibility with our scripts.
+        """
+        return 0
+
+
+    def entropy(self):
+        """
+        Does nothing. For compatibility with our scripts.
+        """
+        return 0
+
 
 
 def resnet9(pretrained=False, **kwargs):
