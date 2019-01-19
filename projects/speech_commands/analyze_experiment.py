@@ -22,6 +22,8 @@
 from __future__ import print_function
 
 import pprint
+import os
+import csv
 import numpy as np
 from tabulate import tabulate
 
@@ -120,40 +122,119 @@ def lastNoiseCurve(expPath, suite, iteration="last"):
 
 def learningCurve(expPath, suite):
   """
-  Print the test and overall noise errors from each iteration of this experiment
+  Print the test, validation and other scores from each iteration of this
+  experiment.  We select the test score that corresponds to the iteration with
+  maximum validation accuracy.
   """
   print("\nLEARNING CURVE ================",expPath,"=====================")
   try:
-    headers=["testerror","totalCorrect","elapsedTime","entropy"]
+    headers=["testResults","validation","bgResults","elapsedTime"]
     result = suite.get_value(expPath, 0, headers, "all")
     info = []
-    for i,v in enumerate(zip(result["testerror"],result["totalCorrect"],
-                             result["elapsedTime"],result["entropy"])):
-      info.append([i, v[0], v[1], int(v[2]), v[3]])
+    maxValidationAccuracy = -1.0
+    maxTestAccuracy = -1.0
+    maxBGAccuracy = -1.0
+    maxIter = -1
+    for i,v in enumerate(zip(result["testResults"],result["validation"],
+                             result["bgResults"], result["elapsedTime"])):
+      info.append([i, v[0]["testerror"], v[1]["testerror"], v[2]["testerror"], int(v[3])])
+      if v[1]["testerror"] > maxValidationAccuracy:
+        maxValidationAccuracy = v[1]["testerror"]
+        maxTestAccuracy = v[0]["testerror"]
+        maxBGAccuracy = v[2]["testerror"]
+        maxIter = i
     headers.insert(0,"iteration")
     print(tabulate(info, headers=headers, tablefmt="grid"))
+
+    print("Max validation score =", maxValidationAccuracy, " at iteration", maxIter)
+    print("Test score at that iteration =", maxTestAccuracy)
+    print("BG score at that iteration =", maxBGAccuracy)
   except:
     print("Couldn't load experiment",expPath)
 
 
-# To run it from htmresearch top level:
-# python projects/sdr_paper/pytorch_experiments/analyze_experiment.py -c projects/sdr_paper/pytorch_experiments/experiments.cfg
+def bestScore(expPath, suite):
+  """
+  Given a single experiment, return the test, validation and other scores from
+  the iteration with maximum validation accuracy.
+  """
+  maxValidationAccuracy = -1.0
+  maxTestAccuracy = -1.0
+  maxTotalAccuracy = -1.0
+  maxBGAccuracy = -1.0
+  maxIter = -1
+  try:
+    headers=["testResults", "validation", "bgResults", "elapsedTime", "totalCorrect"]
+    result = suite.get_value(expPath, 0, headers, "all")
+    for i,v in enumerate(zip(result["testResults"], result["validation"],
+                             result["bgResults"], result["elapsedTime"],
+                             result["totalCorrect"])):
+      if v[1]["testerror"] > maxValidationAccuracy:
+        maxValidationAccuracy = v[1]["testerror"]
+        maxTestAccuracy = v[0]["testerror"]
+        maxBGAccuracy = v[2]["testerror"]
+        if v[4] is not None:
+          maxTotalAccuracy = v[4]
+        maxIter = i
+
+    # print("Max validation score =", maxValidationAccuracy, " at iteration", maxIter)
+    # print("Test score at that iteration =", maxTestAccuracy)
+    # print("BG score at that iteration =", maxBGAccuracy)
+    return maxTestAccuracy, maxValidationAccuracy, maxBGAccuracy, maxIter, maxTotalAccuracy
+  except:
+    print("Couldn't load experiment",expPath)
+    return None, None, None, None, None
+
+
+def findOptimalResults(expName, suite, outFile):
+  """
+  Go through every experiment in the specified folder. For each experiment, find
+  the iteration with the best validation score, and return the metrics
+  associated with that iteration.
+  """
+  writer = csv.writer(outFile)
+  headers = ["testAccuracy", "bgAccuracy", "maxTotalAccuracy", "experiment path"]
+  writer.writerow(headers)
+  info = []
+  print("\n================",expName,"=====================")
+  try:
+    # Retrieve the last totalCorrect from each experiment
+    # Print them sorted from best to worst
+    values, params = suite.get_values_fix_params(
+      expName, 0, "testerror", "last")
+    for p in params:
+      expPath = p["name"]
+      if not "results" in expPath:
+        expPath = os.path.join("results", expPath)
+      maxTestAccuracy, maxValidationAccuracy, maxBGAccuracy, maxIter, maxTotalAccuracy = bestScore(expPath, suite)
+      row = [maxTestAccuracy, maxBGAccuracy, maxTotalAccuracy, expPath]
+      info.append(row)
+      writer.writerow(row)
+
+    print(tabulate(info, headers=headers, tablefmt="grid"))
+  except:
+    print("Couldn't analyze experiment",expName)
+
 
 if __name__ == '__main__':
 
   suite = SparseSpeechExperiment()
 
-  summarizeResults("./results", suite)
+  # Find the test scores corresponding to the highest validation scores.
+  with open("out.csv", "wb") as f:
+    findOptimalResults("./results", suite, f)
 
+
+  # More details for some experiments
   for expName in [
-    "./results/sparseLinear3/weight_sparsity0.40boost_strength1.50k140_140n800_800",
-    "./results/sparseLinear9",
-    "./results/sparseLinear11/batch_size32.0",
+    "./results/cnn13/learning_rate_factor0.80c1_out_channels64_64momentum0.90learning_rate0.010k1000n1000",
+    "./results/cnn15/c1_k2500_320c1_out_channels64_64momentum0.0k200n1000"
 
   ]:
     analyzeParameters(expName, suite)
     learningCurve(expName, suite)
-  #
+
+
   # # Print details of the best ones so far
   #
   # lastNoiseCurve("./results/bestSparseCNN", suite)
