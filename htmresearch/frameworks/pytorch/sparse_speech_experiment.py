@@ -216,8 +216,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     Save the full model once we are done.
     """
-    saveDir = os.path.join(params["path"], params["name"], "model.pt")
-    torch.save(self.model, saveDir)
+    if params.get("saveNet", True):
+      saveDir = os.path.join(params["path"], params["name"], "model.pt")
+      torch.save(self.model, saveDir)
 
 
   def createLearningRateScheduler(self, params, optimizer):

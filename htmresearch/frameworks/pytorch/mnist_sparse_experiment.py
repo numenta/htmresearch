@@ -225,12 +225,13 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once we are done.
     """
-    self.pruneWeights(params)
-    self.pruneDutyCycles(params)
+    if params.get("saveNet", True):
+      self.pruneWeights(params)
+      self.pruneDutyCycles(params)
 
-    # Save the full model once we are done.
-    saveDir = os.path.join(params["path"], params["name"], "model.pt")
-    torch.save(self.model, saveDir)
+      # Save the full model once we are done.
+      saveDir = os.path.join(params["path"], params["name"], "model.pt")
+      torch.save(self.model, saveDir)
 
 
   def createLearningRateScheduler(self, params, optimizer):
@@ -241,9 +242,13 @@ class MNISTSparseExperiment(PyExperimentSuite):
     if lr_scheduler is None:
       return None
 
-    lr_scheduler_params = params.get("lr_scheduler_params", None)
-    if lr_scheduler_params is None:
-      raise ValueError("Missing 'lr_scheduler_params' for {}".format(lr_scheduler))
+    if lr_scheduler == "StepLR":
+      lr_scheduler_params = "{'step_size': 1, 'gamma':" + str(params["learning_rate_factor"]) + "}"
+
+    else:
+      lr_scheduler_params = params.get("lr_scheduler_params", None)
+      if lr_scheduler_params is None:
+        raise ValueError("Missing 'lr_scheduler_params' for {}".format(lr_scheduler))
 
     # Get lr_scheduler class by name
     clazz = eval("torch.optim.lr_scheduler.{}".format(lr_scheduler))
