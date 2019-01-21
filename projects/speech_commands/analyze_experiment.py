@@ -43,7 +43,7 @@ def analyzeParameters(expName, suite):
     for p in ["boost_strength", "k", "learning_rate", "weight_sparsity",
               "k_inference_factor", "boost_strength_factor",
               "c1_out_channels", "c1_k", "learning_rate_factor",
-              "batches_in_epoch",
+              "batches_in_epoch", "seed",
               ]:
       if p in expParams and type(expParams[p]) == list:
         print("\n",p)
@@ -204,6 +204,8 @@ def findOptimalResults(expName, suite, outFile):
       expName, 0, "testerror", "last")
     for p in params:
       expPath = p["name"]
+      if "resnet" in p["name"]:
+        print("resnet!!")
       if not "results" in expPath:
         expPath = os.path.join("results", expPath)
       maxTestAccuracy, maxValidationAccuracy, maxBGAccuracy, maxIter, maxTotalAccuracy = bestScore(expPath, suite)
@@ -216,6 +218,27 @@ def findOptimalResults(expName, suite, outFile):
     print("Couldn't analyze experiment",expName)
 
 
+def getErrorBars(expPath, suite):
+  """
+  Go through each experiment in the path. Get the best scores for each experiment
+  based on accuracy on validation set. Print out overall mean, and stdev for
+  test accuracy, BG accuracy, and noise accuracy.
+  """
+  exps = suite.get_exps(expPath)
+  testScores = np.zeros(len(exps))
+  noiseScores = np.zeros(len(exps))
+  for i,e in enumerate(exps):
+    maxTestAccuracy, maxValidationAccuracy, maxBGAccuracy, maxIter, maxTotalAccuracy = bestScore(
+      e, suite)
+    testScores[i] = maxTestAccuracy
+    noiseScores[i] = maxTotalAccuracy
+
+  print("")
+  print("Experiment:", expPath, "Number of sub-experiments", len(exps))
+  print("test score mean and standard deviation:", testScores.mean(), testScores.std())
+  print("noise score mean and standard deviation:", noiseScores.mean(), noiseScores.std())
+
+
 if __name__ == '__main__':
 
   suite = SparseSpeechExperiment()
@@ -224,11 +247,11 @@ if __name__ == '__main__':
   with open("out.csv", "wb") as f:
     findOptimalResults("./results", suite, f)
 
-
   # More details for some experiments
   for expName in [
-    "./results/cnn13/learning_rate_factor0.80c1_out_channels64_64momentum0.90learning_rate0.010k1000n1000",
-    "./results/cnn15/c1_k2500_320c1_out_channels64_64momentum0.0k200n1000"
+    # "./results/cnn13/learning_rate_factor0.80c1_out_channels64_64momentum0.90learning_rate0.010k1000n1000",
+    # "./results/cnn15/c1_k2500_320c1_out_channels64_64momentum0.0k200n1000"
+    "./old_results/cnn20/weight_sparsity0.40k100n1500",
 
   ]:
     analyzeParameters(expName, suite)
@@ -246,4 +269,12 @@ if __name__ == '__main__':
   # Learning rate exploration
   # analyzeParameters("./results/cnn10", suite)
   # summarizeResults("./results/cnn10", suite)
+
+  # Error bars for 10 random seeds of each experiment. Used for Tables 1 and 2.
+  getErrorBars("./old_results/cnn21SparseSeeds", suite)
+  getErrorBars("./old_results/cnn22DenseSeedsNodropout", suite)
+  getErrorBars("./old_results/cnn22DenseSeedsWithDropout", suite)
+  getErrorBars("./results/cnn24LargerMoreSeeds", suite)
+  getErrorBars("./results/cnn23SparseSeedsMoreIters", suite)
+  getErrorBars("./results/cnn28LargerWeight10pct", suite)
 
