@@ -19,17 +19,20 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+from __future__ import print_function
+
 import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import tarfile
 from os import path
+import os
+import shutil
 
 from htmresearch.frameworks.pytorch.sparse_speech_experiment import \
   SparseSpeechExperiment
 
 
-# Run from htmresearch:
+# Run from root dir:
 # domino run projects/speech_commands//run_experiment.py -c projects/speech_commands/experiments.cfg
 #   OR
 # python projects/speech_commands/run_experiment.py -c projects/speech_commands/experiments.cfg -d
@@ -40,9 +43,24 @@ if __name__ == '__main__':
   projectDir = path.dirname(suite.options.config)
   dataDir = path.join(path.abspath(projectDir), "data")
 
-  if not path.isdir(path.join(dataDir, "speech_commands")):
-    tar = tarfile.open(path.join(dataDir, "speech_commands.tar.gz"))
-    tar.extractall(path=dataDir)
-    tar.close()
+  if "DOMINO_WORKING_DIR" in os.environ:
+    print("In domino")
+    if path.isdir(path.join(dataDir, "speech_commands")):
+      print("Removing speech_commands")
+      shutil.rmtree(path.join(dataDir, "speech_commands"))
+
+    if not path.isdir(path.join(dataDir, "speech_commands")):
+      print("Untarring dataset...")
+      tar = tarfile.open(path.join(dataDir, "speech_commands.tar.gz"))
+      tar.extractall(path=dataDir)
+      tar.close()
+    else:
+      print("Apparently this still exists:", path.join(dataDir, "speech_commands"))
+
+    print("listing files:")
+    files = os.listdir(path.join(dataDir, "speech_commands"))
+    print(files)
+    files = os.listdir(path.join(dataDir, "speech_commands", "train", "one"))
+    print("train/one", len(files), files[0:10])
 
   suite.start()

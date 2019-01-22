@@ -24,7 +24,7 @@
 # this code is so ugly.
 
 import plotly.plotly as py
-from plotly.graph_objs import *
+import plotly.graph_objs as go
 import os
 
 plotlyUser = os.environ['PLOTLY_USERNAME']
@@ -186,10 +186,10 @@ listofNValues = [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
 16900, 17100, 17300, 17500, 17700, 17900, 18100, 18300, 18500, 18700, 18900,
 19100, 19300, 19500, 19700, 19900]
 
-trace1 = Scatter(
+trace1 = go.Scatter(
     y=errorsA64,
     x=listofNValues,
-    line=Line(
+    line=dict(
         color='rgb(0, 0, 0)',
         width=3,
         shape='spline'
@@ -197,10 +197,10 @@ trace1 = Scatter(
     name="a=64"
 )
 
-trace2 = Scatter(
+trace2 = go.Scatter(
     y=errorsA128,
     x=listofNValues[1:],
-    line=Line(
+    line=dict(
         color='rgb(0, 0, 0)',
         width=3,
         shape='spline'
@@ -208,10 +208,10 @@ trace2 = Scatter(
     name="a=128"
 )
 
-trace3 = Scatter(
+trace3 = go.Scatter(
     y=errorsA256,
     x=listofNValues[1:],
-    line=Line(
+    line=dict(
         color='rgb(0, 0, 0)',
         width=3,
         shape='spline'
@@ -219,10 +219,10 @@ trace3 = Scatter(
     name="a=256"
 )
 
-trace4 = Scatter(
+trace4 = go.Scatter(
     y=errorsAHalfOfN,
     x=listofNValues[1:],
-    line=Line(
+    line=dict(
         color='rgb(0, 0, 0)',
         width=3,
         dash='dash',
@@ -231,133 +231,129 @@ trace4 = Scatter(
     name="a=0.25*N"
 )
 
-data = Data([trace1, trace2, trace3, trace4])
+data = [trace1, trace2, trace3, trace4]
 
-layout = Layout(
+layout = go.Layout(
     title='',
     showlegend=False,
     autosize=False,
     width=855,
     height=700,
-    xaxis=XAxis(
-        title='Cell population size (n)',
-        titlefont=Font(
-            family='',
+    xaxis=dict(
+        title='Vector length (n)',
+        titlefont=dict(
+            family='Arial',
             size=26,
-            color=''
+            color='rgb(0, 0, 0)',
         ),
-        tickfont=Font(
-            family='',
+        tickfont=dict(
+            family='Arial',
             size=16,
-            color=''
+            color='rgb(0, 0, 0)',
         ),
         exponentformat="none",
-        dtick=2000,
+        dtick=1000,
         showline=True,
-        range=[0,20000],
+        range=[0, 10000],
     ),
-    yaxis=YAxis(
+    yaxis=dict(
         title='Probability of false positives',
         type='log',
         exponentformat='power',
         autorange=True,
-        titlefont=Font(
-            family='',
+        titlefont=dict(
+            family='Arial',
             size=26,
-            color=''
+            color='rgb(0, 0, 0)',
         ),
-        tickfont=Font(
-            family='',
-            size=24,
-            color=''
+        tickfont=dict(
+            family='Arial',
+            size=16,
+            color='rgb(0, 0, 0)',
         ),
         showline=True,
     ),
-    annotations=Annotations([
-      Annotation(
-            x=16988,
+    annotations=[
+      dict(
+            x=2988,
             y=0.1143,
             xref='x',
             yref='paper',
-            text='$a = 64$',
+            text='active bits = 64',
             showarrow=False,
-            font=Font(
-                family='',
-                size=24,
-                color=''
-            ),
             align='center',
             textangle=0,
-            bordercolor='',
             borderwidth=1,
             borderpad=1,
             bgcolor='rgba(0, 0, 0, 0)',
             opacity=1
         ),
-      Annotation(
-            x=17103,
-            y=0.259,
-            xref='x',
-            yref='paper',
-            text='$a = 128$',
-            showarrow=False,
-            font=Font(
-                family='',
-                size=24,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-      Annotation(
-            x=17132,
-            y=0.411,
-            xref='x',
-            yref='paper',
-            text='$a = 256$',
-            showarrow=False,
-            font=Font(
-                family='',
-                size=24,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-      Annotation(
-            x=16845,
-            y=0.933,
-            xref='x',
-            yref='paper',
-            text='$a = \\frac{n}{2}$',
-            showarrow=False,
-            font=Font(
-                family='',
-                size=24,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-    ]),)
+  ]
+    #   dict(
+    #         x=17103,
+    #         y=0.259,
+    #         xref='x',
+    #         yref='paper',
+    #         text='$a = 128$',
+    #         showarrow=False,
+    #         # font=dict(
+    #         #     family='',
+    #         #     size=24,
+    #         #     color=''
+    #         # ),
+    #         align='center',
+    #         textangle=0,
+    #         # bordercolor='',
+    #         borderwidth=1,
+    #         borderpad=1,
+    #         bgcolor='rgba(0, 0, 0, 0)',
+    #         opacity=1
+    #     ),
+    #   dict(
+    #         x=17132,
+    #         y=0.411,
+    #         xref='x',
+    #         yref='paper',
+    #         text='$a = 256$',
+    #         showarrow=False,
+    #         # font=dict(
+    #         #     family='',
+    #         #     size=24,
+    #         #     color=''
+    #         # ),
+    #         align='center',
+    #         textangle=0,
+    #         # bordercolor='',
+    #         borderwidth=1,
+    #         borderpad=1,
+    #         bgcolor='rgba(0, 0, 0, 0)',
+    #         opacity=1
+    #     ),
+    #   dict(
+    #         x=16845,
+    #         y=0.933,
+    #         xref='x',
+    #         yref='paper',
+    #         text="$a = \\frac{n}{2}$",
+    #         showarrow=False,
+    #         # font=dict(
+    #         #     family='',
+    #         #     size=24,
+    #         #     color=''
+    #         # ),
+    #         align='center',
+    #         textangle=0,
+    #         # bordercolor='',
+    #         borderwidth=1,
+    #         borderpad=1,
+    #         bgcolor='rgba(0, 0, 0, 0)',
+    #         opacity=1
+    #     )
+    #   ]
+)
 
-fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
+fig = go.Figure(data=data, layout=layout)
+plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
 py.image.save_as(figure, 'images/effect_of_n.pdf', scale=4)

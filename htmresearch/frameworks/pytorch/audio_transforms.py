@@ -82,6 +82,20 @@ class ChangeAmplitude(object):
         data['samples'] = data['samples'] * random.uniform(*self.amplitude_range)
         return data
 
+
+class AddNoise(object):
+    """Blend in random noise to the sample."""
+
+    def __init__(self, alpha = 0.0):
+        self.alpha = alpha
+
+    def __call__(self, data):
+        samples = data['samples']
+        noiseVector = np.random.uniform(-1.0, 1.0, data['samples'].size)
+        data['samples'] = samples * (1 - self.alpha) + noiseVector * self.alpha
+        return data
+
+
 class ChangeSpeedAndPitchAudio(object):
     """Change the speed of an audio. This transform also changes the pitch of the audio."""
 

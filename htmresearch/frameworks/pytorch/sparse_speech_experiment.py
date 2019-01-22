@@ -77,6 +77,8 @@ class SparseSpeechExperiment(PyExperimentSuite):
       os.makedirs(self.resultsDir)
 
     self.use_cuda = not params["no_cuda"] and torch.cuda.is_available()
+    if self.use_cuda:
+      print("*********using cuda!")
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
 
     self.loadDatasets(params)
@@ -194,6 +196,15 @@ class SparseSpeechExperiment(PyExperimentSuite):
     ret.update({"learningRate": self.learningRate if self.lr_scheduler is None
                                                   else self.lr_scheduler.get_lr()})
 
+    # Run noise set
+    ret.update(self.runNoiseTests(params))
+    print("Noise test results: totalCorrect=", ret["totalCorrect"],
+          "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
+
+    ret.update({"elapsedTime": time.time() - self.startTime})
+    ret.update({"learningRate": self.learningRate if self.lr_scheduler is None
+                                                  else self.lr_scheduler.get_lr()})
+
     print("Iteration time= {0:.3f} secs, "
           "total elapsed time= {1:.3f} mins".format(
             time.time() - t1,ret["elapsedTime"]/60.0))
@@ -205,8 +216,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     Save the full model once we are done.
     """
-    saveDir = os.path.join(params["path"], params["name"], "model.pt")
-    torch.save(self.model, saveDir)
+    if params.get("saveNet", True):
+      saveDir = os.path.join(params["path"], params["name"], "model.pt")
+      torch.save(self.model, saveDir)
 
 
   def createLearningRateScheduler(self, params, optimizer):
@@ -336,13 +348,66 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     return ret
 
+
+  def runNoiseTests(self, params):
+    """
+    Test the model with different noise values and return test metrics.
+    """
+    ret = {}
+    testDataDir = os.path.join(self.dataDir, "test")
+    n_mels = 32
+
+    # Test with noise
+    total_correct = 0
+
+    for noise in [0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]:
+
+      # Create noise dataset with noise transform
+      noiseTransform = transforms.Compose([
+        LoadAudio(),
+        FixAudioLength(),
+        AddNoise(noise),
+        ToSTFT(),
+        ToMelSpectrogramFromSTFT(n_mels=n_mels),
+        DeleteSTFT(),
+        ToTensor('mel_spectrogram', 'input')
+      ])
+
+      noiseDataset = SpeechCommandsDataset(
+        testDataDir,
+        noiseTransform,
+        silence_percentage=0,
+      )
+
+      noise_loader = DataLoader(noiseDataset,
+                                 batch_size=params["batch_size"],
+                                 sampler=None,
+                                 shuffle=False,
+                                 pin_memory=self.use_cuda,
+                                 )
+
+      testResult = self.test(params, noise_loader)
+      total_correct += testResult["num_correct"]
+      ret[noise]= testResult
+
+    ret["totalCorrect"] = total_correct
+    ret["testerror"] = ret[0.0]["testerror"]
+    ret["entropy"] = ret[0.0]["entropy"]
+
+    if "nonzeros" in ret[0.0]:
+      ret["nonzeros"] = ret[0.0]["nonzeros"]
+
+    return ret
+
+
   def loadDatasets(self, params):
     """
     The GSC dataset specifies specific files to be used as training, test,
     and validation.  We assume the data has already been processed according
     to those files into separate train, test, and valid directories.
 
-    For our experiment we use a subset of the data (10 categories out of 30)
+    For our experiment we use a subset of the data (10 categories out of 30),
+    just like the Kaggle competition.
     """
     n_mels = 32
 

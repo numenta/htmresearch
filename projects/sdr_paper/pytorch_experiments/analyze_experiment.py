@@ -144,13 +144,14 @@ if __name__ == '__main__':
   summarizeResults("./results", suite)
 
   for expName in [
-    # "./results/standardOneLayer",
+    "./results/standardOneLayer",
 
     # Best sparse CNN net so far
     "./results/bestSparseCNN",
 
     # This is the best sparse net (non CNN) so far, as of Jan 7.
-    "./results/exp35/learning_rate_factor0.50learning_rate0.040",
+    "./results/bestSparseNet/k50.0n500.0",
+    # "./results/exp35/learning_rate_factor0.50learning_rate0.040",
 
     # "./results/cnn14/learning_rate0.050boost_strength1.50",
 
@@ -163,7 +164,7 @@ if __name__ == '__main__':
 
   # Print details of the best ones so far
 
-  lastNoiseCurve("./results/bestSparseCNN", suite)
+  # lastNoiseCurve("./results/bestSparseCNN", suite)
 
   # lastNoiseCurve("./results/cnn13/learning_rate0.020boost_strength1.40", suite)
 

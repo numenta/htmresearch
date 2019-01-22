@@ -125,6 +125,10 @@ class CNNSDR2d(nn.Module):
     self.maxpoolWidth = int(math.floor(shape[2] / 2.0))
     self.outputLength = int(self.maxpoolWidth * self.maxpoolWidth * outChannels)
 
+    print("output shape before maxpool:", shape)
+    print("maxpool width:", self.maxpoolWidth)
+    print("output length:", self.outputLength)
+
     # Boosting related variables
     self.learningIterations = 0
     self.dutyCyclePeriod = 1000

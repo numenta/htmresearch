@@ -94,7 +94,7 @@ class SpeechCommandsDataset(Dataset):
     """adopted from https://discuss.pytorch.org/t/balanced-sampling-between-classes-with-torchvision-dataloader/2703/3"""
 
     nclasses = len(self.classes)
-    count = np.zeros(nclasses)
+    count = np.ones(nclasses)
     for item in self.data:
       count[item[1]] += 1
 
