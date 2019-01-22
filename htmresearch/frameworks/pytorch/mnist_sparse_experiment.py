@@ -130,7 +130,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         c1_k = map(int, c1_k.split("_"))
 
       sp_model = SparseNet(
-        inputSize=params.get("c1_input_shape", (1, 28, 28)),
+        inputSize=(1, 28, 28),
         outChannels=c1_out_channels,
         c_k=c1_k,
         dropout=params["dropout"],
