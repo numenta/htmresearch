@@ -55,6 +55,7 @@ def plotNoiseCurve(suite, values, results, plotPath, format):
     ax.plot(df["testerror"], **format[exp])
 
   plt.legend()
+  plt.grid(axis='y')
   plt.savefig(plotPath)
   plt.close()
 
@@ -89,7 +90,7 @@ def filterResults(results, filter):
 
 
 
-def configureNoisePlot(suite, experiments, labels, linestyles, filter):
+def configureNoisePlot(suite, experiments, labels, linestyles, filter=None):
   """
   Load experiment results anc configure the "Noise curve" Plot
   :param suite: The configured experiment suite. Must call `parse_opt` and `
@@ -107,13 +108,21 @@ def configureNoisePlot(suite, experiments, labels, linestyles, filter):
   for i in xrange(len(experiments)):
     path = suite.get_exp(experiments[i])[0]
     data = suite.get_exps(path=path)
-    data = filterResults(data, filter)
+    if filter is not None:
+      data = filterResults(data, filter)
 
     # Format Linear Noise curve
-    format = {exp: {
-      "label": "{},{}".format(labels[i], basename(exp)),
-      "linestyle": "{}".format(linestyles[i])
-    } for exp in data}
+    if len(data) > 1:
+      format = {exp: {
+        "label": "{},{}".format(labels[i], basename(exp)),
+        "linestyle": "{}".format(linestyles[i])
+      } for exp in data}
+    else:
+      format = {data[0]: {
+        "label": "{}".format(labels[i]),
+        "linestyle": "{}".format(linestyles[i])
+      }}
+
     formats.update(format)
     results.extend(data)
 
@@ -158,8 +167,20 @@ if __name__ == '__main__':
 
   # Plot Noise Curve (LinearNN)
   results, format = configureNoisePlot(suite,
-                                       experiments=["DropoutExperimentDense",
-                                                    "DropoutExperimentSparse"],
+                                       experiments=["DropoutDense",
+                                                    "DropoutSparse"],
+                                       labels=["dense", "sparse"],
+                                       linestyles=["--", "-"],
+                                       filter=["dropout0.0"])
+
+  plotPath = os.path.join(path, "NoiseExperiment_accuracy.pdf")
+  plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+                 plotPath=plotPath)
+
+  # Plot Noise Curve with and without dropout (LinearNN)
+  results, format = configureNoisePlot(suite,
+                                       experiments=["DropoutDense",
+                                                    "DropoutSparse"],
                                        labels=["dense", "sparse"],
                                        linestyles=["--", "-"],
                                        filter=["dropout0.0", "dropout0.50"])
@@ -168,34 +189,68 @@ if __name__ == '__main__':
   plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
                  plotPath=plotPath)
 
-  # Plot Noise Curve (CNN)
-  results, format = configureNoisePlot(suite,
-                                       experiments=["DropoutExperimentDenseCNN",
-                                                    "DropoutExperimentSparseCNN"],
-                                       labels=["denseCNN", "sparseCNN"],
-                                       linestyles=["--", "-"],
-                                       filter=["dropout0.0", "dropout0.50"])
-
-  plotPath = os.path.join(path, "DropoutExperimentCNN_accuracy.pdf")
-  plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
-                 plotPath=plotPath)
-
   # Plot Dropout by Noise (LinearNN)
   results, format = configureDropoutByTotalCorrectPlot(suite,
-                                                       experiments=["DropoutExperimentDense",
-                                                                    "DropoutExperimentSparse"],
+                                                       experiments=["DropoutDense",
+                                                                    "DropoutSparse"],
                                                        labels=["Dense", "Sparse"],
                                                        linestyles=["--", "-"])
 
   plotPath = os.path.join(path, "DropoutExperiment_total_correct.pdf")
   plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
 
-  # Plot Dropout by Noise (CNN)
-  results, format = configureDropoutByTotalCorrectPlot(suite,
-                                                       experiments=["DropoutExperimentDenseCNN",
-                                                                    "DropoutExperimentSparseCNN"],
-                                                       labels=["DenseCNN", "SparseCNN"],
-                                                       linestyles=["--", "-"])
 
-  plotPath = os.path.join(path, "DropoutExperimentCNN_total_correct.pdf")
-  plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
+  # # Plot Noise Curve (CNN)
+  # results, format = configureNoisePlot(suite,
+  #                                      experiments=["NoiseExperimentDenseCNN",
+  #                                                   "NoiseExperimentSparseCNN"],
+  #                                      labels=["dense", "sparse"],
+  #                                      linestyles=["--", "-"])
+
+  # plotPath = os.path.join(path, "NoiseExperiment_accuracy.pdf")
+  # plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+  #                plotPath=plotPath)
+  #
+  # # Plot Noise Curve with and without dropout (LinearNN)
+  # results, format = configureNoisePlot(suite,
+  #                                      experiments=["DropoutExperimentDense",
+  #                                                   "DropoutExperimentSparse"],
+  #                                      labels=["dense", "sparse"],
+  #                                      linestyles=["--", "-"],
+  #                                      filter=["dropout0.0", "dropout0.50"])
+  #
+  # plotPath = os.path.join(path, "DropoutExperiment_accuracy.pdf")
+  # plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+  #                plotPath=plotPath)
+  #
+  # # Plot Noise Curve with and without dropout (CNN)
+  # results, format = configureNoisePlot(suite,
+  #                                      experiments=["DropoutExperimentDenseCNN",
+  #                                                   "DropoutExperimentSparseCNN"],
+  #                                      labels=["denseCNN", "sparseCNN"],
+  #                                      linestyles=["--", "-"],
+  #                                      filter=["dropout0.0", "dropout0.50"])
+  #
+  # plotPath = os.path.join(path, "DropoutExperimentCNN_accuracy.pdf")
+  # plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+  #                plotPath=plotPath)
+  #
+  # # Plot Dropout by Noise (LinearNN)
+  # results, format = configureDropoutByTotalCorrectPlot(suite,
+  #                                                      experiments=["DropoutExperimentDense",
+  #                                                                   "DropoutExperimentSparse"],
+  #                                                      labels=["Dense", "Sparse"],
+  #                                                      linestyles=["--", "-"])
+  #
+  # plotPath = os.path.join(path, "DropoutExperiment_total_correct.pdf")
+  # plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
+  #
+  # # Plot Dropout by Noise (CNN)
+  # results, format = configureDropoutByTotalCorrectPlot(suite,
+  #                                                      experiments=["DropoutExperimentDenseCNN",
+  #                                                                   "DropoutExperimentSparseCNN"],
+  #                                                      labels=["DenseCNN", "SparseCNN"],
+  #                                                      linestyles=["--", "-"])
+  #
+  # plotPath = os.path.join(path, "DropoutExperimentCNN_total_correct.pdf")
+  # plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
