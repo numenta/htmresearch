@@ -174,7 +174,7 @@ class SparseNet(nn.Module):
     self.learningIterations = 0
 
     inputFeatures = inputSize
-    self.cnnSdr = nn.Sequential()
+    cnnSdr = nn.Sequential()
     # CNN Layers
     for i in range(len(outChannels)):
       if outChannels[i] != 0:
@@ -186,12 +186,15 @@ class SparseNet(nn.Module):
                           boostStrength=boostStrength,
                           useBatchNorm=useBatchNorm,
                           )
-        self.cnnSdr.add_module("cnnSdr{}".format(i), module)
+        cnnSdr.add_module("cnnSdr{}".format(i), module)
         # Feed this layer output into next layer input
         inputFeatures = (outChannels[i], module.maxpoolWidth, module.maxpoolWidth)
 
-    if len(self.cnnSdr) > 0:
-      inputFeatures = self.cnnSdr[-1].outputLength
+    if len(cnnSdr) > 0:
+      inputFeatures = cnnSdr[-1].outputLength
+      self.cnnSdr = cnnSdr
+    else:
+      self.cnnSdr = None
 
     # Flatten input before passing to linear layers
     self.flatten = Flatten(inputFeatures)
@@ -218,10 +221,8 @@ class SparseNet(nn.Module):
         inputFeatures = n[i]
 
     # Add one fully connected layer after all hidden layers
-    self.fc = nn.Sequential(
-      nn.Linear(self.n[-1], outputSize),
-      nn.LogSoftmax(dim=1)
-    )
+    self.fc = nn.Linear(self.n[-1], outputSize)
+    self.softmax = nn.LogSoftmax(dim=1)
 
 
   def postEpoch(self):
@@ -230,9 +231,10 @@ class SparseNet(nn.Module):
     """
     if self.training:
       self.boostStrength = self.boostStrength * self.boostStrengthFactor
-      for module in self.cnnSdr.children():
-        if hasattr(module, "setBoostStrength"):
-          module.setBoostStrength(self.boostStrength)
+      if self.cnnSdr is not None:
+        for module in self.cnnSdr.children():
+          if hasattr(module, "setBoostStrength"):
+            module.setBoostStrength(self.boostStrength)
 
       for module in self.linearSdr.children():
         if hasattr(module, "setBoostStrength"):
@@ -246,10 +248,12 @@ class SparseNet(nn.Module):
 
 
   def forward(self, x):
-    x = self.cnnSdr(x)
+    if self.cnnSdr is not None:
+      x = self.cnnSdr(x)
     x = self.flatten(x)
     x = self.linearSdr(x)
     x = self.fc(x)
+    x = self.softmax(x)
 
     if self.training:
       batchSize = x.shape[0]
@@ -266,9 +270,10 @@ class SparseNet(nn.Module):
     Returns the maximum entropy we can expect
     """
     maxEntropy = 0
-    for module in self.cnnSdr.children():
-      if hasattr(module, "maxEntropy"):
-        maxEntropy += module.maxEntropy()
+    if self.cnnSdr is not None:
+      for module in self.cnnSdr.children():
+        if hasattr(module, "maxEntropy"):
+          maxEntropy += module.maxEntropy()
     for module in self.linearSdr.children():
       if hasattr(module, "maxEntropy"):
         maxEntropy += module.maxEntropy()
@@ -281,9 +286,10 @@ class SparseNet(nn.Module):
     Returns the current entropy
     """
     entropy = 0
-    for module in self.cnnSdr.children():
-      if hasattr(module, "entropy"):
-        entropy += module.entropy()
+    if self.cnnSdr is not None:
+      for module in self.cnnSdr.children():
+        if hasattr(module, "entropy"):
+          entropy += module.entropy()
 
     for module in self.linearSdr.children():
       if hasattr(module, "entropy"):
