@@ -100,8 +100,10 @@ def summarizeResults(expName, suite):
 
 def lastNoiseCurve(expPath, suite, iteration="last"):
   """
-  Print the noise errors from the last iteration of this experiment
+  Print the noise errors from the last iteration of this experiment. Return
+  the accuracies in a list for later plotting.
   """
+  plotValues = []
   noiseValues = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3",
                             "0.35", "0.4", "0.45", "0.5"]
   print("\nNOISE CURVE =====",expPath,"====== ITERATION:",iteration,"=========")
@@ -110,10 +112,13 @@ def lastNoiseCurve(expPath, suite, iteration="last"):
     info = []
     for k in noiseValues:
       info.append([k,result[k]["testerror"]])
+      plotValues.append(result[k]["testerror"])
     print(tabulate(info, headers=["noise","Test Error"], tablefmt="grid"))
     print("totalCorrect:", suite.get_value(expPath, 0, "totalCorrect", iteration))
   except:
     print("Couldn't load experiment",expPath)
+
+  return plotValues
 
 
 def learningCurve(expPath, suite):
@@ -134,6 +139,53 @@ def learningCurve(expPath, suite):
     print("Couldn't load experiment",expPath)
 
 
+def bestScore(expPath, suite):
+  """
+  Given a single experiment, return the test, and total noise score from the
+  iteration with maximum validation accuracy.
+  """
+  maxTestAccuracy = -1.0
+  maxTotalAccuracy = -1.0
+  maxIter = -1
+  try:
+    headers=["testerror", "elapsedTime", "totalCorrect"]
+    result = suite.get_value(expPath, 0, headers, "all")
+    for i,v in enumerate(zip(result["testerror"], result["elapsedTime"],
+                             result["totalCorrect"])):
+      if v[0] > maxTestAccuracy:
+        maxTestAccuracy = v[0]
+        if v[2] is not None:
+          maxTotalAccuracy = v[2]
+        maxIter = i
+
+    return maxTestAccuracy, maxIter, maxTotalAccuracy
+  except:
+    print("Couldn't load experiment",expPath)
+    return None, None, None
+
+
+def getErrorBars(expPath, suite):
+  """
+  Go through each experiment in the path. Get the best scores for each
+  experiment whose hyperparameters were tuned based on accuracy on validation
+  set. Print out overall mean, and stdev for test accuracy, BG accuracy, and
+  noise accuracy.
+  """
+  exps = suite.get_exps(expPath)
+  testScores = np.zeros(len(exps))
+  noiseScores = np.zeros(len(exps))
+  for i,e in enumerate(exps):
+    maxTestAccuracy, maxIter, maxTotalAccuracy = bestScore(e, suite)
+    testScores[i] = maxTestAccuracy
+    noiseScores[i] = maxTotalAccuracy
+
+  print("")
+  print("Experiment:", expPath, "Number of sub-experiments", len(exps))
+  print("test score mean and standard deviation:", testScores.mean(), testScores.std())
+  print("noise score mean and standard deviation:", noiseScores.mean(), noiseScores.std())
+
+
+
 # To run it from htmresearch top level:
 # python projects/sdr_paper/pytorch_experiments/analyze_experiment.py -c projects/sdr_paper/pytorch_experiments/experiments.cfg
 
@@ -141,36 +193,50 @@ if __name__ == '__main__':
 
   suite = MNISTSparseExperiment()
 
-  summarizeResults("./results", suite)
-
+  # summarizeResults("./results", suite)
+  #
   for expName in [
-    "./results/standardOneLayer",
+    # "./results/standardOneLayer",
 
     # Best sparse CNN net so far
-    "./results/bestSparseCNN",
+    # "./results/bestSparseNetLuiz",
+    # "./results/bestSparseNet",
+    # "./results/bestSparseCNN",
 
     # This is the best sparse net (non CNN) so far, as of Jan 7.
-    "./results/bestSparseNet/k50.0n500.0",
-    # "./results/exp35/learning_rate_factor0.50learning_rate0.040",
+    # "./results/bestSparseNet/k50.0n500.0",
+    # "./results/DenseCNN1Seeds/seed47.0",
 
-    # "./results/cnn14/learning_rate0.050boost_strength1.50",
-
-    # Iteration 5 of this one is great. The other one is not bad too.
-    # "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0",
-    # "./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n500.0",
   ]:
     analyzeParameters(expName, suite)
     learningCurve(expName, suite)
 
-  # Print details of the best ones so far
+  # These commands will print and plot the actual learning curve
+  # sparseCNN2 = lastNoiseCurve("./results/twoLayerSparseCNNs/k100.0n500.0", suite)
+  # sparseNN = lastNoiseCurve("./results/bestSparseNet/k50.0n500.0", suite)
+  # denseNN = lastNoiseCurve("./results/standardOneLayer", suite)
+  # denseCNN2 = lastNoiseCurve("./results/twoLayerDenseCNNs/k1000.0n1000.0", suite)
 
-  # lastNoiseCurve("./results/bestSparseCNN", suite)
 
-  # lastNoiseCurve("./results/cnn13/learning_rate0.020boost_strength1.40", suite)
+  # These commands will return the mean and stdev for experiments run on
+  # different random seeds.
 
-  # lastNoiseCurve("./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0", suite, 5)
+  # getErrorBars("results/BestDenseOneLayerSeeds", suite)
+  # getErrorBars("results/BestDenseOneLayerSeeds2", suite)
+  # getErrorBars("results/DenseCNN1Seeds", suite)
+  # getErrorBars("results/twoLayerDenseCNNSeeds", suite)
+  # getErrorBars("results/bestSparseNetSeeds", suite)
+  # getErrorBars("results/bestSparseNet2Seeds", suite)
+  # getErrorBars("results/bestSparseCNNOneLayerSeeds", suite)
+  # getErrorBars("results/bestSparseCNNTwoLayerSeeds", suite)
 
-  # Learning rate exploration
-  # analyzeParameters("./results/cnn10", suite)
-  # summarizeResults("./results/cnn10", suite)
 
+  # getErrorBars("results/bestSparseNetSeeds", suite)
+  # getErrorBars("results/bestSparseNet2Seeds", suite)
+  # getErrorBars("results/bestSparseNet2SeedsLowerLR", suite)
+  # getErrorBars("results/bestSparseNet2SeedsLowerLRNoMomentum", suite)
+
+  # getErrorBars("results/sparseCNNFC2KSeeds", suite)
+  # getErrorBars("results/sparseCNNFC2WSSeeds", suite)
+  # getErrorBars("results/sparseCNNFC2Seeds", suite)
+  # getErrorBars("results/denseCNN2SP3Seeds", suite)
