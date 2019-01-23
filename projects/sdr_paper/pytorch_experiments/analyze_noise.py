@@ -46,14 +46,15 @@ NOISE_VALUES = ["0.0", "0.05", "0.1", "0.15", "0.2", "0.25", "0.3", "0.35",
 
 def plotNoiseCurve(suite, values, results, plotPath, format):
   fig, ax = plt.subplots()
-  fig.suptitle("Noise curve")
+  fig.suptitle("Accuracy vs noise")
   ax.set_xlabel("Noise")
-  ax.set_ylabel("Accuracy")
+  ax.set_ylabel("Accuracy (percent)")
   for exp in results:
     values = suite.get_value(exp, 0, values, "last")
     df = pd.DataFrame.from_dict(values, orient='index')
     ax.plot(df["testerror"], **format[exp])
 
+  # ax.xaxis.set_ticks(np.arange(0.0, 0.5 + 0.1, 0.1))
   plt.legend()
   plt.grid(axis='y')
   plt.savefig(plotPath)
@@ -90,7 +91,8 @@ def filterResults(results, filter):
 
 
 
-def configureNoisePlot(suite, experiments, labels, linestyles, filter=None):
+def configureNoisePlot(suite, experiments, labels, linestyles,
+                       marker, filter=None):
   """
   Load experiment results anc configure the "Noise curve" Plot
   :param suite: The configured experiment suite. Must call `parse_opt` and `
@@ -115,12 +117,14 @@ def configureNoisePlot(suite, experiments, labels, linestyles, filter=None):
     if len(data) > 1:
       format = {exp: {
         "label": "{},{}".format(labels[i], basename(exp)),
-        "linestyle": "{}".format(linestyles[i])
+        "linestyle": "{}".format(linestyles[i]),
+        "marker": "{}".format(marker[i])
       } for exp in data}
     else:
       format = {data[0]: {
         "label": "{}".format(labels[i]),
-        "linestyle": "{}".format(linestyles[i])
+        "linestyle": "{}".format(linestyles[i]),
+        "marker": "{}".format(marker[i])
       }}
 
     formats.update(format)
@@ -165,39 +169,60 @@ if __name__ == '__main__':
   suite.parse_cfg()
   path = suite.cfgparser.defaults()['path']
 
-  # Plot Noise Curve (LinearNN)
+  # Plot Noise Curve (MNIST)
   results, format = configureNoisePlot(suite,
-                                       experiments=["DropoutDense",
-                                                    "DropoutSparse"],
-                                       labels=["dense", "sparse"],
-                                       linestyles=["--", "-"],
-                                       filter=["dropout0.0"])
+                                       experiments=[
+                                        # "BestDenseOneLayer2",
+                                         "DenseCNN1Seeds/seed49.0",
+                                         "twoLayerDenseCNNs/k1000.0n1000.0",
+
+                                         "bestSparseCNNOneLayerSeeds/seed48.0",
+                                         "bestSparseCNNTwoLayerSeeds/seed50.0",
+                                       ],
+                                       labels=["dense-CNN1", "dense-CNN2",
+                                               "sparse-CNN1", "sparse-CNN2"],
+                                       linestyles=["--", "--", "-", "-"],
+                                       marker=["o", "x", "*", "x"],
+                                      )
 
   plotPath = os.path.join(path, "NoiseExperiment_accuracy.pdf")
   plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
                  plotPath=plotPath)
 
-  # Plot Noise Curve with and without dropout (LinearNN)
-  results, format = configureNoisePlot(suite,
-                                       experiments=["DropoutDense",
-                                                    "DropoutSparse"],
-                                       labels=["dense", "sparse"],
-                                       linestyles=["--", "-"],
-                                       filter=["dropout0.0", "dropout0.50"])
 
-  plotPath = os.path.join(path, "DropoutExperiment_accuracy.pdf")
-  plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
-                 plotPath=plotPath)
-
-  # Plot Dropout by Noise (LinearNN)
-  results, format = configureDropoutByTotalCorrectPlot(suite,
-                                                       experiments=["DropoutDense",
-                                                                    "DropoutSparse"],
-                                                       labels=["Dense", "Sparse"],
-                                                       linestyles=["--", "-"])
-
-  plotPath = os.path.join(path, "DropoutExperiment_total_correct.pdf")
-  plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
+  # # Plot Noise Curve (LinearNN)
+  # results, format = configureNoisePlot(suite,
+  #                                      experiments=["DropoutDense",
+  #                                                   "DropoutSparse"],
+  #                                      labels=["dense", "sparse"],
+  #                                      linestyles=["--", "-"],
+  #                                      filter=["dropout0.0"])
+  #
+  # plotPath = os.path.join(path, "NoiseExperiment_accuracy.pdf")
+  # plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+  #                plotPath=plotPath)
+  #
+  # # Plot Noise Curve with and without dropout (LinearNN)
+  # results, format = configureNoisePlot(suite,
+  #                                      experiments=["DropoutDense",
+  #                                                   "DropoutSparse"],
+  #                                      labels=["dense", "sparse"],
+  #                                      linestyles=["--", "-"],
+  #                                      filter=["dropout0.0", "dropout0.50"])
+  #
+  # plotPath = os.path.join(path, "DropoutExperiment_accuracy.pdf")
+  # plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
+  #                plotPath=plotPath)
+  #
+  # # Plot Dropout by Noise (LinearNN)
+  # results, format = configureDropoutByTotalCorrectPlot(suite,
+  #                                                      experiments=["DropoutDense",
+  #                                                                   "DropoutSparse"],
+  #                                                      labels=["Dense", "Sparse"],
+  #                                                      linestyles=["--", "-"])
+  #
+  # plotPath = os.path.join(path, "DropoutExperiment_total_correct.pdf")
+  # plotDropoutByTotalCorrect(results=results, format=format, plotPath=plotPath)
 
 
   # # Plot Noise Curve (CNN)
