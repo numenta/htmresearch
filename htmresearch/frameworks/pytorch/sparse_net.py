@@ -325,7 +325,7 @@ class SparseNet(nn.Module):
       return
 
     # Collect all dutyCycles
-    dutyCycles = [v for k, v in self.model.named_buffers() if 'dutyCycle' in k]
+    dutyCycles = [v for k, v in self.named_buffers() if 'dutyCycle' in k]
     for w in dutyCycles:
       # Filter dutyCycles above threshold
       mask = torch.ge(torch.abs(w.data), threshold)
