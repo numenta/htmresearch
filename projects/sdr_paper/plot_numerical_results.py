@@ -26,12 +26,17 @@
 import plotly.plotly as py
 from plotly.graph_objs import *
 import os
+import matplotlib
 
-plotlyUser = os.environ['PLOTLY_USERNAME']
-plotlyAPIKey = os.environ['PLOTLY_API_KEY']
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
+plotlyUser = os.environ.get('PLOTLY_USERNAME')
+plotlyAPIKey = os.environ.get('PLOTLY_API_KEY')
 
-py.sign_in(plotlyUser, plotlyAPIKey)
+use_plotly = plotlyAPIKey is not None
+if use_plotly:
+  py.sign_in(plotlyUser, plotlyAPIKey)
 
 
 # Observed vs theoretical error values
@@ -69,190 +74,220 @@ theoreticalErrorsA256 = [ 0.999997973443107, 0.629372754740777,
 listofNValues = [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
 2500, 2700, 2900, 3100, 3300, 3500]
 
+if use_plotly:
+  trace1 = Scatter(
+      y=experimentalErrorsA64,
+      x=listofNValues[0:3],
+      mode="markers",
+      marker=Marker(
+        symbol="octagon",
+        size=12,
+        color="rgb(0, 0, 0)",
+      ),
+      name="a=64 (observed)"
+  )
 
-trace1 = Scatter(
-    y=experimentalErrorsA64,
-    x=listofNValues[0:3],
-    mode="markers",
-    marker=Marker(
-      symbol="octagon",
-      size=12,
-      color="rgb(0, 0, 0)",
-    ),
-    name="a=64 (observed)"
-)
-
-trace2 = Scatter(
-    y=theoreticalErrorsA64,
-    x=listofNValues[0:3],
-    mode="lines",
-    line=Line(
-        color='rgb(0, 0, 0)',
-        width=2,
-        dash='dot',
-        shape='spline',
-    ),
-    name="a=64 (predicted)"
-)
+  trace2 = Scatter(
+      y=theoreticalErrorsA64,
+      x=listofNValues[0:3],
+      mode="lines",
+      line=Line(
+          color='rgb(0, 0, 0)',
+          width=2,
+          dash='dot',
+          shape='spline',
+      ),
+      name="a=64 (predicted)"
+  )
 
 
-trace3 = Scatter(
-    y=experimentalErrorsA128,
-    x=listofNValues[0:9],
-    mode="markers",
-    marker=Marker(
-      symbol="octagon",
-      size=12,
-      color="rgb(0, 0, 0)",
-    ),
-    name="a=128 (observed)"
-)
+  trace3 = Scatter(
+      y=experimentalErrorsA128,
+      x=listofNValues[0:9],
+      mode="markers",
+      marker=Marker(
+        symbol="octagon",
+        size=12,
+        color="rgb(0, 0, 0)",
+      ),
+      name="a=128 (observed)"
+  )
 
-trace4 = Scatter(
-    y=theoreticalErrorsA128,
-    x=listofNValues[0:9],
-    mode="lines",
-    line=Line(
-        color='rgb(0, 0, 0)',
-        width=2,
-        dash='dot',
-        shape='spline',
-    ),
-    name="a=128 (predicted)"
-)
+  trace4 = Scatter(
+      y=theoreticalErrorsA128,
+      x=listofNValues[0:9],
+      mode="lines",
+      line=Line(
+          color='rgb(0, 0, 0)',
+          width=2,
+          dash='dot',
+          shape='spline',
+      ),
+      name="a=128 (predicted)"
+  )
 
-trace5 = Scatter(
-    y=experimentalErrorsA256,
-    x=listofNValues,
-    mode="markers",
-    marker=Marker(
-      symbol="octagon",
-      size=12,
-      color="rgb(0, 0, 0)",
-    ),
-    name="a=256 (observed)"
-)
+  trace5 = Scatter(
+      y=experimentalErrorsA256,
+      x=listofNValues,
+      mode="markers",
+      marker=Marker(
+        symbol="octagon",
+        size=12,
+        color="rgb(0, 0, 0)",
+      ),
+      name="a=256 (observed)"
+  )
 
-trace6 = Scatter(
-    y=theoreticalErrorsA256,
-    x=listofNValues,
-    mode="lines",
-    line=Line(
-        color='rgb(0, 0, 0)',
-        width=2,
-        dash='dot',
-        shape='spline',
-    ),
-    name="a=256 (predicted)"
-)
+  trace6 = Scatter(
+      y=theoreticalErrorsA256,
+      x=listofNValues,
+      mode="lines",
+      line=Line(
+          color='rgb(0, 0, 0)',
+          width=2,
+          dash='dot',
+          shape='spline',
+      ),
+      name="a=256 (predicted)"
+  )
 
-data = Data([trace1, trace2, trace3, trace4, trace5, trace6])
+  data = Data([trace1, trace2, trace3, trace4, trace5, trace6])
 
-layout = Layout(
-    title='',
-    showlegend=False,
-    autosize=False,
-    width=855,
-    height=700,
-    xaxis=XAxis(
-        title='Cell population size (n)',
-        titlefont=Font(
-            family='Arial',
-            size=26,
-            color=''
-        ),
-        tickfont=Font(
-            family='Arial',
-            size=24,
-            color=''
-        ),
-        exponentformat="none",
-        dtick=800,
-        showline=True,
-        range=[0,4000],
-    ),
-    yaxis=YAxis(
-        title='Frequency of false positives',
-        type='log',
-        exponentformat='power',
-        autorange=True,
-        titlefont=Font(
-            family='Arial',
-            size=26,
-            color=''
-        ),
-        tickfont=Font(
-            family='Arial',
-            size=12,
-            color=''
-        ),
-        showline=True,
-    ),
-    annotations=Annotations([
-      Annotation(
-            x=434,
-            y=0.2085,
-            xref='x',
-            yref='paper',
-            text='$a = 64$',
-            showarrow=False,
-            font=Font(
-                family='Arial',
-                size=16,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-      Annotation(
-            x=1776,
-            y=0.2071,
-            xref='x',
-            yref='paper',
-            text='$a = 128$',
-            showarrow=False,
-            font=Font(
-                family='Arial',
-                size=16,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-      Annotation(
-            x=3272,
-            y=0.2014,
-            xref='x',
-            yref='paper',
-            text='$a = 256$',
-            showarrow=False,
-            font=Font(
-                family='Arial',
-                size=16,
-                color=''
-            ),
-            align='center',
-            textangle=0,
-            bordercolor='',
-            borderwidth=1,
-            borderpad=1,
-            bgcolor='rgba(0, 0, 0, 0)',
-            opacity=1
-        ),
-    ]),)
+  layout = Layout(
+      title='',
+      showlegend=False,
+      autosize=False,
+      width=855,
+      height=700,
+      xaxis=XAxis(
+          title='Cell population size (n)',
+          titlefont=Font(
+              family='Arial',
+              size=26,
+              color=''
+          ),
+          tickfont=Font(
+              family='Arial',
+              size=24,
+              color=''
+          ),
+          exponentformat="none",
+          dtick=800,
+          showline=True,
+          range=[0,4000],
+      ),
+      yaxis=YAxis(
+          title='Frequency of false positives',
+          type='log',
+          exponentformat='power',
+          autorange=True,
+          titlefont=Font(
+              family='Arial',
+              size=26,
+              color=''
+          ),
+          tickfont=Font(
+              family='Arial',
+              size=12,
+              color=''
+          ),
+          showline=True,
+      ),
+      annotations=Annotations([
+        Annotation(
+              x=434,
+              y=0.2085,
+              xref='x',
+              yref='paper',
+              text='$a = 64$',
+              showarrow=False,
+              font=Font(
+                  family='Arial',
+                  size=16,
+                  color=''
+              ),
+              align='center',
+              textangle=0,
+              bordercolor='',
+              borderwidth=1,
+              borderpad=1,
+              bgcolor='rgba(0, 0, 0, 0)',
+              opacity=1
+          ),
+        Annotation(
+              x=1776,
+              y=0.2071,
+              xref='x',
+              yref='paper',
+              text='$a = 128$',
+              showarrow=False,
+              font=Font(
+                  family='Arial',
+                  size=16,
+                  color=''
+              ),
+              align='center',
+              textangle=0,
+              bordercolor='',
+              borderwidth=1,
+              borderpad=1,
+              bgcolor='rgba(0, 0, 0, 0)',
+              opacity=1
+          ),
+        Annotation(
+              x=3272,
+              y=0.2014,
+              xref='x',
+              yref='paper',
+              text='$a = 256$',
+              showarrow=False,
+              font=Font(
+                  family='Arial',
+                  size=16,
+                  color=''
+              ),
+              align='center',
+              textangle=0,
+              bordercolor='',
+              borderwidth=1,
+              borderpad=1,
+              bgcolor='rgba(0, 0, 0, 0)',
+              opacity=1
+          ),
+      ]),)
 
-fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
-print "url=",plot_url
-figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_n.pdf', scale=1)
+  fig = Figure(data=data, layout=layout)
+  plot_url = py.plot(fig)
+  print "url=",plot_url
+  figure = py.get_figure(plot_url)
+  py.image.save_as(figure, 'images/effect_of_n.pdf', scale=1)
+else:
+  fig, ax = plt.subplots()
+
+  ax.set_xlabel("Cell population size (n)")
+  ax.set_ylabel("Frequency of false positives")
+  ax.set_yscale("log")
+
+  ax.scatter(listofNValues[0:3], experimentalErrorsA64, label="a=64 (predicted)", marker="o", color='black')
+  ax.scatter(listofNValues[0:9], experimentalErrorsA128, label="a=128 (predicted)", marker="o", color='black')
+  ax.scatter(listofNValues, experimentalErrorsA256, label="a=256 (predicted)", marker="o", color='black')
+
+
+  ax.plot(listofNValues[0:3], theoreticalErrorsA64, 'k:', label="a=64 (observed)")
+  ax.plot(listofNValues[0:9], theoreticalErrorsA128, 'k:', label="a=128 (observed)", color='black')
+  ax.plot(listofNValues, theoreticalErrorsA256, 'k:', label="a=256 (observed)")
+
+  ax.annotate(r"$\alpha = 64$", xy=(listofNValues[2], theoreticalErrorsA64[-1]),
+              xytext=(-5, 2), textcoords="offset points", ha="right",
+              color='black')
+  ax.annotate(r"$\alpha = 128$", xy=(listofNValues[8], theoreticalErrorsA64[-1]),
+               ha="center",color='black')
+  ax.annotate(r"$\alpha = 256$", xy=(listofNValues[-1], theoreticalErrorsA64[-1]),
+              xytext=(-10, 0), textcoords="offset points", ha="center",
+              color='black')
+
+  plt.minorticks_off()
+  plt.grid(True, alpha=0.3)
+
+  plt.savefig("images/effect_of_n.pdf")
+  plt.close()
