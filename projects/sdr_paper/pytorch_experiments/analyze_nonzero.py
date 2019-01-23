@@ -63,7 +63,7 @@ if __name__ == '__main__':
         values = suite.get_value(exp, 0, "nonzeros", "last")
         df = pd.DataFrame.from_dict(values)
         print()
-        print(exp)
+        print(exp, "- accuracy:", suite.get_value(exp, 0, "testerror"))
         if columns is not None:
           df = df[columns]
 
