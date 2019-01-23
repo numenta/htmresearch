@@ -204,8 +204,6 @@ def findOptimalResults(expName, suite, outFile):
       expName, 0, "testerror", "last")
     for p in params:
       expPath = p["name"]
-      if "resnet" in p["name"]:
-        print("resnet!!")
       if not "results" in expPath:
         expPath = os.path.join("results", expPath)
       maxTestAccuracy, maxValidationAccuracy, maxBGAccuracy, maxIter, maxTotalAccuracy = bestScore(expPath, suite)
@@ -232,6 +230,7 @@ def getErrorBars(expPath, suite):
       e, suite)
     testScores[i] = maxTestAccuracy
     noiseScores[i] = maxTotalAccuracy
+    print(e, maxTestAccuracy, maxTotalAccuracy)
 
   print("")
   print("Experiment:", expPath, "Number of sub-experiments", len(exps))
@@ -244,18 +243,18 @@ if __name__ == '__main__':
   suite = SparseSpeechExperiment()
 
   # Find the test scores corresponding to the highest validation scores.
-  with open("out.csv", "wb") as f:
-    findOptimalResults("./results", suite, f)
+  # with open("out.csv", "wb") as f:
+  #   findOptimalResults("./results", suite, f)
 
   # More details for some experiments
-  for expName in [
-    # "./results/cnn13/learning_rate_factor0.80c1_out_channels64_64momentum0.90learning_rate0.010k1000n1000",
-    # "./results/cnn15/c1_k2500_320c1_out_channels64_64momentum0.0k200n1000"
-    "./old_results/cnn20/weight_sparsity0.40k100n1500",
-
-  ]:
-    analyzeParameters(expName, suite)
-    learningCurve(expName, suite)
+  # for expName in [
+  #   # "./results/cnn13/learning_rate_factor0.80c1_out_channels64_64momentum0.90learning_rate0.010k1000n1000",
+  #   # "./results/cnn15/c1_k2500_320c1_out_channels64_64momentum0.0k200n1000"
+  #   "./old_results/cnn20/weight_sparsity0.40k100n1500",
+  #
+  # ]:
+  #   analyzeParameters(expName, suite)
+  #   learningCurve(expName, suite)
 
 
   # # Print details of the best ones so far
@@ -266,15 +265,15 @@ if __name__ == '__main__':
 
   # lastNoiseCurve("./results/cnn9/weight_sparsity0.30c1_k400.0k50.0n150.0", suite, 5)
 
-  # Learning rate exploration
-  # analyzeParameters("./results/cnn10", suite)
-  # summarizeResults("./results/cnn10", suite)
-
   # Error bars for 10 random seeds of each experiment. Used for Tables 1 and 2.
-  getErrorBars("./old_results/cnn21SparseSeeds", suite)
-  getErrorBars("./old_results/cnn22DenseSeedsNodropout", suite)
-  getErrorBars("./old_results/cnn22DenseSeedsWithDropout", suite)
-  getErrorBars("./results/cnn24LargerMoreSeeds", suite)
+
+  # Dense CNN 2
+  getErrorBars("./results/cnn22DenseSeedsNodropout", suite)
+  # getErrorBars("./results/cnn22DenseSeedsWithDropout", suite)
+
+  # Sparse CNN 2
   getErrorBars("./results/cnn23SparseSeedsMoreIters", suite)
-  getErrorBars("./results/cnn28LargerWeight10pct", suite)
+
+  # Super sparse CNN 2
+  # getErrorBars("./results/cnn28LargerWeight10pct", suite)
 
