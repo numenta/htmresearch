@@ -222,9 +222,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
     Called once we are done.
     """
     if params.get("saveNet", True):
-      self.pruneWeights(params)
-      self.pruneDutyCycles(params)
-
       # Save the full model once we are done.
       saveDir = os.path.join(params["path"], params["name"], "model.pt")
       torch.save(self.model, saveDir)
@@ -396,19 +393,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     return ret
 
-
-  def pruneWeights(self, params):
-    """
-    Prune the weights whose absolute magnitude is < params["min_weight"]
-    """
-    self.model.pruneWeights(params.get("min_weight", 0.0))
-
-
-  def pruneDutyCycles(self, params):
-    """
-    Prune the DutyCycles whose absolute magnitude is < params["min_dutycycle"]
-    """
-    self.model.pruneDutyCycles(params.get("min_dutycycle", 0.0))
 
 
 if __name__ == '__main__':
