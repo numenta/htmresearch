@@ -22,6 +22,14 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import logging
+import os
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torchvision import datasets, transforms
+from tqdm import tqdm
+
+from htmresearch.frameworks.pytorch.benchmark_utils import register_nonzero_counter, unregister_counter_nonzero
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -39,12 +47,53 @@ from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
 def filterResults(results, filter):
   """
   Filter results containing the given condition
+
   :param results: list of experiments returned by `suite.get_exps`
+  :type results: list[string]
   :param filter: list of conditions on the experiment parameters. For example:
                  ["dropout0.0", "dropout0.50"]
+  :type filter: list[string] or None
   :return: filtered results
-  """
+  :rtype: list[string]
+ """
   return [exp for exp in results if any(map(lambda v: v in exp, filter))]
+
+
+
+def evaluateModel(model, loader, progess=None):
+  """
+  Evaluate pre-trained model using given test dataset loader
+
+  :param model: Pretrained model
+  :type model: torch.nn.Module
+  :param loader: test dataset loader
+  :type loader: :class:`torch.utils.data.DataLoader`
+  :param progess: Optional progress bar description. None for no progress bar
+  :type progess: string or None
+  :return: dictionary with "accuracy", "loss", "num_correct"
+  :rtype: dict
+  """
+  model.eval()
+  loss = 0
+  correct = 0
+  dataset_len = len(loader.sampler)
+
+  if progess is not None:
+    loader = tqdm(loader, desc=progess)
+
+  with torch.no_grad():
+    for data, target in loader:
+      output = model(data)
+      loss += F.nll_loss(output, target, reduction='sum').item()
+      pred = output.max(1, keepdim=True)[1]
+      correct += pred.eq(target.view_as(pred)).sum().item()
+
+  loss /= dataset_len
+  accuracy = 100. * correct / dataset_len
+
+  return {"num_correct": correct,
+          "loss": loss,
+          "accuracy": accuracy}
 
 
 
@@ -53,21 +102,57 @@ if __name__ == '__main__':
   suite = MNISTSparseExperiment()
   suite.parse_opt()
   suite.parse_cfg()
-  columns = None  # ['linearSdr.linearSdr1', 'linearSdr.linearSdr1.l1']
-  if suite.options.experiments is not None:
-    for expName in suite.options.experiments:
-      path = suite.get_exp(expName)[0]
-      data = suite.get_exps(path=path)
-      data = filterResults(data, ["min_weight0.0min_dutycycle0.0", "min_weight0.10"])
-      for exp in data:
-        values = suite.get_value(exp, 0, "nonzeros", "last")
-        df = pd.DataFrame.from_dict(values)
-        print()
-        print(exp, "- accuracy:", suite.get_value(exp, 0, "testerror"))
-        if columns is not None:
-          df = df[columns]
+  experiments = suite.options.experiments or suite.cfgparser.sections()
 
-        print(tabulate(df, headers='keys', tablefmt='fancy_grid'))
-  else:
-    print("Failed to read experiments from arguments.",
-          "Use '-e' to select experiments or '--help' for other options.")
+  # Dataset transformations used during training. See mnist_sparse_experiment.py
+  transform = transforms.Compose([transforms.ToTensor(),
+                                  transforms.Normalize((0.1307,), (0.3081,))])
+
+  # Optional result filter
+  results_filter = None  # ["min_weight0.0", "min_weight0.1"])
+
+  for expName in experiments:
+    path = suite.get_exp(expName)[0]
+    results = suite.get_exps(path=path)
+
+    if results_filter is not None:
+      results = filterResults(results, results_filter)
+
+    for exp in results:
+      print()
+      print(exp)
+      params = suite.get_params(exp)
+
+      # Initialize MNIST test dataset for this experiment
+      test_loader = torch.utils.data.DataLoader(
+        datasets.MNIST(params["datadir"], train=False, download=True,
+                       transform=transform),
+        batch_size=params["test_batch_size"], shuffle=True)
+
+      # Load pre-trained model and evaluate with test dataset
+      model = torch.load(os.path.join(exp, "model.pt"))
+
+      tables = []
+      for ratio in np.linspace(0.0, 0.1, 11):
+        label = str(ratio)
+        model.pruneWeights(ratio)
+
+        # Collect nonzero
+        nonzero = {}
+        register_nonzero_counter(model, nonzero)
+        eval = evaluateModel(model, test_loader, progess=label)
+        unregister_counter_nonzero(model)
+
+        # Create table with results
+        table = pd.DataFrame.from_dict(nonzero)
+        table = table.assign(**eval)
+
+        # Filter results for the 'weight' variable only
+        tables.append(pd.DataFrame({label: table.xs("weight")}))
+
+      merged = pd.concat(tables, axis=1)
+      merged.drop(["input", "output"], inplace=True)
+      merged.dropna(inplace=True)
+
+      # Print results
+      print(tabulate(merged, headers='keys', tablefmt='fancy_grid'))
