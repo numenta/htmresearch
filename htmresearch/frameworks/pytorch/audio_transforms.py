@@ -84,14 +84,22 @@ class ChangeAmplitude(object):
 
 
 class AddNoise(object):
-    """Blend in random noise to the sample."""
+    """
+    Blend random noise into the sample.
 
-    def __init__(self, alpha = 0.0):
+    A' = A * (1 - alpha) + alpha * noise
+
+    noise is random uniform in the range [-maxVal, maxVal]
+    """
+
+    def __init__(self, alpha = 0.0, maxVal=1.0):
         self.alpha = alpha
+        self.maxVal = maxVal
 
     def __call__(self, data):
         samples = data['samples']
-        noiseVector = np.random.uniform(-1.0, 1.0, data['samples'].size)
+        noiseVector = np.random.uniform(-self.maxVal, self.maxVal,
+                                        data['samples'].size)
         data['samples'] = samples * (1 - self.alpha) + noiseVector * self.alpha
         return data
 
