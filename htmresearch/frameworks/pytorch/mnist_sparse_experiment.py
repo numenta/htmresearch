@@ -73,7 +73,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     self.use_cuda = not params["no_cuda"] and torch.cuda.is_available()
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
-    kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 
     transform = transforms.Compose([transforms.ToTensor(),
                                     transforms.Normalize((0.1307,), (0.3081,))])
@@ -91,13 +90,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
       self.train_loader = torch.utils.data.DataLoader(train_dataset,
                                                       batch_size=params["batch_size"],
-                                                      sampler=self.train_sampler,
-                                                      **kwargs)
+                                                      sampler=self.train_sampler)
 
       self.validation_loader = torch.utils.data.DataLoader(train_dataset,
                                                            batch_size=params["batch_size"],
-                                                           sampler=self.validation_sampler,
-                                                           **kwargs)
+                                                           sampler=self.validation_sampler)
     else:
       # No validation. Normal training dataset
       self.validation_loader = None
@@ -105,13 +102,12 @@ class MNISTSparseExperiment(PyExperimentSuite):
       self.train_sampler = None
       self.train_loader = torch.utils.data.DataLoader(train_dataset,
                                                       batch_size=params["batch_size"],
-                                                      shuffle=True,
-                                                      **kwargs)
+                                                      shuffle=True)
 
 
     self.test_loader = torch.utils.data.DataLoader(
       datasets.MNIST(self.dataDir, train=False, transform=transform),
-      batch_size=params["test_batch_size"], shuffle=True, **kwargs)
+      batch_size=params["test_batch_size"], shuffle=True)
 
     # Parse 'n' and 'k' parameters
     n = params["n"]
@@ -354,7 +350,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
     Test the model with different noise values and return test metrics.
     """
     ret = {}
-    kwargs = {'num_workers': 1, 'pin_memory': True} if self.use_cuda else {}
 
     # Noise on validation data
     validation = {} if self.validation_sampler is not None else None
@@ -370,7 +365,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       ])
       test_loader = torch.utils.data.DataLoader(
         datasets.MNIST(self.dataDir, train=False, transform=transform),
-        batch_size=params["test_batch_size"], shuffle=True, **kwargs)
+        batch_size=params["test_batch_size"], shuffle=True)
 
       testResult = self.test(params, test_loader)
       total_correct += testResult["num_correct"]
@@ -380,7 +375,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         validation_loader = torch.utils.data.DataLoader(
           datasets.MNIST(self.dataDir, train=True, transform=transform),
           sampler=self.validation_sampler,
-          batch_size=params["test_batch_size"], **kwargs)
+          batch_size=params["test_batch_size"])
 
         validationResult = self.test(params, validation_loader)
         validation_total_correct += validationResult["num_correct"]
