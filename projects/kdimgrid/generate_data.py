@@ -23,7 +23,7 @@ import argparse
 import multiprocessing
 import os
 import pickle
-import time
+import threading
 
 import numpy as np
 from scipy.stats import ortho_group
@@ -64,38 +64,6 @@ def create_params(m,k):
     }
 
 
-class ResultsForSingleMatrix(object):
-    def __init__(self, result_dict, mk_combinations, ms, ks, file_path, all_file_paths):
-        self.result_dict = result_dict
-        self.mk_combinations = mk_combinations
-        self.ms = ms
-        self.ks = ks
-        self.file_path = file_path
-        self.all_file_paths = all_file_paths
-
-    def onFinished(self, results):
-        """
-        Write a file now that everything is finished.
-
-        @param (result)
-        List of bin sidelengths.
-        """
-
-        bin_sidelengths = np.full((len(self.ms), len(self.ks)),
-                                  np.nan, dtype="float")
-
-        for (m, k), result in zip(self.mk_combinations, results):
-            bin_sidelengths[self.ms.index(m), self.ks.index(k)] = result
-
-        self.result_dict["bin_sidelength"] = bin_sidelengths
-
-        with open(self.file_path, "w") as fout:
-            self.all_file_paths.remove(self.file_path)
-            print "Saving", self.file_path, "({} remaining)".format(
-                len(self.all_file_paths))
-            pickle.dump(self.result_dict, fout)
-
-
 def getQuery(A, S, m, k, phase_resolution):
     A_ = A[:m, :, :k]
     sort_order = np.argsort(S[:m])[::-1]
@@ -106,54 +74,122 @@ def getQuery(A, S, m, k, phase_resolution):
 
 def processQuery(query):
     A, phase_resolution = query
-    return computeBinSidelength(A, phase_resolution, 0.01)
 
-
-def generateData(folderPath, numTrials, ms, ks,
-                 phaseResolution=0.2):
-    pool = multiprocessing.Pool()
-
-    mk_combinations = [(m, k)
-                       for m in ms
-                       for k in ks
-                       if 2*m >= k]
-
-    async_rs = []
-
-    all_file_paths = set()
-
-    for i in xrange(numTrials):
-        result_dict = create_params(max(ms), max(ks))
-        result_dict["phase_resolution"] = phaseResolution
-        result_dict["ms"] = ms
-        result_dict["ks"] = ks
-        A = result_dict["A"]
-        S = result_dict["S"]
-
-        filename = os.path.join(folderPath, "in_{}.p".format(i))
-
-        all_file_paths.add(filename)
-
-        resultSaver = ResultsForSingleMatrix(result_dict, mk_combinations,
-                                             ms, ks, filename, all_file_paths)
-        async_rs.append(
-            pool.map_async(processQuery,
-                           (getQuery(A, S, m, k, phaseResolution)
-                            for m, k in mk_combinations),
-                           callback=resultSaver.onFinished))
-
-    pool.close()
-
-    # Don't use pool.join() to wait for threads. multiprocessing doesn't
-    # properly handle interrupts (ctrl+c) during pool.join().
     try:
-        for r in async_rs:
-            r.get(9999999)
-        pool.join()
-    except KeyboardInterrupt:
-        print "Caught KeyboardInterrupt, terminating workers"
-        pool.terminate()
-        pool.join()
+        timeout = 60.0 * 10.0 # 10 minutes
+        return computeBinSidelength(A, phase_resolution, 0.01, timeout=timeout)
+    except RuntimeError as e:
+        if e.message == "timeout":
+            print "Timed out on query {}".format(A.tolist())
+            return None
+        else:
+            raise
+
+
+class Scheduler(object):
+    def __init__(self, folderpath, numTrials, ms, ks, phaseResolution=0.2):
+        self.folderpath = folderpath
+        self.numTrials = numTrials
+        self.ms = ms
+        self.ks = ks
+        self.phaseResolution = phaseResolution
+        self.failureCounter = 0
+        self.successCounter = 0
+
+        self.pool = multiprocessing.Pool()
+        self.finishedEvent = threading.Event()
+
+        self.mk_combinations = [(m, k)
+                                for m in ms
+                                for k in ks
+                                if 2*m >= k]
+
+        for _ in xrange(numTrials):
+            self.queueNewWorkItem()
+
+
+    def join(self):
+        try:
+            # Interrupts (ctrl+c) have no effect without a timeout.
+            self.finishedEvent.wait(9999999999)
+            self.pool.close()
+            self.pool.join()
+        except KeyboardInterrupt:
+            print "Caught KeyboardInterrupt, terminating workers"
+            self.pool.terminate()
+            self.pool.join()
+
+
+    def queueNewWorkItem(self):
+        resultDict = create_params(max(self.ms), max(self.ks))
+        resultDict["phase_resolution"] = self.phaseResolution
+        resultDict["ms"] = self.ms
+        resultDict["ks"] = self.ks
+
+        A = resultDict["A"]
+        S = resultDict["S"]
+        queries = (getQuery(A, S, m, k, self.phaseResolution)
+                   for m, k in self.mk_combinations)
+
+        context = ContextForSingleMatrix(self, resultDict)
+
+        self.pool.map_async(processQuery, queries, callback=context.onFinished)
+
+
+    def handleFailure(self, resultDict):
+        failureFolder = os.path.join(self.folderpath, "failures")
+        if self.failureCounter == 0:
+            os.makedirs(failureFolder)
+
+        filename = "failure_{}.p".format(self.failureCounter)
+        self.failureCounter += 1
+
+        filepath = os.path.join(failureFolder, filename)
+
+        with open(filepath, "w") as fout:
+            print "Saving", filepath, "({} remaining)".format(
+                self.numTrials - self.successCounter)
+            pickle.dump(resultDict, fout)
+
+
+        self.queueNewWorkItem()
+
+
+    def handleSuccess(self, resultDict, results):
+        # Insert results into dict
+        bin_sidelengths = np.full((len(self.ms), len(self.ks)),
+                                  np.nan, dtype="float")
+        for (m, k), result in zip(self.mk_combinations, results):
+            bin_sidelengths[self.ms.index(m), self.ks.index(k)] = result
+        resultDict["bin_sidelength"] = bin_sidelengths
+
+        # Save the dict
+        successFolder = os.path.join(self.folderpath, "in")
+        if self.successCounter == 0:
+            os.makedirs(successFolder)
+        filepath = os.path.join(successFolder, "in_{}.p".format(
+            self.successCounter))
+        self.successCounter += 1
+        with open(filepath, "w") as fout:
+            print "Saving", filepath, "({} remaining)".format(
+                self.numTrials - self.successCounter)
+            pickle.dump(resultDict, fout)
+
+        if self.successCounter == self.numTrials:
+            self.finishedEvent.set()
+
+
+class ContextForSingleMatrix(object):
+    def __init__(self, scheduler, resultDict):
+        self.scheduler = scheduler
+        self.resultDict = resultDict
+
+    def onFinished(self, results):
+        if any(result is None
+               for result in results):
+            self.scheduler.handleFailure(self.resultDict)
+        else:
+            self.scheduler.handleSuccess(self.resultDict, results)
 
 
 if __name__ == "__main__":
@@ -166,8 +202,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     cwd = os.path.dirname(os.path.realpath(__file__))
-    folderPath = os.path.join(cwd, "data", args.folderName, "in")
+    folderpath = os.path.join(cwd, "data", args.folderName)
 
-    os.makedirs(folderPath)
-
-    generateData(folderPath, args.numTrials, args.m, args.k)
+    Scheduler(folderpath, args.numTrials, args.m, args.k).join()
