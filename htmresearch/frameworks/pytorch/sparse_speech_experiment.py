@@ -472,21 +472,18 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     self.train_loader = DataLoader(trainDataset,
                                    batch_size=params["batch_size"],
-                                   sampler=sampler,
-                                   pin_memory=self.use_cuda,
+                                   sampler=sampler
                                    )
 
     self.validation_loader = DataLoader(validationDataset,
                                         batch_size=params["batch_size"],
-                                        shuffle=False,
-                                        pin_memory=self.use_cuda,
+                                        shuffle=False
                                         )
 
     self.test_loader = DataLoader(testDataset,
                                   batch_size=params["batch_size"],
                                   sampler=None,
-                                  shuffle=False,
-                                  pin_memory=self.use_cuda,
+                                  shuffle=False
                                   )
 
 
@@ -514,8 +511,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     self.bg_noise_loader = DataLoader(bgNoiseDataset,
                                   batch_size=params["batch_size"],
                                   sampler=None,
-                                  shuffle=False,
-                                  pin_memory=self.use_cuda,
+                                  shuffle=False
                                   )
 
 
