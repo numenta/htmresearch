@@ -22,20 +22,25 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 
 import logging
+import multiprocessing
 import os
+
 import numpy as np
 import torch
-import torch.nn.functional as F
 from torchvision import datasets, transforms
 from tqdm import tqdm
 
-from htmresearch.frameworks.pytorch.benchmark_utils import register_nonzero_counter, unregister_counter_nonzero
+from htmresearch.frameworks.pytorch.benchmark_utils import (
+  register_nonzero_counter, unregister_counter_nonzero)
+from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
+from htmresearch.frameworks.pytorch.model_utils import evaluateModel
 
 logging.basicConfig(level=logging.ERROR)
 
 import matplotlib
 
 matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 import pandas as pd
@@ -60,57 +65,116 @@ def filterResults(results, filter):
 
 
 
-def evaluateModel(model, loader, progess=None):
+def analyzeWeightPruning(args):
   """
-  Evaluate pre-trained model using given test dataset loader
+  Multiprocess function used to analyze the impact of nonzeros and accuracy
+  after pruning weights of a pre-trained model.
 
-  :param model: Pretrained model
-  :type model: torch.nn.Module
-  :param loader: test dataset loader
-  :type loader: :class:`torch.utils.data.DataLoader`
-  :param progess: Optional progress bar description. None for no progress bar
-  :type progess: string or None
-  :return: dictionary with "accuracy", "loss", "num_correct"
-  :rtype: dict
+  :param args:  tuple with the following arguments: (experiment path,
+                configuration parameters, minWeight, progress bar position)
+  :type args:   tuple
+
+  :return: Panda DataFrame with the nonzero count for every weight variable in
+           the model and the evaluation results after the pruning the weights.
+  :rtype: :class:`pandas.DataFrame`
   """
-  model.eval()
-  loss = 0
-  correct = 0
-  dataset_len = len(loader.sampler)
+  path, params, minWeight, position = args
 
-  if progess is not None:
-    loader = tqdm(loader, desc=progess)
+  # Dataset transformations used during training. See mnist_sparse_experiment.py
+  transform = transforms.Compose([transforms.ToTensor(),
+                                  transforms.Normalize((0.1307,), (0.3081,))])
 
-  with torch.no_grad():
-    for data, target in loader:
-      output = model(data)
-      loss += F.nll_loss(output, target, reduction='sum').item()
-      pred = output.max(1, keepdim=True)[1]
-      correct += pred.eq(target.view_as(pred)).sum().item()
+  # Initialize MNIST test dataset for this experiment
+  test_loader = torch.utils.data.DataLoader(
+    datasets.MNIST(params["datadir"], train=False, download=True,
+                   transform=transform),
+    batch_size=params["test_batch_size"], shuffle=True)
 
-  loss /= dataset_len
-  accuracy = 100. * correct / dataset_len
+  # Load pre-trained model and evaluate with test dataset
+  model = torch.load(os.path.join(path, "model.pt"), map_location="cpu")
 
-  return {"num_correct": correct,
-          "loss": loss,
-          "accuracy": accuracy}
+  tables = []
+  label = str(minWeight)
+  name = params["name"]
+  desc = "{}.min({})".format(name, minWeight)
+  model.pruneWeights(minWeight)
+
+  # Collect nonzero
+  nonzero = {}
+  register_nonzero_counter(model, nonzero)
+  results = evaluateModel(model, test_loader, {"desc": desc, "position": position})
+  unregister_counter_nonzero(model)
+
+  # Create table with results
+  table = pd.DataFrame.from_dict(nonzero)
+  table = table.assign(noise_score=results["total_correct"])
+  table = table.assign(accuracy=results["accuracy"])
+
+  # Filter result for the 'weight' variable only
+  tables.append(pd.DataFrame({label: table.xs("weight")}))
+
+  # Compute noise score
+  noise_values = tqdm([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
+                      position=position)
+  for noise in noise_values:
+    noise_values.set_description("{}.noise({})".format(desc, noise))
+
+    # Add noise to dataset transforms
+    transform.transforms.append(
+      RandomNoise(noise, whiteValue=0.1307 + 2 * 0.3081))
+
+    # Evaluate model with noise
+    results = evaluateModel(model, test_loader)
+
+    # Remove noise from dataset transforms
+    transform.transforms.pop()
+
+    # Update noise score
+    table["noise_score"] += results["total_correct"]
+
+  merged = pd.concat(tables, axis=1)
+  merged.drop(["input", "output"], inplace=True)
+  merged.dropna(inplace=True)
+  return merged
 
 
 
-if __name__ == '__main__':
+def plotDataframe(table, title, plotPath):
+  """
+  Plot Panda dataframe.
+
+  :param table: Panda dataframe returned by :func:`analyzeWeightPruning`
+  :type table: :class:`pandas.DataFrame`
+  :param title: Plot title
+  :type title: str
+  :param plotPath: Plot full path
+  :type plotPath: str
+
+  """
+  plt.figure()
+  axes = table.T.plot(subplots=True, sharex=True, grid=True, legend=True,
+                      title=title, figsize=(8, 11))
+
+  # Use fixed scale for "accuracy"
+  accuracy = next(ax for ax in axes if ax.lines[0].get_label() == 'accuracy')
+  accuracy.set_ylim(0.0, 1.0)
+
+  plt.savefig(plotPath)
+  plt.close()
+
+
+
+def main():
   # Initialize experiment options and parameters
   suite = MNISTSparseExperiment()
   suite.parse_opt()
   suite.parse_cfg()
   experiments = suite.options.experiments or suite.cfgparser.sections()
 
-  # Dataset transformations used during training. See mnist_sparse_experiment.py
-  transform = transforms.Compose([transforms.ToTensor(),
-                                  transforms.Normalize((0.1307,), (0.3081,))])
-
   # Optional result filter
   results_filter = None  # ["min_weight0.0", "min_weight0.1"])
 
+  args = []
   for expName in experiments:
     path = suite.get_exp(expName)[0]
     results = suite.get_exps(path=path)
@@ -119,40 +183,23 @@ if __name__ == '__main__':
       results = filterResults(results, results_filter)
 
     for exp in results:
-      print()
-      print(exp)
-      params = suite.get_params(exp)
+      for i, minWeight in enumerate(np.linspace(0.0, 0.1, 21)):
+        args.append([exp, suite.get_params(exp), minWeight, i])
 
-      # Initialize MNIST test dataset for this experiment
-      test_loader = torch.utils.data.DataLoader(
-        datasets.MNIST(params["datadir"], train=False, download=True,
-                       transform=transform),
-        batch_size=params["test_batch_size"], shuffle=True)
+    pool = multiprocessing.Pool()
 
-      # Load pre-trained model and evaluate with test dataset
-      model = torch.load(os.path.join(exp, "model.pt"))
+    # Analyze weight pruning
+    tables = pool.map(analyzeWeightPruning, args)
+    merged = pd.concat(tables, axis=1).sort_index(axis=1)
+    plotname = "weight_pruning_{}".format(expName)
+    plotDataframe(merged, plotname, "{}.pdf".format(plotname))
+    print()
+    print(plotname)
+    print(tabulate(merged, headers='keys', tablefmt='fancy_grid',
+                   numalign="right"))
 
-      tables = []
-      for ratio in np.linspace(0.0, 0.1, 11):
-        label = str(ratio)
-        model.pruneWeights(ratio)
 
-        # Collect nonzero
-        nonzero = {}
-        register_nonzero_counter(model, nonzero)
-        eval = evaluateModel(model, test_loader, progess=label)
-        unregister_counter_nonzero(model)
 
-        # Create table with results
-        table = pd.DataFrame.from_dict(nonzero)
-        table = table.assign(**eval)
 
-        # Filter results for the 'weight' variable only
-        tables.append(pd.DataFrame({label: table.xs("weight")}))
-
-      merged = pd.concat(tables, axis=1)
-      merged.drop(["input", "output"], inplace=True)
-      merged.dropna(inplace=True)
-
-      # Print results
-      print(tabulate(merged, headers='keys', tablefmt='fancy_grid'))
+if __name__ == '__main__':
+  main()
