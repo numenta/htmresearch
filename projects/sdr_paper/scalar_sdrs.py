@@ -88,13 +88,15 @@ def plotDot(dot, title="Histogram of dot products",
 #   w = floor( ((h_w[1] + (2 * pad) - ( dilation * (kernel_size[1] - 1) ) - 1 )/ stride) + 1)
 #   return h, w
 
+
 def returnMatches(k, n):
 
   # How many prototypes to store
-  m = 10000
+  m1 = 10000
+  m2 = 100
 
-  w1 = getSparseTensor(k, n, m)
-  v1 = getSparseTensor(k, n, 100, onlyPositive=True)
+  w1 = getSparseTensor(k, n, m1)
+  v1 = getSparseTensor(k, n, m2, onlyPositive=True)
   dot = v1.matmul(w1.t())
 
   wd = w1.matmul(w1.t())
@@ -103,18 +105,66 @@ def returnMatches(k, n):
   # print("min/max/mean w dot products", wd.min(), wd.max(), wd.mean())
 
   # Let wd.diag().min() be a decent minimal theta for matching
-  print("k,n", k, n, "number that match above theta", (dot>theta).sum())
+  numMatches = ((dot>theta).sum()).item()
+  pctMatches = numMatches / float(m1*m2)
+  print("a,n", k, n, "number that match above theta", numMatches)
+  print("pct matches:", pctMatches)
 
   # plotDot(dot,
   #         title="Histogram of overlaps 100 out of 2000",
   #         path="dot_100_2000.pdf")
 
+  return pctMatches
+
+
+def plotMatches(listofaValues, listofNValues, errors):
+  fig, ax = plt.subplots()
+
+  fig.suptitle("Match probability for sparse vectors")
+  ax.set_xlabel("Dimensionality (n)")
+  ax.set_ylabel("Frequency of matches")
+  ax.set_yscale("log")
+
+  ax.plot(listofNValues, errors[0,:], 'k:',
+          label="a=64 (predicted)", marker="o", color='black')
+  ax.plot(listofNValues, errors[1,:], 'k:',
+          label="a=128 (predicted)", marker="o", color='black')
+  ax.plot(listofNValues, errors[2,:], 'k:',
+          label="a=256 (predicted)", marker="o", color='black')
+  ax.plot(listofNValues, errors[3, :], 'k:',
+          label="a=256 (predicted)", marker="o", color='black')
+
+  # ax.plot(listofNValues, errorsDense, 'k:', label="a=n/2 (predicted)", color='black')
+  #
+  # ax.plot(listofNValues[0:3], theoreticalErrorsA64, 'k:', label="a=64 (observed)")
+  # ax.plot(listofNValues[0:9], theoreticalErrorsA128, 'k:', label="a=128 (observed)", color='black')
+  # ax.plot(listofNValues, theoreticalErrorsA256, 'k:', label="a=256 (observed)")
+
+  ax.annotate(r"$a = 20$", xy=(listofNValues[3], errors[0,3]),
+              xytext=(-5, 2), textcoords="offset points", ha="right",
+              color='black')
+  ax.annotate(r"$a = 50$", xy=(listofNValues[3], errors[1,3]),
+               ha="center",color='black')
+  ax.annotate(r"$a = 75$", xy=(listofNValues[3], errors[2,3]),
+               ha="center",color='black')
+
+  plt.minorticks_off()
+  plt.grid(True, alpha=0.3)
+
+  plt.savefig("images/scalar_effect_of_n.pdf")
+  plt.close()
 
 
 if __name__ == '__main__':
 
-  for k in [20, 50, 75, 100]:
-    for n in [125, 250, 500, 1000, 2000]:
-      returnMatches(k, n)
+  listofaValues = [20, 50, 75, 100]
+  listofNValues = [125, 250, 500, 1000, 2000]
+  errors = np.zeros((len(listofaValues), len(listofNValues)))
+  for ai, a in enumerate(listofaValues):
+    for ni, n in enumerate(listofNValues):
+      errors[ai, ni] = returnMatches(a, n)
       print()
 
+  print(errors)
+
+  plotMatches(listofaValues, listofNValues, errors)
