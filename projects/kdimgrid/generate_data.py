@@ -28,7 +28,23 @@ import threading
 import numpy as np
 from scipy.stats import ortho_group
 
-from htmresearch_core.experimental import computeBinSidelength
+from htmresearch_core.experimental import (computeBinSidelength,
+                                           computeBinRectangle)
+
+
+def create_bases(k, s):
+    assert(k>1)
+    B = np.zeros((k,k))
+    B[:2,:2] = np.array([
+        [1.,0.],
+        [0.,1.]
+    ])
+    for col in range(2,k):
+        B[ :, col] = np.random.randn(k)
+        B[ :, col] = B[ :, col]/np.linalg.norm(B[ :, col])
+
+    Q = ortho_group.rvs(k)
+    return np.dot(Q,s*B)
 
 
 def create_orthogonal_projection_base(k, s):
@@ -44,7 +60,7 @@ def random_point_on_circle():
     return np.array([np.cos(r), np.sin(r)])
 
 
-def create_params(m,k):
+def create_params(m, k, orthogonal):
     B = np.zeros((m,k,k))
     A = np.zeros((m,2,k))
     # S = np.sqrt(2)**np.arange(m)
@@ -55,7 +71,10 @@ def create_params(m,k):
             B[m_,0,0] = S[m_]*np.random.choice([-1.,1.])
             A[m_] = np.dot(random_point_on_circle().reshape((2,1)), np.linalg.inv(B[m_]))
         else:
-            B[m_] = create_orthogonal_projection_base(k, S[m_])
+            if orthogonal:
+                B[m_] = create_orthogonal_projection_base(k, S[m_])
+            else:
+                B[m_] = create_bases(k, S[m_])
             A[m_] = np.linalg.inv(B[m_])[:2]
 
     return {
@@ -72,12 +91,21 @@ def getQuery(A, S, m, k, phase_resolution):
     return (A_, phase_resolution)
 
 
-def processQuery(query):
+def processCubeQuery(query):
     A, phase_resolution = query
+    resultResolution = 0.01
+    upperBound = 2048.0
+    timeout = 60.0 * 10.0 # 10 minutes
 
     try:
-        timeout = 60.0 * 10.0 # 10 minutes
-        return computeBinSidelength(A, phase_resolution, 0.01, timeout=timeout)
+        result = computeBinSidelength(A, phase_resolution, resultResolution,
+                                      upperBound, timeout)
+        if result == -1.0:
+            print "Couldn't find bin smaller than {} for query {}".format(
+                upperBound, A.tolist())
+            return None
+
+        return result
     except RuntimeError as e:
         if e.message == "timeout":
             print "Timed out on query {}".format(A.tolist())
@@ -86,23 +114,66 @@ def processQuery(query):
             raise
 
 
+def processRectangleQuery(query):
+    A, phase_resolution = query
+    resultResolution = 0.01
+    upperBound = 2048.0
+    timeout = 60.0 * 10.0 # 10 minutes
+
+    try:
+        result = computeBinRectangle(A, phase_resolution, resultResolution,
+                                     upperBound, timeout)
+
+        if len(result) == 0:
+            print "Couldn't find bin smaller than {} for query {}".format(
+                upperBound, A.tolist())
+            return None
+
+        return result
+    except RuntimeError as e:
+        if e.message == "timeout":
+            print "Timed out on query {}".format(A.tolist())
+            return None
+        else:
+            raise
+
+
+
+class IterableWithLen(object):
+    def __init__(self, iterable, length):
+        self.iterable = iterable
+        self.length = length
+
+    def __len__(self):
+        return self.length
+
+    def __iter__(self):
+        return self.iterable
+
+
+
 class Scheduler(object):
-    def __init__(self, folderpath, numTrials, ms, ks, phaseResolution=0.2):
+    def __init__(self, folderpath, numTrials, ms, ks, phaseResolutions,
+                 measureRectangle, allowOblique):
         self.folderpath = folderpath
         self.numTrials = numTrials
         self.ms = ms
         self.ks = ks
-        self.phaseResolution = phaseResolution
+        self.phaseResolutions = phaseResolutions
+        self.measureRectangle = measureRectangle
+        self.allowOblique = allowOblique
+
         self.failureCounter = 0
         self.successCounter = 0
 
         self.pool = multiprocessing.Pool()
         self.finishedEvent = threading.Event()
 
-        self.mk_combinations = [(m, k)
-                                for m in ms
-                                for k in ks
-                                if 2*m >= k]
+        self.param_combinations = [(phr, m, k)
+                                   for phr in phaseResolutions
+                                   for m in ms
+                                   for k in ks
+                                   if 2*m >= k]
 
         for _ in xrange(numTrials):
             self.queueNewWorkItem()
@@ -121,19 +192,27 @@ class Scheduler(object):
 
 
     def queueNewWorkItem(self):
-        resultDict = create_params(max(self.ms), max(self.ks))
-        resultDict["phase_resolution"] = self.phaseResolution
+        forceOrthogonal = not self.allowOblique
+        resultDict = create_params(max(self.ms), max(self.ks), forceOrthogonal)
+        resultDict["phase_resolutions"] = self.phaseResolutions
         resultDict["ms"] = self.ms
         resultDict["ks"] = self.ks
 
         A = resultDict["A"]
         S = resultDict["S"]
-        queries = (getQuery(A, S, m, k, self.phaseResolution)
-                   for m, k in self.mk_combinations)
+
+        queries = (getQuery(A, S, m, k, phr)
+                   for phr, m, k in self.param_combinations)
+        # map_async will convert this to a list if it can't get the length.
+        queries = IterableWithLen(queries, len(self.param_combinations))
+
+        if self.measureRectangle:
+            operation = processRectangleQuery
+        else:
+            operation = processCubeQuery
 
         context = ContextForSingleMatrix(self, resultDict)
-
-        self.pool.map_async(processQuery, queries, callback=context.onFinished)
+        self.pool.map_async(operation, queries, callback=context.onFinished)
 
 
     def handleFailure(self, resultDict):
@@ -151,17 +230,26 @@ class Scheduler(object):
                 self.numTrials - self.successCounter)
             pickle.dump(resultDict, fout)
 
-
         self.queueNewWorkItem()
 
 
     def handleSuccess(self, resultDict, results):
         # Insert results into dict
-        bin_sidelengths = np.full((len(self.ms), len(self.ks)),
-                                  np.nan, dtype="float")
-        for (m, k), result in zip(self.mk_combinations, results):
-            bin_sidelengths[self.ms.index(m), self.ks.index(k)] = result
-        resultDict["bin_sidelength"] = bin_sidelengths
+        if self.measureRectangle:
+            rectangles = {}
+            for (phr, m, k), result in zip(self.param_combinations, results):
+                rectangles[(phr, m, k)] = result
+
+            resultDict["rectangles"] = rectangles
+        else:
+            bin_sidelengths = np.full((len(self.phaseResolutions),
+                                       len(self.ms),
+                                       len(self.ks)),
+                                      np.nan, dtype="float")
+            for (phr, m, k), result in zip(self.param_combinations, results):
+                bin_sidelengths[self.phaseResolutions.index(phr), self.ms.index(m),
+                                self.ks.index(k)] = result
+            resultDict["bin_sidelength"] = bin_sidelengths
 
         # Save the dict
         successFolder = os.path.join(self.folderpath, "in")
@@ -198,10 +286,14 @@ if __name__ == "__main__":
     parser.add_argument("--numTrials", type=int, default=1)
     parser.add_argument("--m", type=int, required=True, nargs="+")
     parser.add_argument("--k", type=int, required=True, nargs="+")
+    parser.add_argument("--phaseResolution", type=float, default=[0.2], nargs="+")
+    parser.add_argument("--measureRectangle", action="store_true")
+    parser.add_argument("--allowOblique", action="store_true")
 
     args = parser.parse_args()
 
     cwd = os.path.dirname(os.path.realpath(__file__))
-    folderpath = os.path.join(cwd, "data", args.folderName)
+    folderpath = os.path.join(cwd, args.folderName)
 
-    Scheduler(folderpath, args.numTrials, args.m, args.k).join()
+    Scheduler(folderpath, args.numTrials, args.m, args.k, args.phaseResolution,
+              args.measureRectangle, args.allowOblique).join()
