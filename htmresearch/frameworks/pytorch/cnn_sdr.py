@@ -232,6 +232,9 @@ class CNNSDR2d(nn.Module):
     if threshold < 0.0:
       return
 
+    if not hasattr(self, 'dutyCycle'):
+      return
+
     # See KWinners
     targetDesity = float(self.k) / (
         float(self.outChannels) * self.imageShape[1] * self.imageShape[2])

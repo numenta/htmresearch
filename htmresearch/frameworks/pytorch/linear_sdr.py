@@ -183,6 +183,9 @@ class LinearSDR(nn.Module):
     if threshold < 0.0:
       return
 
+    if not hasattr(self, 'dutyCycle'):
+      return
+
     # See KWinners
     targetDesity = float(self.k) / float(self.n)
 

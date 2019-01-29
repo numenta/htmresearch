@@ -82,7 +82,6 @@ def analyzeWeightPruning(args):
   # Load pre-trained model and evaluate with test dataset
   model = torch.load(os.path.join(path, "model.pt"), map_location="cpu")
 
-  tables = []
   label = str(minWeight)
   name = params["name"]
   desc = "{}.minW({}).minD({})".format(name, minWeight, minDutycycle)
@@ -98,11 +97,8 @@ def analyzeWeightPruning(args):
 
   # Create table with results
   table = pd.DataFrame.from_dict(nonzero)
-  table = table.assign(noise_score=results["total_correct"])
+  noise_score = results["total_correct"]
   table = table.assign(accuracy=results["accuracy"])
-
-  # Filter result for the 'weight' variable only
-  tables.append(pd.DataFrame({label: table.xs("weight")}))
 
   # Compute noise score
   noise_values = tqdm([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
@@ -121,12 +117,16 @@ def analyzeWeightPruning(args):
     transform.transforms.pop()
 
     # Update noise score
-    table["noise_score"] += results["total_correct"]
+    noise_score += results["total_correct"]
 
-  merged = pd.concat(tables, axis=1)
-  merged.drop(["input", "output"], inplace=True)
-  merged.dropna(inplace=True)
-  return merged
+  table = table.assign(noise_score=noise_score)
+
+  # Filter result for the 'weight' variable only
+  table = pd.DataFrame({label: table.xs("weight")})
+
+  table.drop(["input", "output"], inplace=True)
+  table.dropna(inplace=True)
+  return table
 
 
 
@@ -155,6 +155,30 @@ def plotDataframe(table, title, plotPath):
 
 
 
+def run(pool, expName, name, args):
+  """
+  Runs :func:`analyzeWeightPruning` in parallel and save the results
+
+  :param pool: multiprocessing pool
+  :param expName: Experiment name
+  :param name: File/Plot name (i.e. 'weight_prunning')
+  :param args: Argument list to be passed to :func:`analyzeWeightPruning`
+  :return: panda dataframe with all the results
+
+  """
+  tables = pool.map(analyzeWeightPruning, args)
+  merged = pd.concat(tables, axis=1).sort_index(axis=1)
+  filename = "{}_{}".format(name, expName)
+  plotDataframe(merged, filename, "{}.pdf".format(filename))
+  print()
+  print(filename)
+  print(tabulate(merged, headers='keys', tablefmt='fancy_grid',
+                 numalign="right"))
+  merged.to_csv("{}.csv".format(filename))
+  return merged
+
+
+
 def main():
   # Initialize experiment options and parameters
   suite = MNISTSparseExperiment()
@@ -162,44 +186,28 @@ def main():
   suite.parse_cfg()
   experiments = suite.options.experiments or suite.cfgparser.sections()
 
-  args = []
-  # Analyze weight pruning alone. No dutycycle pruning
-  minDutycycle = -1
+  pool = multiprocessing.Pool()
+
   for expName in experiments:
     path = suite.get_exp(expName)[0]
     results = suite.get_exps(path=path)
 
+    # Build argument list for multiprocessing pool
+    args = []
     for exp in results:
       params = suite.get_params(exp)
       for i, minWeight in enumerate(np.linspace(0.0, 0.1, 21)):
-        args.append((exp, params, minWeight, minDutycycle, i))
+        args.append((exp, params, minWeight, -1, i))
 
-    pool = multiprocessing.Pool()
+    args = np.array(args)
 
-    tables = pool.map(analyzeWeightPruning, args)
-    merged = pd.concat(tables, axis=1).sort_index(axis=1)
-    plotname = "weight_pruning_{}".format(expName)
-    plotDataframe(merged, plotname, "{}.pdf".format(plotname))
-    print()
-    print(plotname)
-    print(tabulate(merged, headers='keys', tablefmt='fancy_grid',
-                   numalign="right"))
-    merged.to_csv("{}.csv".format(plotname))
+    # Analyze weight pruning alone. No dutycycle pruning
+    args[:, 3] = -1  # set minDutycycle to -1 for all experiments
+    run(pool, expName, "weight_prunning", args)
 
     # Analyze dutycycle pruning units with dutycycle below 5% from target density
-    minDutycycle = 0.05
-    args = np.array(args)
-    args[:, 3] = minDutycycle  # set minDutycycle for all experiments
-
-    tables = pool.map(analyzeWeightPruning, args)
-    merged = pd.concat(tables, axis=1).sort_index(axis=1)
-    plotname = "dutycycle_pruning_{}_{}".format(expName, minDutycycle)
-    plotDataframe(merged, plotname, "{}.pdf".format(plotname))
-    merged.to_csv("{}.csv".format(plotname))
-    print()
-    print(plotname)
-    print(tabulate(merged, headers='keys', tablefmt='fancy_grid',
-                   numalign="right"))
+    args[:, 3] = 0.05  # set minDutycycle to 5% for all experiments
+    run(pool, expName, "dutycycle_pruning", args)
 
 
 
