@@ -27,18 +27,17 @@ import numpy as np
 import time
 
 import torch
-import torch.nn.functional as F
 import torch.optim as optim
 from torchvision import datasets, transforms
 
-from htmresearch.frameworks.pytorch.benchmark_utils import (
-  register_nonzero_counter, unregister_counter_nonzero)
 from htmresearch.support.expsuite import PyExperimentSuite
 
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.sparse_net import SparseNet
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
 from htmresearch.frameworks.pytorch.dataset_utils import createValidationDataSampler
+from htmresearch.frameworks.pytorch.model_utils import (
+  evaluateModel, trainModel)
 
 
 class MNISTSparseExperiment(PyExperimentSuite):
@@ -273,29 +272,23 @@ class MNISTSparseExperiment(PyExperimentSuite):
     ends after one pass through the training set, or if the number of mini
     batches exceeds the parameter "batches_in_epoch".
     """
-    self.model.train()
-    for batch_idx, (data, target) in enumerate(self.train_loader):
 
-      data, target = data.to(self.device), target.to(self.device)
-      self.optimizer.zero_grad()
-      output = self.model(data)
-      loss = F.nll_loss(output, target)
-      loss.backward()
-      self.optimizer.step()
-
-      # Log info every log_interval mini batches
+    # Callback used to log information on every batch
+    def log(model, batch_idx):
       if batch_idx % params["log_interval"] == 0:
-        entropy = self.model.entropy()
-        print("logging: ",self.model.getLearningIterations(),
-              " learning iterations, elapsedTime", time.time() - self.startTime,
-              " entropy:", float(entropy)," / ", self.model.maxEntropy())
-        if params["create_plots"]:
-          plotDutyCycles(self.model.dutyCycle,
-                         self.resultsDir + "/figure_"+str(epoch)+"_"+str(
-                           self.model.getLearningIterations()))
+        entropy = model.entropy()
+        print("logging: {} learning iterations, entropy: {} / {}".format(
+          model.getLearningIterations(), float(entropy), model.maxEntropy()))
 
-      if batch_idx >= params["batches_in_epoch"]:
-        break
+        if params["create_plots"]:
+          plotDutyCycles(model.dutyCycle,
+                         self.resultsDir + "/figure_" + str(epoch) + "_" +
+                         str(model.getLearningIterations()))
+
+    trainModel(model=self.model, loader=self.train_loader,
+               optimizer=self.optimizer, device=self.device,
+               batches_in_epoch=params["batches_in_epoch"],
+               batch_callback=log)
 
     self.model.postEpoch()
 
@@ -304,40 +297,13 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Test the model using the given loader and return test metrics
     """
-    self.model.eval()
-    test_loss = 0
-    correct = 0
-
-    nonzeros = None
-    count_nonzeros = params.get("count_nonzeros", False)
-    if count_nonzeros:
-      nonzeros = {}
-      register_nonzero_counter(self.model, nonzeros)
-
-    with torch.no_grad():
-      for data, target in test_loader:
-        data, target = data.to(self.device), target.to(self.device)
-        output = self.model(data)
-        test_loss += F.nll_loss(output, target, reduction='sum').item()
-        pred = output.max(1, keepdim=True)[1]
-        correct += pred.eq(target.view_as(pred)).sum().item()
-
-        # count nonzeros only once
-        if count_nonzeros:
-          count_nonzeros = False
-          unregister_counter_nonzero(self.model)
-
-    test_loss /= len(test_loader.sampler)
-    test_error = 100. * correct / len(test_loader.sampler)
-
+    results = evaluateModel(model=self.model, loader=test_loader)
     entropy = self.model.entropy()
-    ret = {"num_correct": correct,
-           "test_loss": test_loss,
-           "testerror": test_error,
+    ret = {"num_correct": results["total_correct"],
+           "test_loss": results["loss"],
+           "testerror": results["accuracy"] * 100,
            "entropy": float(entropy)}
 
-    if nonzeros is not None:
-      ret["nonzeros"] = nonzeros
 
     return ret
 
