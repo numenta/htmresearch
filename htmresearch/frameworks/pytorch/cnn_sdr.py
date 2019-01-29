@@ -221,3 +221,24 @@ class CNNSDR2d(nn.Module):
       return 0
 
 
+  def pruneDutycycles(self, threshold=0.0):
+    """
+    Prune all the units whose dutycycles absolute magnitude is less than
+      `threshold * k / (f * w * h)`
+
+    :param threshold: min threshold to prune. If less than zero then no pruning
+    :type threshold: float
+    """
+    if threshold < 0.0:
+      return
+
+    # See KWinners
+    targetDesity = float(self.k) / (
+        float(self.outChannels) * self.imageShape[1] * self.imageShape[2])
+
+    # Units to keep
+    mask = torch.ge(torch.abs(self.dutyCycle), targetDesity * threshold)
+    mask = mask.type(torch.float32).view(self.outChannels, 1, 1, 1)
+
+    # Zero weights with low dutycycles
+    self.cnn.weight.data.mul_(mask)

@@ -172,3 +172,23 @@ class LinearSDR(nn.Module):
       return entropy
     else:
       return 0
+
+  def pruneDutycycles(self, threshold=0.0):
+    """
+    Prune all the units whose dutycycles absolute magnitude is less than
+    `threshold * k/n`
+    :param threshold: min threshold to prune. If less than zero then no pruning
+    :type threshold: float
+    """
+    if threshold < 0.0:
+      return
+
+    # See KWinners
+    targetDesity = float(self.k) / float(self.n)
+
+    # Units to keep
+    mask = torch.ge(torch.abs(self.dutyCycle), targetDesity * threshold)
+    mask = mask.type(torch.float32).view(self.n, 1)
+
+    # Zero weights with low dutycycles
+    self.l1.weight.data.mul_(mask)
