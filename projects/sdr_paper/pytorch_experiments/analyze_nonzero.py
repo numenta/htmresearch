@@ -49,36 +49,25 @@ from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
 
 
 
-def filterResults(results, filter):
-  """
-  Filter results containing the given condition
-
-  :param results: list of experiments returned by `suite.get_exps`
-  :type results: list[string]
-  :param filter: list of conditions on the experiment parameters. For example:
-                 ["dropout0.0", "dropout0.50"]
-  :type filter: list[string] or None
-  :return: filtered results
-  :rtype: list[string]
- """
-  return [exp for exp in results if any(map(lambda v: v in exp, filter))]
-
-
-
 def analyzeWeightPruning(args):
   """
   Multiprocess function used to analyze the impact of nonzeros and accuracy
-  after pruning weights of a pre-trained model.
+  after pruning low weights and units with low dutycycle of a pre-trained model.
 
-  :param args:  tuple with the following arguments: (experiment path,
-                configuration parameters, minWeight, progress bar position)
+  :param args:  tuple with the following arguments:
+                - experiment path: The experiment results path
+                - configuration parameters: The parameters used in the experiment run
+                - minWeight: min weight to prune. If zero then no pruning
+                - minDutycycle: min threshold to prune. If less than zero then no pruning
+                - progress bar position:
+                When 'minWeight' is zero
   :type args:   tuple
 
   :return: Panda DataFrame with the nonzero count for every weight variable in
            the model and the evaluation results after the pruning the weights.
   :rtype: :class:`pandas.DataFrame`
   """
-  path, params, minWeight, position = args
+  path, params, minWeight, minDutycycle, position = args
 
   # Dataset transformations used during training. See mnist_sparse_experiment.py
   transform = transforms.Compose([transforms.ToTensor(),
@@ -96,8 +85,10 @@ def analyzeWeightPruning(args):
   tables = []
   label = str(minWeight)
   name = params["name"]
-  desc = "{}.min({})".format(name, minWeight)
+  desc = "{}.minW({}).minD({})".format(name, minWeight, minDutycycle)
+
   model.pruneWeights(minWeight)
+  model.pruneDutycycles(minDutycycle)
 
   # Collect nonzero
   nonzero = {}
@@ -171,24 +162,20 @@ def main():
   suite.parse_cfg()
   experiments = suite.options.experiments or suite.cfgparser.sections()
 
-  # Optional result filter
-  results_filter = None  # ["min_weight0.0", "min_weight0.1"])
-
   args = []
+  # Analyze weight pruning alone. No dutycycle pruning
+  minDutycycle = -1
   for expName in experiments:
     path = suite.get_exp(expName)[0]
     results = suite.get_exps(path=path)
 
-    if results_filter is not None:
-      results = filterResults(results, results_filter)
-
     for exp in results:
+      params = suite.get_params(exp)
       for i, minWeight in enumerate(np.linspace(0.0, 0.1, 21)):
-        args.append([exp, suite.get_params(exp), minWeight, i])
+        args.append((exp, params, minWeight, minDutycycle, i))
 
     pool = multiprocessing.Pool()
 
-    # Analyze weight pruning
     tables = pool.map(analyzeWeightPruning, args)
     merged = pd.concat(tables, axis=1).sort_index(axis=1)
     plotname = "weight_pruning_{}".format(expName)
@@ -197,7 +184,22 @@ def main():
     print(plotname)
     print(tabulate(merged, headers='keys', tablefmt='fancy_grid',
                    numalign="right"))
+    merged.to_csv("{}.csv".format(plotname))
 
+    # Analyze dutycycle pruning units with dutycycle below 5% from target density
+    minDutycycle = 0.05
+    args = np.array(args)
+    args[:, 3] = minDutycycle  # set minDutycycle for all experiments
+
+    tables = pool.map(analyzeWeightPruning, args)
+    merged = pd.concat(tables, axis=1).sort_index(axis=1)
+    plotname = "dutycycle_pruning_{}_{}".format(expName, minDutycycle)
+    plotDataframe(merged, plotname, "{}.pdf".format(plotname))
+    merged.to_csv("{}.csv".format(plotname))
+    print()
+    print(plotname)
+    print(tabulate(merged, headers='keys', tablefmt='fancy_grid',
+                   numalign="right"))
 
 
 
