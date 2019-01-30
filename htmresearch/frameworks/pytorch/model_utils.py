@@ -32,8 +32,9 @@ logging.basicConfig(level=logging.ERROR)
 
 
 
-def trainModel(model, loader, optimizer, batches_in_epoch=sys.maxint,
-               device="cpu", batch_callback=None, progress_bar=None):
+def trainModel(model, loader, optimizer, device,
+               batches_in_epoch=sys.maxint, batch_callback=None,
+               progress_bar=None):
   """
   Train the given model by iterating through mini batches. An epoch
   ends after one pass through the training set, or if the number of mini
@@ -47,7 +48,8 @@ def trainModel(model, loader, optimizer, batches_in_epoch=sys.maxint,
          This function will train the model on every batch using this optimizer
          and the :func:`torch.nn.functional.nll_loss` function
   :param batches_in_epoch: Max number of mini batches to train.
-  :param device: "cpu" or "gpu"
+  :param device: device to use ('cpu' or 'cuda')
+  :type device: :class:`torch.device
   :param batch_callback: Callback function to be called on every batch with the
                          following parameters: model, batch_idx
   :type batch_callback: function
@@ -81,7 +83,7 @@ def trainModel(model, loader, optimizer, batches_in_epoch=sys.maxint,
 
 
 
-def evaluateModel(model, loader, progress=None):
+def evaluateModel(model, loader, device, progress=None):
   """
   Evaluate pre-trained model using given test dataset loader.
 
@@ -89,6 +91,8 @@ def evaluateModel(model, loader, progress=None):
   :type model: torch.nn.Module
   :param loader: test dataset loader
   :type loader: :class:`torch.utils.data.DataLoader`
+  :param device: device to use ('cpu' or 'cuda')
+  :type device: :class:`torch.device
   :param progress: Optional :class:`tqdm` progress bar args. None for no progress bar
   :type progress: dict or None
 
@@ -106,6 +110,7 @@ def evaluateModel(model, loader, progress=None):
 
   with torch.no_grad():
     for data, target in loader:
+      data, target = data.to(device), target.to(device)
       output = model(data)
       loss += F.nll_loss(output, target, reduction='sum').item()
       pred = output.max(1, keepdim=True)[1]

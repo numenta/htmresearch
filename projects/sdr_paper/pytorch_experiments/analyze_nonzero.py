@@ -69,6 +69,8 @@ def analyzeWeightPruning(args):
   """
   path, params, minWeight, minDutycycle, position = args
 
+  device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
   # Dataset transformations used during training. See mnist_sparse_experiment.py
   transform = transforms.Compose([transforms.ToTensor(),
                                   transforms.Normalize((0.1307,), (0.3081,))])
@@ -80,7 +82,7 @@ def analyzeWeightPruning(args):
     batch_size=params["test_batch_size"], shuffle=True)
 
   # Load pre-trained model and evaluate with test dataset
-  model = torch.load(os.path.join(path, "model.pt"), map_location="cpu")
+  model = torch.load(os.path.join(path, "model.pt"), map_location=device)
 
   label = str(minWeight)
   name = params["name"]
@@ -92,7 +94,8 @@ def analyzeWeightPruning(args):
   # Collect nonzero
   nonzero = {}
   register_nonzero_counter(model, nonzero)
-  results = evaluateModel(model, test_loader, {"desc": desc, "position": position})
+  results = evaluateModel(model=model, loader=test_loader, device=device,
+                          progress={"desc": desc, "position": position})
   unregister_counter_nonzero(model)
 
   # Create table with results
@@ -111,7 +114,7 @@ def analyzeWeightPruning(args):
       RandomNoise(noise, whiteValue=0.1307 + 2 * 0.3081))
 
     # Evaluate model with noise
-    results = evaluateModel(model, test_loader)
+    results = evaluateModel(model=model, loader=test_loader, device=device)
 
     # Remove noise from dataset transforms
     transform.transforms.pop()

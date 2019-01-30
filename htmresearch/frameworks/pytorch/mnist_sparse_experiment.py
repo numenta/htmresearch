@@ -297,7 +297,8 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Test the model using the given loader and return test metrics
     """
-    results = evaluateModel(model=self.model, loader=test_loader)
+    results = evaluateModel(model=self.model, device=self.device,
+                            loader=test_loader)
     entropy = self.model.entropy()
     ret = {"num_correct": results["total_correct"],
            "test_loss": results["loss"],
