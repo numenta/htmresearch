@@ -364,7 +364,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
       # Create noise dataset with noise transform
       noiseTransform = transforms.Compose([
-        LoadAudio(),
         FixAudioLength(),
         AddNoise(noise),
         ToSTFT(),
@@ -437,7 +436,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
     trainDataset = SpeechCommandsDataset(
       trainDataDir,
       transforms.Compose([
-        LoadAudio(),
         dataAugmentationTransform,
         # add_bg_noise,               # Uncomment to allow adding BG noise
                                       # during training
@@ -445,7 +443,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
       ]))
 
     testFeatureTransform = transforms.Compose([
-      LoadAudio(),
       FixAudioLength(),
       ToMelSpectrogram(n_mels=n_mels),
       ToTensor('mel_spectrogram', 'input')
@@ -493,7 +490,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
     )
 
     bgNoiseTransform = transforms.Compose([
-      LoadAudio(),
       FixAudioLength(),
       ToSTFT(),
       AddBackgroundNoiseOnSTFT(bg_dataset),
