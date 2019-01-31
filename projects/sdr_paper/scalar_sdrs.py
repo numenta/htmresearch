@@ -250,6 +250,7 @@ if __name__ == '__main__':
 
 
   # TODO Compute false negatives
+  # TODO Compute error as a function of overall vector scaling
 
   # Results for each setting:
   # kw = 24
