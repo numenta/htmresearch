@@ -36,33 +36,43 @@ import matplotlib.pyplot as plt
 
 
 def getSparseTensor(numNonzeros, inputSize, outputSize,
-                    onlyPositive=False):
+                    onlyPositive=False,
+                    initializationMethod="fixed",
+                    fixedRange=1.0/24):
   """
-  Return a randomly tensor that is initialized like a weight matrix
+  Return a random tensor that is initialized like a weight matrix
   Size is outputSize X inputSize, where weightSparsity% of each row is non-zero
   """
   # Initialize weights in the typical fashion.
   w = torch.Tensor(outputSize, inputSize, )
-  stdv = 1. / math.sqrt(numNonzeros)
-  if onlyPositive:
-    w.data.uniform_(0, 2*stdv)
+  if initializationMethod == "uniform":
+    a = 1. / numNonzeros
+  elif initializationMethod == "fixed":
+    a = fixedRange
   else:
-    w.data.uniform_(-stdv, stdv)
+    a = 1. / math.sqrt(numNonzeros)
 
-  numZeros = inputSize - numNonzeros
+  if onlyPositive:
+    w.data.uniform_(0, 2*a)
+  else:
+    w.data.uniform_(-a, a)
 
-  outputIndices = np.arange(outputSize)
-  inputIndices = np.array([np.random.permutation(inputSize)[:numZeros]
-                           for _ in outputIndices], dtype=np.long)
+  # Zero out weights for sparse weight matrices
+  if numNonzeros < inputSize:
+    numZeros = inputSize - numNonzeros
 
-  # Create tensor indices for all non-zero weights
-  zeroIndices = np.empty((outputSize, numZeros, 2), dtype=np.long)
-  zeroIndices[:, :, 0] = outputIndices[:, None]
-  zeroIndices[:, :, 1] = inputIndices
-  zeroIndices = torch.LongTensor(zeroIndices.reshape(-1, 2))
+    outputIndices = np.arange(outputSize)
+    inputIndices = np.array([np.random.permutation(inputSize)[:numZeros]
+                             for _ in outputIndices], dtype=np.long)
 
-  zeroWts = (zeroIndices[:, 0], zeroIndices[:, 1])
-  w.data[zeroWts] = 0.0
+    # Create tensor indices for all non-zero weights
+    zeroIndices = np.empty((outputSize, numZeros, 2), dtype=np.long)
+    zeroIndices[:, :, 0] = outputIndices[:, None]
+    zeroIndices[:, :, 1] = inputIndices
+    zeroIndices = torch.LongTensor(zeroIndices.reshape(-1, 2))
+
+    zeroWts = (zeroIndices[:, 0], zeroIndices[:, 1])
+    w.data[zeroWts] = 0.0
 
   return w
 
@@ -89,35 +99,108 @@ def plotDot(dot, title="Histogram of dot products",
 #   return h, w
 
 
-def returnMatches(k, n):
+def getTheta(k, nTrials = 100000, strategy = "mean"):
+  """
+  Estimate a reasonable value of theta for this k.
+  """
+  w1 = getSparseTensor(k, k, nTrials,
+                       initializationMethod="fixed",
+                       fixedRange=1.0/k)
+  dotSum = 0.0
+  dotMin = 1000000
+  for i in range(nTrials):
+    dot = w1[i].dot(w1[i])
+    dotSum += dot
+    dotMin = min(dotMin, dot)
 
+  dotMean = dotSum / nTrials
+  print("k=", k, "min/mean diag of w dot products", dotMin, dotMean)
+
+  if strategy == "mean":
+    theta = dotMean / 2.0
+    print("Using theta as mean / 2.0 = ", theta)
+  else:
+    theta = dotMin / 2.0
+    print("Using theta as min / 2.0 = ", theta)
+
+  return theta
+
+
+def returnMatches(kw, kv, n, theta):
+  """
+  :param kw: k for the weight vectors
+  :param kv: k for the input vectors
+  :param n:  dimensionality of input vector
+  :param theta: threshold for matching after dot product
+
+  :return: percent that matched, number that matched, total match comparisons
+  """
   # How many prototypes to store
-  m1 = 10000
-  m2 = 100
+  m1 = 2
+  m2 = 1000
 
-  w1 = getSparseTensor(k, n, m1)
-  v1 = getSparseTensor(k, n, m2, onlyPositive=True)
-  dot = v1.matmul(w1.t())
+  weights = getSparseTensor(kw, n, m1,
+                            initializationMethod="fixed",
+                            fixedRange=1.0 / kw,
+                            )
 
-  wd = w1.matmul(w1.t())
-  theta = wd.diag().min() / 2.0
-  print("min/max/mean diag of w dot products", wd.diag().min(), wd.diag().max(), wd.diag().mean())
+  # Initialize input vectors using similar range as the weights, but scaled
+  # to be positive
+  inputVectors = getSparseTensor(kv, n, m2,
+                                 onlyPositive=True,
+                                 initializationMethod="fixed",
+                                 fixedRange=1.0 / kw,
+                                 )
+  dot = inputVectors.matmul(weights.t())
+
   # print("min/max/mean w dot products", wd.min(), wd.max(), wd.mean())
 
   # Let wd.diag().min() be a decent minimal theta for matching
   numMatches = ((dot>theta).sum()).item()
   pctMatches = numMatches / float(m1*m2)
-  print("a,n", k, n, "number that match above theta", numMatches)
-  print("pct matches:", pctMatches)
 
   # plotDot(dot,
   #         title="Histogram of overlaps 100 out of 2000",
   #         path="dot_100_2000.pdf")
 
-  return pctMatches
+  return pctMatches, numMatches, m1*m2
 
 
-def plotMatches(listofaValues, listofNValues, errors):
+def computeMatchProbability(kw, kv, n, theta, nTrials = 500):
+  """
+  Runs a number of trials of returnMatches() and returns an overall probability
+  of matches given the parameters.
+
+  :param kw: k for the weight vectors
+  :param kv: k for the input vectors. If -1, kv is set to n/2
+  :param n:  dimensionality of input vector
+  :param theta: threshold for matching after dot product
+  :param nTrials: number of trials to run
+
+  :return: percent that matched, number that matched, total match comparisons
+  """
+
+  if kv == -1:
+    kv = int(round(n/2.0))
+    print("n,kv",n,kv)
+
+  numMatches = 0
+  totalComparisons = 0
+  for t in range(nTrials):
+    pct, num, total = returnMatches(kw, kv, n, theta)
+    numMatches += num
+    totalComparisons += total
+
+  pctMatches = float(numMatches) / totalComparisons
+  print("kw, kv, n:", kw, kv, n, ", matches:", numMatches,
+        ", comparisons:", totalComparisons,
+        ", pct matches:", pctMatches)
+
+  return pctMatches, numMatches, totalComparisons
+
+
+def plotMatches(listofaValues, listofNValues, errors,
+                fileName = "images/scalar_effect_of_n.pdf"):
   fig, ax = plt.subplots()
 
   fig.suptitle("Match probability for sparse vectors")
@@ -131,40 +214,61 @@ def plotMatches(listofaValues, listofNValues, errors):
           label="a=128 (predicted)", marker="o", color='black')
   ax.plot(listofNValues, errors[2,:], 'k:',
           label="a=256 (predicted)", marker="o", color='black')
-  ax.plot(listofNValues, errors[3, :], 'k:',
-          label="a=256 (predicted)", marker="o", color='black')
+  ax.plot(listofNValues, errors[3,:], 'k:',
+          label="a=n/2 (predicted)", marker="o", color='black')
 
-  # ax.plot(listofNValues, errorsDense, 'k:', label="a=n/2 (predicted)", color='black')
-  #
-  # ax.plot(listofNValues[0:3], theoreticalErrorsA64, 'k:', label="a=64 (observed)")
-  # ax.plot(listofNValues[0:9], theoreticalErrorsA128, 'k:', label="a=128 (observed)", color='black')
-  # ax.plot(listofNValues, theoreticalErrorsA256, 'k:', label="a=256 (observed)")
-
-  ax.annotate(r"$a = 20$", xy=(listofNValues[3], errors[0,3]),
-              xytext=(-5, 2), textcoords="offset points", ha="right",
+  ax.annotate(r"$a = 64$", xy=(listofNValues[3]+100, errors[0,3]),
+              xytext=(-5, 2), textcoords="offset points", ha="left",
               color='black')
-  ax.annotate(r"$a = 50$", xy=(listofNValues[3], errors[1,3]),
-               ha="center",color='black')
-  ax.annotate(r"$a = 75$", xy=(listofNValues[3], errors[2,3]),
-               ha="center",color='black')
+  ax.annotate(r"$a = 128$", xy=(listofNValues[3]+100, errors[1,3]),
+               ha="left",color='black')
+  ax.annotate(r"$a = 256$", xy=(listofNValues[3]+100, errors[2,3]),
+               ha="left",color='black')
+  ax.annotate(r"$a = \frac{n}{2}$", xy=(listofNValues[3]+100, errors[3,3]),
+               ha="left",color='black')
 
   plt.minorticks_off()
   plt.grid(True, alpha=0.3)
 
-  plt.savefig("images/scalar_effect_of_n.pdf")
+  plt.savefig(fileName)
   plt.close()
 
 
 if __name__ == '__main__':
 
-  listofaValues = [20, 50, 75, 100]
-  listofNValues = [125, 250, 500, 1000, 2000]
-  errors = np.zeros((len(listofaValues), len(listofNValues)))
-  for ai, a in enumerate(listofaValues):
+  listofkValues = [64, 128, 256, -1]
+  listofNValues = [250, 500, 1000, 1500, 2000, 2500]
+
+  kw = 24
+  theta = getTheta(kw, strategy="mean")
+  errors = np.zeros((len(listofkValues), len(listofNValues)))
+  for ki, k in enumerate(listofkValues):
     for ni, n in enumerate(listofNValues):
-      errors[ai, ni] = returnMatches(a, n)
+      errors[ki, ni], numMatches, totalComparisons = computeMatchProbability(
+        kw, k, n, theta, nTrials=500)
       print()
+
+
+  # TODO Compute false negatives
+
+  # Results for each setting:
+  # kw = 24
+  # [[1.02480e-02 1.44700e-03 1.66000e-04 4.70000e-05 1.30000e-05 8.00000e-06]
+  #  [4.48810e-02 1.01170e-02 1.35600e-03 4.41000e-04 1.76000e-04 9.50000e-05]
+  # [1.16207e-01 4.29550e-02 1.02990e-02 3.39400e-03 1.58100e-03 8.37000e-04]
+  # [3.98980e-02 4.27310e-02 4.30160e-02 3.96750e-02 4.52850e-02 3.92980e-02]]
+
+  # kw = 36
+  # [[2.2910e-03 1.4400e-04 7.0000e-06 0.0000e+00 0.0000e+00 0.0000e+00]
+  #  [2.0024e-02 2.0570e-03 1.6000e-04 1.9000e-05 1.0000e-05 2.0000e-06]
+  # [6.1982e-02 1.8586e-02 2.3760e-03 5.1800e-04 1.4100e-04 6.1000e-05]]
+
+  # kw = 64, 5 million comparisons
+  # [[7.96000e-05 2.00000e-06 0.00000e+00 0.00000e+00 0.00000e+00 0.00000e+00]
+  #  [2.72540e-03 8.60000e-05 1.00000e-06 0.00000e+00 0.00000e+00 0.00000e+00]
+  # [1.97212e-02 2.49180e-03 9.76000e-05 9.00000e-06 4.00000e-07 4.00000e-07]]
 
   print(errors)
 
-  plotMatches(listofaValues, listofNValues, errors)
+  plotMatches(listofkValues, listofNValues, errors,
+              "images/scalar_effect_of_n_mean_theta_kw24.pdf")
