@@ -49,7 +49,7 @@ class SpeechCommandsDataset(Dataset):
   """
 
   def __init__(self, folder, transform=None, classes=CLASSES,
-               silence_percentage=0.1):
+               silence_percentage=0.1, sample_rate=16000):
     all_classes = [d for d in os.listdir(folder) if
                    os.path.isdir(os.path.join(folder, d)) and not d.startswith(
                      '_')]
@@ -61,18 +61,21 @@ class SpeechCommandsDataset(Dataset):
       if c not in class_to_idx:
         print ("Class ", c, "assigned as unknown")
         class_to_idx[c] = 0
-
     data = []
     for c in all_classes:
       d = os.path.join(folder, c)
       target = class_to_idx[c]
       for f in os.listdir(d):
         path = os.path.join(d, f)
-        data.append((path, target))
+        samples, sample_rate = librosa.load(path, sr=sample_rate)
+        audio = {'samples': samples, 'sample_rate': sample_rate}
+        data.append((audio, target))
 
     # add silence
     target = class_to_idx['silence']
-    data += [('', target)] * int(len(data) * silence_percentage)
+    samples = np.zeros(sample_rate, dtype=np.float32)
+    silence = {'samples': samples, 'sample_rate': sample_rate}
+    data += [(silence, target)] * int(len(data) * silence_percentage)
 
     self.classes = classes
     self.data = data
@@ -82,9 +85,8 @@ class SpeechCommandsDataset(Dataset):
     return len(self.data)
 
   def __getitem__(self, index):
-    path, target = self.data[index]
-    data = {'path': path, 'target': target}
-
+    data = self.data[index][0]
+    data.update({'target': self.data[index][1]})
     if self.transform is not None:
       data = self.transform(data)
 
