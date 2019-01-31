@@ -74,6 +74,7 @@ class Thalamus(object):
     self.inputShape = inputShape
     self.seed = seed
     self.rng = Random(seed)
+    self.trnActivationThreshold = 5
 
     self.trnConnections = SparseMatrixConnections(
       trnCellShape[0]*trnCellShape[1], l6CellCount)
@@ -82,7 +83,8 @@ class Thalamus(object):
       relayCellShape[0]*relayCellShape[1],
       trnCellShape[0]*trnCellShape[1])
 
-
+    # Initialize/reset variables that are updated with calls to compute
+    self.reset()
 
 
   def learnL6Pattern(self, l6Pattern, cellsToLearnOn):
@@ -102,11 +104,11 @@ class Thalamus(object):
     """
     cellIndices = [self.trnCellIndex(x) for x in cellsToLearnOn]
     newSegments = self.trnConnections.createSegments(cellIndices)
-    print("l6 SDR:", l6Pattern,
-          "segments: ", newSegments,
-          "cells:", self.trnConnections.mapSegmentsToCells(newSegments))
     self.trnConnections.growSynapses(newSegments, l6Pattern, 1.0)
 
+    print("Learning L6 SDR:", l6Pattern,
+          "new segments: ", newSegments,
+          "cells:", self.trnConnections.mapSegmentsToCells(newSegments))
 
 
   def deInactivateCells(self, l6Input):
@@ -120,11 +122,20 @@ class Thalamus(object):
 
     :return: nothing
     """
-    overlaps = self.trnConnections.computeActivity(l6Input, 0.5)
-    for s,o in enumerate(overlaps):
-      if o > 5:
-        idx = self.trnConnections.mapSegmentsToCells([s])
-        print(o, idx, self.trnIndextoCoord(idx[0]))
+
+    # Figure out which TRN cells recognize the L6 pattern.
+    self.trnOverlaps = self.trnConnections.computeActivity(l6Input, 0.5)
+    self.activeSegments = np.flatnonzero(
+      self.trnOverlaps >= self.trnActivationThreshold)
+    self.cellIndices = self.trnConnections.mapSegmentsToCells(
+      self.activeSegments)
+
+    print("trnOverlaps:", self.trnOverlaps,
+          "active segments:", self.activeSegments)
+    for s, idx in zip(self.activeSegments, self.cellIndices):
+      print(self.trnOverlaps[s], idx, self.trnIndextoCoord(idx))
+
+    # TODO: Figure out which relay cells have dendrites in de-inactivated state
 
 
   def computeFeedForwardActivity(self, feedForwardInput):
@@ -145,6 +156,9 @@ class Thalamus(object):
     """
     Set everything back to zero
     """
+    self.trnOverlaps = []
+    self.activeSegments = []
+    self.cellIndices = []
 
 
   def trnCellIndex(self, x):

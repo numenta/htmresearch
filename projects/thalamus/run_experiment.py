@@ -31,9 +31,20 @@ from htmresearch.frameworks.thalamus.thalamus import Thalamus
 
 def basicTest():
   t = Thalamus()
-  c = t.trnConnections
+
+  # Learn
   t.learnL6Pattern([0, 1, 2, 3, 4, 5], [(0, 0), (2, 3)])
+  t.learnL6Pattern([6, 7, 8, 9, 10], [(1, 1), (3, 4)])
+
+  # Infer
   t.deInactivateCells([0, 1, 2, 3, 4, 5])
+  t.reset()
+
+  t.deInactivateCells([6, 7, 8, 9, 10])
+  t.reset()
+
+  t.deInactivateCells([1, 2, 3, 6, 7, 8])
+  t.reset()
 
 
 if __name__ == '__main__':
