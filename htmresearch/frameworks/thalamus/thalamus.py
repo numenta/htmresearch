@@ -60,13 +60,25 @@ class Thalamus(object):
   state of the T-type CA2+ channels on their dendrites. Relay cells that don't
   receive input will remain inactive, regardless of their dendritic state.
 
+  Usage:
+
+    1. Train the TRN cells on a bunch of L6 patterns: learnL6Pattern()
+
+    2. De-inactivate relay cells by sending in an L6 pattern: deInactivateCells()
+
+    3. Compute feed forward activity for an input: computeFeedForwardActivity()
+
+    4. reset()
+
+    5. Goto 2
+
   """
 
   def __init__(self,
                trnCellShape=(32, 32),
                relayCellShape=(32, 32),
                inputShape=(32, 32),
-               l6CellCount=2048,
+               l6CellCount=1024,
                trnThreshold=10,
                relayThreshold=1,
                seed=42):
@@ -142,9 +154,9 @@ class Thalamus(object):
     newSegments = self.trnConnections.createSegments(cellIndices)
     self.trnConnections.growSynapses(newSegments, l6Pattern, 1.0)
 
-    print("Learning L6 SDR:", l6Pattern,
-          "new segments: ", newSegments,
-          "cells:", self.trnConnections.mapSegmentsToCells(newSegments))
+    # print("Learning L6 SDR:", l6Pattern,
+    #       "new segments: ", newSegments,
+    #       "cells:", self.trnConnections.mapSegmentsToCells(newSegments))
 
 
   def deInactivateCells(self, l6Input):
