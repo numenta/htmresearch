@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 
+import os
 import numpy as np
 import matplotlib
 matplotlib.use('Agg')
@@ -56,10 +57,10 @@ def trainThalamusLocations(t):
                        [(x, y)])
 
 
-def plotActivity(activity, filename):
-  plt.imshow(activity, vmin=0.0, vmax=2.0, origin="upper")
+def plotActivity(activity, filename, cmap="Greys"):
+  plt.imshow(activity, vmin=0.0, vmax=2.0, origin="upper", cmap=cmap)
   plt.colorbar()
-  plt.savefig(filename)
+  plt.savefig(os.path.join("images", filename))
   plt.close()
 
 
@@ -94,7 +95,7 @@ def locationsTest():
     ff[10:20, 10:20] = 1
     plotActivity(ff, "square_ff_input.jpg")
     testThalamus(t, getLocationSDR(encoder, x, x, output), ff)
-    plotActivity(ff, "square_relay_output_" + str(x) + ".jpg")
+    plotActivity(ff, "square_relay_output_" + str(x) + ".jpg", cmap="coolwarm")
 
   # Show attention with an A
   ff = np.zeros((32, 32))
@@ -107,7 +108,7 @@ def locationsTest():
     plotActivity(ff, "A_ff_input.jpg")
     testThalamus(t, getLocationSDR(encoder, x, x, output), ff)
     plotActivity(t.burstReadyCells, "A_relay_burstReady_" + str(x) + ".jpg")
-    plotActivity(ff, "A_relay_output_" + str(x) + ".jpg")
+    plotActivity(ff, "A_relay_output_" + str(x) + ".jpg", cmap="coolwarm")
 
 
 def basicTest():
