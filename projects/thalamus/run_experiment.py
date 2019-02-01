@@ -45,6 +45,7 @@ def getLocationSDR(encoder, x, y, output):
 
 
 def trainThalamusLocations(t):
+  print("Training TRN cells on location SDRs")
   encoder = CoordinateEncoder(name="positionEncoder", n=t.l6CellCount, w=15)
   output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
 
@@ -56,7 +57,7 @@ def trainThalamusLocations(t):
 
 
 def plotActivity(activity, filename):
-  plt.imshow(activity, vmin=0.0, vmax=2.0)
+  plt.imshow(activity, vmin=0.0, vmax=2.0, origin="upper")
   plt.colorbar()
   plt.savefig(filename)
   plt.close()
@@ -87,22 +88,26 @@ def locationsTest():
   encoder = CoordinateEncoder(name="positionEncoder", n=t.l6CellCount, w=15)
   output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
 
-
   ff = np.zeros((32, 32))
-  ff[10:20, 10:20] = 1
-  plotActivity(ff, "ff_input.jpg")
-  testThalamus(t, getLocationSDR(encoder, 16, 16, output), ff)
-  plotActivity(ff, "relay_output1.jpg")
+  for x in range(10,20):
+    ff[:] = 0
+    ff[10:20, 10:20] = 1
+    plotActivity(ff, "square_ff_input.jpg")
+    testThalamus(t, getLocationSDR(encoder, x, x, output), ff)
+    plotActivity(ff, "square_relay_output_" + str(x) + ".jpg")
 
+  # Show attention with an A
   ff = np.zeros((32, 32))
-  ff[10:20, 10:20] = 1
-  testThalamus(t, getLocationSDR(encoder, 17, 17, output), ff)
-  plotActivity(ff, "relay_output2.jpg")
-
-  ff = np.zeros((32, 32))
-  ff[10:20, 10:20] = 1
-  testThalamus(t, getLocationSDR(encoder, 18, 18, output), ff)
-  plotActivity(ff, "relay_output3.jpg")
+  for x in range(10,20):
+    ff[:] = 0
+    ff[10, 10:20] = 1
+    ff[15, 10:20] = 1
+    ff[10:20, 10] = 1
+    ff[10:20, 20] = 1
+    plotActivity(ff, "A_ff_input.jpg")
+    testThalamus(t, getLocationSDR(encoder, x, x, output), ff)
+    plotActivity(t.burstReadyCells, "A_relay_burstReady_" + str(x) + ".jpg")
+    plotActivity(ff, "A_relay_output_" + str(x) + ".jpg")
 
 
 def basicTest():
@@ -120,13 +125,6 @@ def basicTest():
   # Positions go from 0 to 1000 in both x and y directions
   encoder.encodeIntoArray((np.array([100, 200]), 10), output)
 
-  # ff = np.zeros((32,32))
-  # testThalamus(t, [6, 7, 8, 9, 10], ff)
-  #
-  # # Should do nothing
-  # ff = np.zeros((32,32))
-  # testThalamus(t, [1, 2, 3, 6, 7, 8], ff)
-  #
 
 if __name__ == '__main__':
 
