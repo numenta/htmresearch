@@ -28,46 +28,24 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
 from htmresearch.frameworks.thalamus.thalamus import Thalamus
-
-from nupic.encoders.base import defaultDtype
-from nupic.encoders.coordinate import CoordinateEncoder
+from htmresearch.frameworks.thalamus.thalamus_utils import *
 
 
-def trainThalamus(t):
-  # Learn
-  t.learnL6Pattern([0, 1, 2, 3, 4, 5], [(0, 0), (2, 3)])
-  t.learnL6Pattern([6, 7, 8, 9, 10], [(1, 1), (3, 4)])
-
-
-def getLocationSDR(encoder, x, y, output):
-  radius = 5
-  encoder.encodeIntoArray((np.array([x * radius, y * radius]), radius), output)
-  return output.nonzero()[0]
-
-
-def trainThalamusLocations(t):
-  print("Training TRN cells on location SDRs")
-  encoder = CoordinateEncoder(name="positionEncoder", n=t.l6CellCount, w=15)
-  output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
-
-  # Train the TRN cells to respond to SDRs representing locations
-  for y in range(0, t.trnHeight):
-    for x in range(0, t.trnWidth):
-      t.learnL6Pattern(getLocationSDR(encoder, x, y, output),
-                       [(x, y)])
-
-
-def plotActivity(activity, filename, cmap="Greys"):
+def plotActivity(activity, filename,
+                 title="",
+                 cmap="Greys"):
   plt.imshow(activity, vmin=0.0, vmax=2.0, origin="upper", cmap=cmap)
+  plt.title(title)
   plt.colorbar()
   plt.savefig(os.path.join("images", filename))
   plt.close()
 
 
-def testThalamus(t, l6Input, ffInput):
+def inferThalamus(t, l6Input, ffInput):
   """
+  Compute the effect of this feed forward input given the specific L6 input.
 
-  :param t:
+  :param t: instance of Thalamus
   :param l6Input:
   :param ffInput: a numpy array of 0's and 1's
   :return:
@@ -86,16 +64,18 @@ def locationsTest():
 
   trainThalamusLocations(t)
 
-  encoder = CoordinateEncoder(name="positionEncoder", n=t.l6CellCount, w=15)
+  encoder = createLocationEncoder(t)
   output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
 
   ff = np.zeros((32, 32))
   for x in range(10,20):
     ff[:] = 0
     ff[10:20, 10:20] = 1
-    plotActivity(ff, "square_ff_input.jpg")
-    testThalamus(t, getLocationSDR(encoder, x, x, output), ff)
-    plotActivity(ff, "square_relay_output_" + str(x) + ".jpg", cmap="coolwarm")
+    plotActivity(ff, "square_ff_input.jpg", title="Feed forward input")
+    inferThalamus(t, encodeLocation(encoder, x, x, output), ff)
+    plotActivity(ff, "square_relay_output_" + str(x) + ".jpg",
+                 title="Relay cell activity",
+                 cmap="coolwarm")
 
   # Show attention with an A
   ff = np.zeros((32, 32))
@@ -105,10 +85,21 @@ def locationsTest():
     ff[15, 10:20] = 1
     ff[10:20, 10] = 1
     ff[10:20, 20] = 1
-    plotActivity(ff, "A_ff_input.jpg")
-    testThalamus(t, getLocationSDR(encoder, x, x, output), ff)
-    plotActivity(t.burstReadyCells, "A_relay_burstReady_" + str(x) + ".jpg")
-    plotActivity(ff, "A_relay_output_" + str(x) + ".jpg", cmap="coolwarm")
+    plotActivity(ff, "A_ff_input.jpg", title="Feed forward input")
+    inferThalamus(t, encodeLocation(encoder, x, x, output), ff)
+    plotActivity(t.burstReadyCells, "relay_burstReady_" + str(x) + ".jpg",
+                 title="Burst-ready cells (x,y)=({},{})".format(x, x),
+                 )
+    plotActivity(ff, "A_relay_output_" + str(x) + ".jpg",
+                 title="Relay cell activity",
+                 cmap="coolwarm")
+
+
+# Simple tests for debugging
+def trainThalamus(t):
+  # Learn
+  t.learnL6Pattern([0, 1, 2, 3, 4, 5], [(0, 0), (2, 3)])
+  t.learnL6Pattern([6, 7, 8, 9, 10], [(1, 1), (3, 4)])
 
 
 def basicTest():
@@ -118,9 +109,9 @@ def basicTest():
 
   ff = np.zeros((32,32))
   ff.reshape(-1)[[8, 9, 98, 99]] = 1.0
-  testThalamus(t, [0, 1, 2, 3, 4, 5], ff)
+  inferThalamus(t, [0, 1, 2, 3, 4, 5], ff)
 
-  encoder = CoordinateEncoder(name="positionEncoder", n=1024, w=15)
+  encoder = createLocationEncoder(t)
   output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
 
   # Positions go from 0 to 1000 in both x and y directions
