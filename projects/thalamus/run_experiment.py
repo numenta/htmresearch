@@ -21,31 +21,60 @@
 
 from __future__ import print_function
 
-import pprint
-import os
 import numpy as np
-from tabulate import tabulate
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 from htmresearch.frameworks.thalamus.thalamus import Thalamus
+
+def trainThalamus(t):
+  # Learn
+  t.learnL6Pattern([0, 1, 2, 3, 4, 5], [(0, 0), (2, 3)])
+  t.learnL6Pattern([6, 7, 8, 9, 10], [(1, 1), (3, 4)])
+
+
+def plotActivity(activity, filename):
+  plt.imshow(activity)
+  plt.colorbar()
+  plt.savefig(filename)
+  plt.close()
+
+
+def testThalamus(t, l6Input, ffInput):
+  """
+
+  :param t:
+  :param l6Input:
+  :param ffInput: a numpy array of 0's and 1's
+  :return:
+  """
+  print("\n-----------")
+  t.reset()
+  t.deInactivateCells(l6Input)
+  t.computeFeedForwardActivity(ffInput)
+  print("L6 input:", l6Input)
+  print("Active TRN cells: ", t.activeTRNCellIndices)
+  print("Burst ready relay cells: ", t.burstReadyCellIndices)
 
 
 def basicTest():
   t = Thalamus()
 
-  # Learn
-  t.learnL6Pattern([0, 1, 2, 3, 4, 5], [(0, 0), (2, 3)])
-  t.learnL6Pattern([6, 7, 8, 9, 10], [(1, 1), (3, 4)])
+  trainThalamus(t)
 
-  # Infer
-  t.deInactivateCells([0, 1, 2, 3, 4, 5])
-  t.reset()
+  ff = np.zeros((32,32))
+  ff.reshape(-1)[[8, 9, 98, 99]] = 1.0
+  testThalamus(t, [0, 1, 2, 3, 4, 5], ff)
+  plotActivity(ff, "temp.jpg")
 
-  t.deInactivateCells([6, 7, 8, 9, 10])
-  t.reset()
-
-  t.deInactivateCells([1, 2, 3, 6, 7, 8])
-  t.reset()
-
+  # ff = np.zeros((32,32))
+  # testThalamus(t, [6, 7, 8, 9, 10], ff)
+  #
+  # # Should do nothing
+  # ff = np.zeros((32,32))
+  # testThalamus(t, [1, 2, 3, 6, 7, 8], ff)
+  #
 
 if __name__ == '__main__':
 
