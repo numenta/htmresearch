@@ -62,11 +62,11 @@ def inferThalamus(t, l6Input, ffInput):
 def locationsTest():
   t = Thalamus()
 
-  trainThalamusLocations(t)
-
   encoder = createLocationEncoder(t)
-  output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
 
+  trainThalamusLocations(t, encoder)
+
+  output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
   ff = np.zeros((32, 32))
   for x in range(10,20):
     ff[:] = 0

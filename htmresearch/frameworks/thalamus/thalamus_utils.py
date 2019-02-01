@@ -39,7 +39,8 @@ from nupic.encoders.coordinate import CoordinateEncoder
 
 def createLocationEncoder(t):
   """
-  A default coordinate encoder for encoding L6 location signals
+  A default coordinate encoder for encoding locations into sparse
+  distributed representations.
   """
   encoder = CoordinateEncoder(name="positionEncoder", n=t.l6CellCount, w=15)
   return encoder
@@ -50,9 +51,8 @@ def encodeLocation(encoder, x, y, output, radius=5):
   return output.nonzero()[0]
 
 
-def trainThalamusLocations(t):
+def trainThalamusLocations(t, encoder):
   print("Training TRN cells on location SDRs")
-  encoder = CoordinateEncoder(name="positionEncoder", n=t.l6CellCount, w=15)
   output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
 
   # Train the TRN cells to respond to SDRs representing locations
