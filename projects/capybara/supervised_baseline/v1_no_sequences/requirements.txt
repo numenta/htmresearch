@@ -1,3 +1,0 @@
-seaborn # Matplotlib wrapper for pretty plots
-tensorflow
-keras
