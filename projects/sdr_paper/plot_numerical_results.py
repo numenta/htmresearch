@@ -73,7 +73,7 @@ listofNValues = [300, 500, 700, 900, 1100, 1300, 1500, 1700, 1900, 2100, 2300,
 
 fig, ax = plt.subplots()
 
-fig.suptitle("Match probability for sparse vectors")
+fig.suptitle("Match probability for sparse binary vectors")
 ax.set_xlabel("Dimensionality (n)")
 ax.set_ylabel("Frequency of matches")
 ax.set_yscale("log")

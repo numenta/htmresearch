@@ -22,6 +22,8 @@
 from __future__ import print_function
 
 import math
+import time
+from multiprocessing import Pool
 
 import torch
 
@@ -37,7 +39,6 @@ import matplotlib.pyplot as plt
 
 def getSparseTensor(numNonzeros, inputSize, outputSize,
                     onlyPositive=False,
-                    initializationMethod="fixed",
                     fixedRange=1.0/24):
   """
   Return a random tensor that is initialized like a weight matrix
@@ -45,17 +46,11 @@ def getSparseTensor(numNonzeros, inputSize, outputSize,
   """
   # Initialize weights in the typical fashion.
   w = torch.Tensor(outputSize, inputSize, )
-  if initializationMethod == "uniform":
-    a = 1. / numNonzeros
-  elif initializationMethod == "fixed":
-    a = fixedRange
-  else:
-    a = 1. / math.sqrt(numNonzeros)
 
   if onlyPositive:
-    w.data.uniform_(0, 2*a)
+    w.data.uniform_(0, fixedRange)
   else:
-    w.data.uniform_(-a, a)
+    w.data.uniform_(-fixedRange, fixedRange)
 
   # Zero out weights for sparse weight matrices
   if numNonzeros < inputSize:
@@ -99,12 +94,11 @@ def plotDot(dot, title="Histogram of dot products",
 #   return h, w
 
 
-def getTheta(k, nTrials = 100000, strategy = "mean"):
+def getTheta(k, nTrials=100000):
   """
   Estimate a reasonable value of theta for this k.
   """
   w1 = getSparseTensor(k, k, nTrials,
-                       initializationMethod="fixed",
                        fixedRange=1.0/k)
   dotSum = 0.0
   dotMin = 1000000
@@ -116,17 +110,13 @@ def getTheta(k, nTrials = 100000, strategy = "mean"):
   dotMean = dotSum / nTrials
   print("k=", k, "min/mean diag of w dot products", dotMin, dotMean)
 
-  if strategy == "mean":
-    theta = dotMean / 2.0
-    print("Using theta as mean / 2.0 = ", theta)
-  else:
-    theta = dotMin / 2.0
-    print("Using theta as min / 2.0 = ", theta)
+  theta = dotMean / 2.0
+  print("Using theta as mean/2 = ", theta)
 
   return theta
 
 
-def returnMatches(kw, kv, n, theta):
+def returnMatches(kw, kv, n, theta, inputScaling=1.0):
   """
   :param kw: k for the weight vectors
   :param kv: k for the input vectors
@@ -140,7 +130,6 @@ def returnMatches(kw, kv, n, theta):
   m2 = 1000
 
   weights = getSparseTensor(kw, n, m1,
-                            initializationMethod="fixed",
                             fixedRange=1.0 / kw,
                             )
 
@@ -148,15 +137,14 @@ def returnMatches(kw, kv, n, theta):
   # to be positive
   inputVectors = getSparseTensor(kv, n, m2,
                                  onlyPositive=True,
-                                 initializationMethod="fixed",
-                                 fixedRange=1.0 / kw,
+                                 fixedRange=inputScaling / kw,
                                  )
   dot = inputVectors.matmul(weights.t())
 
   # print("min/max/mean w dot products", wd.min(), wd.max(), wd.mean())
 
   # Let wd.diag().min() be a decent minimal theta for matching
-  numMatches = ((dot>theta).sum()).item()
+  numMatches = ((dot > theta).sum()).item()
   pctMatches = numMatches / float(m1*m2)
 
   # plotDot(dot,
@@ -166,44 +154,59 @@ def returnMatches(kw, kv, n, theta):
   return pctMatches, numMatches, m1*m2
 
 
-def computeMatchProbability(kw, kv, n, theta, nTrials = 500):
+def computeMatchProbability(args):
   """
   Runs a number of trials of returnMatches() and returns an overall probability
   of matches given the parameters.
 
-  :param kw: k for the weight vectors
-  :param kv: k for the input vectors. If -1, kv is set to n/2
-  :param n:  dimensionality of input vector
-  :param theta: threshold for matching after dot product
-  :param nTrials: number of trials to run
+  :param args is a dictionary containing the following keys:
 
-  :return: percent that matched, number that matched, total match comparisons
+  kw: k for the weight vectors
+
+  kv: k for the input vectors. If -1, kv is set to n/2
+
+  n:  dimensionality of input vector
+
+  theta: threshold for matching after dot product
+
+  nTrials: number of trials to run
+
+  inputScaling: scale factor for the input vectors. 1.0 means the scaling
+    is the same as the stored weight vectors.
+
+  :return: args updated with the percent that matched
   """
+  kv = args["k"]
+  n = args["n"]
+  kw = args["kw"]
+  theta = args["theta"]
 
   if kv == -1:
     kv = int(round(n/2.0))
-    print("n,kv",n,kv)
 
   numMatches = 0
   totalComparisons = 0
-  for t in range(nTrials):
-    pct, num, total = returnMatches(kw, kv, n, theta)
+  for t in range(args["nTrials"]):
+    pct, num, total = returnMatches(kw, kv, n, theta, args["inputScaling"])
     numMatches += num
     totalComparisons += total
 
   pctMatches = float(numMatches) / totalComparisons
-  print("kw, kv, n:", kw, kv, n, ", matches:", numMatches,
+  print("kw, kv, n, s:", kw, kv, n, args["inputScaling"],
+        ", matches:", numMatches,
         ", comparisons:", totalComparisons,
         ", pct matches:", pctMatches)
 
-  return pctMatches, numMatches, totalComparisons
+  args.update({"pctMatches": pctMatches})
+
+  return args
 
 
-def plotMatches(listofaValues, listofNValues, errors,
+def plotMatches(listofKValues, listofNValues, errors,
                 fileName = "images/scalar_effect_of_n.pdf"):
   fig, ax = plt.subplots()
 
-  fig.suptitle("Match probability for sparse vectors")
+  fig.suptitle("Prob. of matching a sparse random input")
   ax.set_xlabel("Dimensionality (n)")
   ax.set_ylabel("Frequency of matches")
   ax.set_yscale("log")
@@ -221,11 +224,11 @@ def plotMatches(listofaValues, listofNValues, errors,
               xytext=(-5, 2), textcoords="offset points", ha="left",
               color='black')
   ax.annotate(r"$a = 128$", xy=(listofNValues[3]+100, errors[1,3]),
-               ha="left",color='black')
+               ha="left", color='black')
   ax.annotate(r"$a = 256$", xy=(listofNValues[3]+100, errors[2,3]),
-               ha="left",color='black')
+               ha="left", color='black')
   ax.annotate(r"$a = \frac{n}{2}$", xy=(listofNValues[3]+100, errors[3,3]),
-               ha="left",color='black')
+               ha="left", color='black')
 
   plt.minorticks_off()
   plt.grid(True, alpha=0.3)
@@ -234,23 +237,144 @@ def plotMatches(listofaValues, listofNValues, errors,
   plt.close()
 
 
-if __name__ == '__main__':
+def plotScaledMatches(listofKValues, listOfScales, errors,
+                fileName = "images/scalar_effect_of_scale.pdf"):
+  fig, ax = plt.subplots()
 
-  listofkValues = [64, 128, 256, -1]
-  listofNValues = [250, 500, 1000, 1500, 2000, 2500]
+  fig.suptitle("Prob. of matching a sparse random input")
+  ax.set_xlabel("Scale factor (s)")
+  ax.set_ylabel("Frequency of matches")
+  ax.set_yscale("log")
 
-  kw = 24
-  theta = getTheta(kw, strategy="mean")
-  errors = np.zeros((len(listofkValues), len(listofNValues)))
+  ax.plot(listOfScales, errors[0, :], 'k:',
+          label="a=64 (predicted)", marker="o", color='black')
+  ax.plot(listOfScales, errors[1, :], 'k:',
+          label="a=128 (predicted)", marker="o", color='black')
+  ax.plot(listOfScales, errors[2, :], 'k:',
+          label="a=128 (predicted)", marker="o", color='black')
+
+
+  ax.annotate(r"$a = 64$", xy=(listOfScales[3]+0.2, errors[0, 3]),
+              xytext=(-5, 2), textcoords="offset points", ha="left",
+              color='black')
+  ax.annotate(r"$a = 128$", xy=(listOfScales[3]+0.2, errors[1, 3]),
+               ha="left", color='black')
+  ax.annotate(r"$a = 256$", xy=(listOfScales[3]+0.2, errors[2, 3]),
+               ha="left", color='black')
+
+  plt.minorticks_off()
+  plt.grid(True, alpha=0.3)
+
+  plt.savefig(fileName)
+  plt.close()
+
+
+def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
+                              listofNValues=[250, 500, 1000, 1500, 2000, 2500],
+                              inputScale=2.0,
+                              kw=24,
+                              numWorkers=8,
+                              nTrials=1000,
+                              ):
+
+  print("Computing match probabilities for input scale=", inputScale)
+
+  # Create arguments for the possibilities we want to test
+  args = []
+  theta = getTheta(kw)
   for ki, k in enumerate(listofkValues):
     for ni, n in enumerate(listofNValues):
-      errors[ki, ni], numMatches, totalComparisons = computeMatchProbability(
-        kw, k, n, theta, nTrials=500)
-      print()
+      args.append({
+          "k": k, "kw": kw, "n": n, "theta": theta,
+          "nTrials": nTrials, "inputScaling": 2.0,
+          "errorIndex": [ki, ni],
+          })
 
+  numExperiments = len(args)
+  if numWorkers > 1:
+    pool = Pool(processes=numWorkers)
+    rs = pool.map_async(computeMatchProbability, args, chunksize=1)
+    while not rs.ready():
+      remaining = rs._number_left
+      pctDone = 100.0 - (100.0*remaining) / numExperiments
+      print("    =>", remaining,
+            "experiments remaining, percent complete=",pctDone)
+      time.sleep(5)
+    pool.close()  # No more work
+    pool.join()
+    result = rs.get()
+  else:
+    result = []
+    for arg in args:
+      result.append(computeMatchProbability(arg))
+
+
+  # Read out results and store in numpy array for plotting
+  errors = np.zeros((len(listofkValues), len(listofNValues)))
+  for r in result:
+    errors[r["errorIndex"][0], r["errorIndex"][1]] = r["pctMatches"]
+
+  print("Errors for kw=", kw)
+  print(errors)
+  plotMatches(listofkValues, listofNValues, errors,
+              "images/scalar_effect_of_n_kw" + str(kw) + ".pdf")
+
+
+  # Errors for kw=24
+  # errors= np.array([
+  #   [1.005700e-02, 1.538500e-03, 1.820000e-04, 5.300000e-05, 2.300000e-05, 9.500000e-06],
+  #   [4.330450e-02, 9.127500e-03, 1.580500e-03, 4.075000e-04, 1.885000e-04, 8.500000e-05],
+  #   [1.189445e-01, 4.365250e-02, 9.500000e-03, 3.274000e-03, 1.528500e-03, 7.790000e-04],
+  #   [4.220400e-02, 4.227200e-02, 4.286450e-02, 4.149700e-02, 4.143650e-02, 4.135850e-02],
+  # ])
+  # plotMatches(listofkValues, listofNValues, errors,
+  #             "images/scalar_effect_of_n_kw" + str(kw) + ".pdf")
+
+
+def computeScaledProbabilities(listOfScales=[0.5, 1.0, 1.5, 2.0, 2.5],
+                               listofkValues=[64, 128, 256],
+                              ):
+  # print("Scale test")
+  # for kw in [24, 36]:
+  #   theta = getTheta(kw)
+  #   errors = np.zeros((len(listofkValues), len(listOfScales)))
+  #   for ki, k in enumerate(listofkValues):
+  #     for si, inputScaling in enumerate(listOfScales):
+  #       n = 1000
+  #       errors[ki, si] = computeMatchProbability(
+  #         kw, k, n, theta, nTrials=1000, inputScaling=inputScaling)
+  #       print()
+  #
+  #   print("Errors for kw=", kw)
+  #   print(errors)
+  #   plotScaledMatches(listofkValues, listOfScales, errors,
+  #               "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
+
+  # Errors for kw= 24
+  errors = np.array([
+    [0.0000e+00, 0.0000e+00, 2.5000e-06, 2.0650e-04, 1.1655e-03],
+    [0.0000e+00, 1.0000e-06, 1.0150e-04, 1.4270e-03, 6.5985e-03],
+    [0.0000e+00, 1.4500e-05, 1.3850e-03, 9.7485e-03, 2.9147e-02]
+  ])
+  plotScaledMatches(listofkValues, listOfScales, errors,
+                  "images/scalar_effect_of_scale_kw24.pdf")
+
+
+def computeFalseNegatives(listOfNoises=[0.5, 1.0, 1.5, 2.0, 2.5],
+                          listofkValues=[64, 128, 256],
+                          ):
+  pass
+
+
+if __name__ == '__main__':
+
+  # computeMatchProbabilities(kw=24, nTrials=1000)
+  computeMatchProbabilities(kw=25, nTrials=1000)
+  computeMatchProbabilities(kw=50, nTrials=1000)
+
+  # computeScaledProbabilities()
 
   # TODO Compute false negatives
-  # TODO Compute error as a function of overall vector scaling
 
   # Results for each setting:
   # kw = 24
@@ -269,7 +393,3 @@ if __name__ == '__main__':
   #  [2.72540e-03 8.60000e-05 1.00000e-06 0.00000e+00 0.00000e+00 0.00000e+00]
   # [1.97212e-02 2.49180e-03 9.76000e-05 9.00000e-06 4.00000e-07 4.00000e-07]]
 
-  print(errors)
-
-  plotMatches(listofkValues, listofNValues, errors,
-              "images/scalar_effect_of_n_mean_theta_kw24.pdf")
