@@ -301,7 +301,7 @@ class SparseNet(nn.Module):
   def pruneWeights(self, minWeight):
     """
     Prune all the weights whose absolute magnitude is less than minWeight
-    :param minWeight: min weight to prune
+    :param minWeight: min weight to prune. If zero then no pruning
     :type minWeight: float
     """
     if minWeight == 0.0:
@@ -315,19 +315,17 @@ class SparseNet(nn.Module):
       # Zero other weights
       w.data.mul_(mask.type(torch.float32))
 
-  def pruneDutyCycles(self, threshold):
+  def pruneDutycycles(self, threshold=0.0):
     """
-    Prune all the dutycycles whose absolute magnitude is less than threshold
-    :param threshold: min threshold to prune
+    Prune all the units with dutycycles whose absolute magnitude is less than
+    the given threshold
+    :param threshold: min threshold to prune. If less than zero then no pruning
     :type threshold: float
     """
-    if threshold == 0.0:
+    if threshold < 0.0:
       return
 
-    # Collect all dutyCycles
-    dutyCycles = [v for k, v in self.named_buffers() if 'dutyCycle' in k]
-    for w in dutyCycles:
-      # Filter dutyCycles above threshold
-      mask = torch.ge(torch.abs(w.data), threshold)
-      # Zero other dutyCycles
-      w.data.mul_(mask.type(torch.float32))
+    # Collect all layers with 'dutyCycle'
+    for m in self.modules():
+      if m != self and hasattr(m, 'pruneDutycycles'):
+        m.pruneDutycycles(threshold)
