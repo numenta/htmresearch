@@ -38,7 +38,7 @@ from htmresearch.support.expsuite import PyExperimentSuite
 from htmresearch.frameworks.pytorch.sparse_net import SparseNet
 from htmresearch.frameworks.pytorch.duty_cycle_metrics import plotDutyCycles
 from htmresearch.frameworks.pytorch.speech_commands_dataset import (
-  SpeechCommandsDataset, BackgroundNoiseDataset
+  SpeechCommandsDataset, BackgroundNoiseDataset, PreprocessedSpeechDataset
 )
 from htmresearch.frameworks.pytorch.audio_transforms import *
 from htmresearch.frameworks.pytorch.resnet_models import resnet9
@@ -81,6 +81,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
       print("*********using cuda!")
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
 
+    self.use_preprocessed_dataset = False
     self.loadDatasets(params)
 
     # Parse 'n' and 'k' parameters
@@ -153,6 +154,15 @@ class SparseSpeechExperiment(PyExperimentSuite):
     t1 = time.time()
     ret = {}
 
+    # Update dataset epoch when using pre-processed speech dataset
+    if self.use_preprocessed_dataset:
+      t2 = time.time()
+      self.train_loader.dataset.next_epoch()
+      self.validation_loader.dataset.next_epoch()
+      self.test_loader.dataset.next_epoch()
+      self.bg_noise_loader.dataset.next_epoch()
+      print("Dataset Load time = {0:.3f} secs, ".format(time.time() - t2))
+
     # Update learning rate using learning rate scheduler if configured
     if self.lr_scheduler is not None:
       # ReduceLROnPlateau lr_scheduler step should be called after validation,
@@ -197,9 +207,10 @@ class SparseSpeechExperiment(PyExperimentSuite):
                                                   else self.lr_scheduler.get_lr()})
 
     # Run noise set
-    ret.update(self.runNoiseTests(params))
-    print("Noise test results: totalCorrect=", ret["totalCorrect"],
-          "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
+    if params.get("run_noise_tests", False):
+      ret.update(self.runNoiseTests(params))
+      print("Noise test results: totalCorrect=", ret["totalCorrect"],
+            "Test error=", ret["testerror"], ", entropy=", ret["entropy"])
 
     ret.update({"elapsedTime": time.time() - self.startTime})
     ret.update({"learningRate": self.learningRate if self.lr_scheduler is None
@@ -272,11 +283,10 @@ class SparseSpeechExperiment(PyExperimentSuite):
     batches exceeds the parameter "batches_in_epoch".
     """
     self.model.train()
-    for batch_idx, batch in enumerate(self.train_loader):
+    for batch_idx, (batch, target) in enumerate(self.train_loader):
       data = batch["input"]
       if params["model_type"] in ["resnet9", "cnn"]:
         data = torch.unsqueeze(data, 1)
-      target = batch["target"]
       data, target = data.to(self.device), target.to(self.device)
       self.optimizer.zero_grad()
       output = self.model(data)
@@ -302,6 +312,13 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     self.model.postEpoch()
 
+    # Save on every epoch
+    if params.get("save_every_epoch", False):
+      saveDir = os.path.join(params["path"], params["name"],
+                             "model_{}.pt".format(epoch))
+      torch.save(self.model, saveDir)
+
+
 
   def test(self, params, test_loader):
     """
@@ -318,11 +335,10 @@ class SparseSpeechExperiment(PyExperimentSuite):
       register_nonzero_counter(self.model, nonzeros)
 
     with torch.no_grad():
-      for batch in test_loader:
+      for batch, target in test_loader:
         data = batch["input"]
         if params["model_type"] in ["resnet9", "cnn"]:
           data = torch.unsqueeze(data, 1)
-        target = batch["target"]
         data, target = data.to(self.device), target.to(self.device)
         output = self.model(data)
         test_loss += F.nll_loss(output, target, reduction='sum').item()
@@ -353,6 +369,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     Test the model with different noise values and return test metrics.
     """
+    if self.use_preprocessed_dataset:
+      raise NotImplementedError("Noise tests requires raw data")
+
     ret = {}
     testDataDir = os.path.join(self.dataDir, "test")
     n_mels = 32
@@ -410,55 +429,85 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     n_mels = 32
 
-    trainDataDir = os.path.join(self.dataDir, "train")
-    testDataDir = os.path.join(self.dataDir, "test")
-    validationDataDir = os.path.join(self.dataDir, "valid")
-    backgroundNoiseDir = os.path.join(self.dataDir,
-                                      params["background_noise_dir"])
+    # Check if using pre-processed data or raw data
+    self.use_preprocessed_dataset = PreprocessedSpeechDataset.isValid(self.dataDir)
+    if self.use_preprocessed_dataset:
+      trainDataset = PreprocessedSpeechDataset(self.dataDir, subset="train")
+      validationDataset = PreprocessedSpeechDataset(self.dataDir, subset="valid",
+                                                    silence_percentage=0)
+      testDataset = PreprocessedSpeechDataset(self.dataDir, subset="test",
+                                              silence_percentage=0)
+      bgNoiseDataset = PreprocessedSpeechDataset(self.dataDir, subset="noise",
+                                                 silence_percentage=0)
+    else:
+      trainDataDir = os.path.join(self.dataDir, "train")
+      testDataDir = os.path.join(self.dataDir, "test")
+      validationDataDir = os.path.join(self.dataDir, "valid")
+      backgroundNoiseDir = os.path.join(self.dataDir, params["background_noise_dir"])
 
-    dataAugmentationTransform = transforms.Compose([
-      ChangeAmplitude(),
-      ChangeSpeedAndPitchAudio(),
-      FixAudioLength(),
-      ToSTFT(),
-      StretchAudioOnSTFT(),
-      TimeshiftAudioOnSTFT(),
-      FixSTFTDimension(),
-    ])
+      dataAugmentationTransform = transforms.Compose([
+        ChangeAmplitude(),
+        ChangeSpeedAndPitchAudio(),
+        FixAudioLength(),
+        ToSTFT(),
+        StretchAudioOnSTFT(),
+        TimeshiftAudioOnSTFT(),
+        FixSTFTDimension(),
+      ])
 
-    featureTransform = transforms.Compose(
-      [
+      featureTransform = transforms.Compose(
+        [
+          ToMelSpectrogramFromSTFT(n_mels=n_mels),
+          DeleteSTFT(),
+          ToTensor('mel_spectrogram', 'input')
+        ])
+
+      trainDataset = SpeechCommandsDataset(
+        trainDataDir,
+        transforms.Compose([
+          dataAugmentationTransform,
+          # add_bg_noise,               # Uncomment to allow adding BG noise
+                                        # during training
+          featureTransform
+        ]))
+
+      testFeatureTransform = transforms.Compose([
+        FixAudioLength(),
+        ToMelSpectrogram(n_mels=n_mels),
+        ToTensor('mel_spectrogram', 'input')
+      ])
+
+      validationDataset = SpeechCommandsDataset(
+        validationDataDir,
+        testFeatureTransform,
+        silence_percentage=0,
+      )
+
+      testDataset = SpeechCommandsDataset(
+        testDataDir,
+        testFeatureTransform,
+        silence_percentage=0,
+      )
+
+      bg_dataset = BackgroundNoiseDataset(
+        backgroundNoiseDir,
+        transforms.Compose([FixAudioLength(), ToSTFT()]),
+      )
+
+      bgNoiseTransform = transforms.Compose([
+        FixAudioLength(),
+        ToSTFT(),
+        AddBackgroundNoiseOnSTFT(bg_dataset),
         ToMelSpectrogramFromSTFT(n_mels=n_mels),
         DeleteSTFT(),
         ToTensor('mel_spectrogram', 'input')
       ])
 
-    trainDataset = SpeechCommandsDataset(
-      trainDataDir,
-      transforms.Compose([
-        dataAugmentationTransform,
-        # add_bg_noise,               # Uncomment to allow adding BG noise
-                                      # during training
-        featureTransform
-      ]))
-
-    testFeatureTransform = transforms.Compose([
-      FixAudioLength(),
-      ToMelSpectrogram(n_mels=n_mels),
-      ToTensor('mel_spectrogram', 'input')
-    ])
-
-    validationDataset = SpeechCommandsDataset(
-      validationDataDir,
-      testFeatureTransform,
-      silence_percentage=0,
-    )
-
-    testDataset = SpeechCommandsDataset(
-      testDataDir,
-      testFeatureTransform,
-      silence_percentage=0,
-    )
+      bgNoiseDataset = SpeechCommandsDataset(
+        testDataDir,
+        bgNoiseTransform,
+        silence_percentage=0,
+      )
 
     weights = trainDataset.make_weights_for_balanced_classes()
     sampler = WeightedRandomSampler(weights, len(weights))
@@ -482,27 +531,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
                                   sampler=None,
                                   shuffle=False
                                   )
-
-
-    bg_dataset = BackgroundNoiseDataset(
-      backgroundNoiseDir,
-      transforms.Compose([FixAudioLength(), ToSTFT()]),
-    )
-
-    bgNoiseTransform = transforms.Compose([
-      FixAudioLength(),
-      ToSTFT(),
-      AddBackgroundNoiseOnSTFT(bg_dataset),
-      ToMelSpectrogramFromSTFT(n_mels=n_mels),
-      DeleteSTFT(),
-      ToTensor('mel_spectrogram', 'input')
-    ])
-
-    bgNoiseDataset = SpeechCommandsDataset(
-      testDataDir,
-      bgNoiseTransform,
-      silence_percentage=0,
-    )
 
     self.bg_noise_loader = DataLoader(bgNoiseDataset,
                                   batch_size=params["batch_size"],

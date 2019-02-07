@@ -54,8 +54,8 @@ def save_examples(noise = 0.0, maxVal = 1.0, dataDir="data"):
   )
 
   for i in range(0, 2552, 100):
-    d = noiseDataset[i]
-    fname = os.path.join(outDir, noiseDataset.classes[d["target"]] + "_" +
+    d, target = noiseDataset[i]
+    fname = os.path.join(outDir, noiseDataset.classes[target] + "_" +
                          str(i) + "_"
                          + str(int(noise*100)) + "_"
                          + str(int(maxVal*100))
