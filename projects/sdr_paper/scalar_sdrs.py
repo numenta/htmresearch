@@ -98,22 +98,19 @@ def getTheta(k, nTrials=100000):
   """
   Estimate a reasonable value of theta for this k.
   """
-  w1 = getSparseTensor(k, k, nTrials,
-                       fixedRange=1.0/k)
-  dotSum = 0.0
-  dotMin = 1000000
+  theDots = np.zeros(nTrials)
+  w1 = getSparseTensor(k, k, nTrials, fixedRange=1.0/k)
   for i in range(nTrials):
-    dot = w1[i].dot(w1[i])
-    dotSum += dot
-    dotMin = min(dotMin, dot)
+    theDots[i] = w1[i].dot(w1[i])
 
-  dotMean = dotSum / nTrials
-  print("k=", k, "min/mean diag of w dot products", dotMin, dotMean)
+  dotMean = theDots.mean()
+  print("k=", k, "min/mean/max diag of w dot products",
+        theDots.min(), dotMean, theDots.max())
 
-  theta = dotMean / 2.0
-  print("Using theta as mean/2 = ", theta)
+  theta = dotMean
+  print("Using theta as mean = ", theta)
 
-  return theta
+  return theta, theDots
 
 
 def returnMatches(kw, kv, n, theta, inputScaling=1.0):
@@ -269,27 +266,21 @@ def plotScaledMatches(listofKValues, listOfScales, errors,
   plt.close()
 
 
-def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
-                              listofNValues=[250, 500, 1000, 1500, 2000, 2500],
-                              inputScale=2.0,
-                              kw=24,
-                              numWorkers=8,
-                              nTrials=1000,
-                              ):
+def plotThetaDistribution(kw, fileName = "images/theta_distribution.pdf"):
+  theta, theDots = getTheta(kw)
 
-  print("Computing match probabilities for input scale=", inputScale)
+  # Plot histogram of overlaps
+  bins = np.linspace(float(theDots.min()), float(theDots.max()), 50)
+  plt.hist(theDots, bins, alpha=0.5, label='Dot products')
+  plt.legend(loc='upper right')
+  plt.xlabel("Dot product")
+  plt.ylabel("Frequency")
+  plt.title("Distribution of dot products, kw=" + str(kw))
+  plt.savefig(fileName)
+  plt.close()
 
-  # Create arguments for the possibilities we want to test
-  args = []
-  theta = getTheta(kw)
-  for ki, k in enumerate(listofkValues):
-    for ni, n in enumerate(listofNValues):
-      args.append({
-          "k": k, "kw": kw, "n": n, "theta": theta,
-          "nTrials": nTrials, "inputScaling": 2.0,
-          "errorIndex": [ki, ni],
-          })
 
+def computeMatchProbabilityParallel(args, numWorkers=8):
   numExperiments = len(args)
   if numWorkers > 1:
     pool = Pool(processes=numWorkers)
@@ -307,6 +298,32 @@ def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
     result = []
     for arg in args:
       result.append(computeMatchProbability(arg))
+
+  return result
+
+
+def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
+                              listofNValues=[250, 500, 1000, 1500, 2000, 2500],
+                              inputScale=2.0,
+                              kw=24,
+                              numWorkers=8,
+                              nTrials=1000,
+                              ):
+
+  print("Computing match probabilities for input scale=", inputScale)
+
+  # Create arguments for the possibilities we want to test
+  args = []
+  theta, _ = getTheta(kw)
+  for ki, k in enumerate(listofkValues):
+    for ni, n in enumerate(listofNValues):
+      args.append({
+          "k": k, "kw": kw, "n": n, "theta": theta,
+          "nTrials": nTrials, "inputScaling": 1.0,
+          "errorIndex": [ki, ni],
+          })
+
+  result = computeMatchProbabilityParallel(args, numWorkers)
 
 
   # Read out results and store in numpy array for plotting
@@ -372,33 +389,51 @@ def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
   #   2.41166667e-03 2.52116667e-03]]
 
 
-def computeScaledProbabilities(listOfScales=[0.5, 1.0, 1.5, 2.0, 2.5],
+def computeScaledProbabilities(listOfScales=[1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],
                                listofkValues=[64, 128, 256],
-                              ):
-  # print("Scale test")
-  # for kw in [24, 36]:
-  #   theta = getTheta(kw)
-  #   errors = np.zeros((len(listofkValues), len(listOfScales)))
-  #   for ki, k in enumerate(listofkValues):
-  #     for si, inputScaling in enumerate(listOfScales):
-  #       n = 1000
-  #       errors[ki, si] = computeMatchProbability(
-  #         kw, k, n, theta, nTrials=1000, inputScaling=inputScaling)
-  #       print()
-  #
-  #   print("Errors for kw=", kw)
-  #   print(errors)
-  #   plotScaledMatches(listofkValues, listOfScales, errors,
-  #               "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
+                               kw=32,
+                               n=1000,
+                               numWorkers=8,
+                               nTrials=1000,
+                               ):
+  # Create arguments for the possibilities we want to test
+  args = []
+  theta, _ = getTheta(kw)
+  for ki, k in enumerate(listofkValues):
+    for si, s in enumerate(listOfScales):
+      args.append({
+          "k": k, "kw": kw, "n": n, "theta": theta,
+          "nTrials": nTrials, "inputScaling": s,
+          "errorIndex": [ki, si],
+          })
 
-  # Errors for kw= 24
+  result = computeMatchProbabilityParallel(args, numWorkers)
+
+  errors = np.zeros((len(listofkValues), len(listOfScales)))
+  for r in result:
+    errors[r["errorIndex"][0], r["errorIndex"][1]] = r["pctMatches"]
+
+  print("Errors using scaled inputs, for kw=", kw)
+  print(errors)
+  plotScaledMatches(listofkValues, listOfScales, errors,
+              "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
+
+
+  # Nice errors using scaled inputs, for kw= 32 and nTrials=6000 (12,000,000
+  # matches per datapoint.
+  listOfScales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
+  listofkValues = [64, 128, 256]
+  kw = 32
   errors = np.array([
-    [0.0000e+00, 0.0000e+00, 2.5000e-06, 2.0650e-04, 1.1655e-03],
-    [0.0000e+00, 1.0000e-06, 1.0150e-04, 1.4270e-03, 6.5985e-03],
-    [0.0000e+00, 1.4500e-05, 1.3850e-03, 9.7485e-03, 2.9147e-02]
+        [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 2.50000000e-07,
+         2.58333333e-06, 2.13333333e-05, 8.45833333e-05, 2.52750000e-04],
+        [0.00000000e+00, 0.00000000e+00, 2.50000000e-07, 9.66666667e-06,
+         7.62500000e-05, 3.23666667e-04, 9.75666667e-04, 2.22650000e-03],
+        [0.00000000e+00, 6.66666667e-07, 2.89166667e-05, 2.93000000e-04,
+         1.29500000e-03, 3.71925000e-03, 7.98591667e-03, 1.42828333e-02]
   ])
   plotScaledMatches(listofkValues, listOfScales, errors,
-                  "images/scalar_effect_of_scale_kw24.pdf")
+                    "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
 
 
 def computeFalseNegatives(listOfNoises=[0.5, 1.0, 1.5, 2.0, 2.5],
@@ -410,29 +445,14 @@ def computeFalseNegatives(listOfNoises=[0.5, 1.0, 1.5, 2.0, 2.5],
 if __name__ == '__main__':
 
   # computeMatchProbabilities(kw=24, nTrials=1000)
-  computeMatchProbabilities(kw=16, nTrials=3000)
-  computeMatchProbabilities(kw=32, nTrials=3000)
-  computeMatchProbabilities(kw=48, nTrials=3000)
-  computeMatchProbabilities(kw=64, nTrials=3000)
+  # computeMatchProbabilities(kw=16, nTrials=3000)
+  # computeMatchProbabilities(kw=32, nTrials=3000)
+  # computeMatchProbabilities(kw=48, nTrials=3000)
+  # computeMatchProbabilities(kw=64, nTrials=3000)
+  # computeMatchProbabilities(kw=96, nTrials=3000)
 
-  # computeScaledProbabilities()
+  plotThetaDistribution(32)
+
+  # computeScaledProbabilities(nTrials=6000)
 
   # TODO Compute false negatives
-
-  # Results for each setting:
-  # kw = 24
-  # [[1.02480e-02 1.44700e-03 1.66000e-04 4.70000e-05 1.30000e-05 8.00000e-06]
-  #  [4.48810e-02 1.01170e-02 1.35600e-03 4.41000e-04 1.76000e-04 9.50000e-05]
-  # [1.16207e-01 4.29550e-02 1.02990e-02 3.39400e-03 1.58100e-03 8.37000e-04]
-  # [3.98980e-02 4.27310e-02 4.30160e-02 3.96750e-02 4.52850e-02 3.92980e-02]]
-
-  # kw = 36
-  # [[2.2910e-03 1.4400e-04 7.0000e-06 0.0000e+00 0.0000e+00 0.0000e+00]
-  #  [2.0024e-02 2.0570e-03 1.6000e-04 1.9000e-05 1.0000e-05 2.0000e-06]
-  # [6.1982e-02 1.8586e-02 2.3760e-03 5.1800e-04 1.4100e-04 6.1000e-05]]
-
-  # kw = 64, 5 million comparisons
-  # [[7.96000e-05 2.00000e-06 0.00000e+00 0.00000e+00 0.00000e+00 0.00000e+00]
-  #  [2.72540e-03 8.60000e-05 1.00000e-06 0.00000e+00 0.00000e+00 0.00000e+00]
-  # [1.97212e-02 2.49180e-03 9.76000e-05 9.00000e-06 4.00000e-07 4.00000e-07]]
-
