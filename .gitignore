@@ -102,6 +102,7 @@ robotium-solo-5.0.1.jar.properties
 /projects/sdr_paper/pytorch_experiments/images
 /projects/sdr_paper/pytorch_experiments/results
 /projects/speech_commands/data/speech_commands
+/projects/speech_commands/data/unused
 /projects/speech_commands/results
 /results
 /projects/speech_commands/old_results
