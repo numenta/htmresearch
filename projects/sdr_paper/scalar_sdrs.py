@@ -506,13 +506,12 @@ def plotFalseMatches(listOfNoise, errors, kw,
                 fileName = "images/scalar_false_positives.pdf"):
   fig, ax = plt.subplots()
 
-  fig.suptitle("Probability of false negatives with $\\theta = \\mu/2$")
+  fig.suptitle("Probability of false negatives with $k_w$=" + str(kw))
   ax.set_xlabel("Pct of components set to zero")
   ax.set_ylabel("Frequency of false negatives")
   # ax.set_yscale("log")
 
-  ax.plot(listOfNoise, errors, 'k:',
-          label="k=32 (predicted)", marker="o", color='black')
+  ax.plot(listOfNoise, errors, 'k:', marker="o", color='black')
 
   plt.minorticks_off()
   plt.grid(True, alpha=0.3)
