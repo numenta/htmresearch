@@ -98,11 +98,11 @@ class SpeechCommandsDataset(Dataset):
     :return: (audio, target) where target is index of the target class.
     :rtype: tuple[dict, int]
     """
-    data = self.data[index][0]
+    data, target = self.data[index]
     if self.transform is not None:
       data = self.transform(data)
 
-    return data, self.data[index][1]
+    return data, target
 
   def make_weights_for_balanced_classes(self):
     """adopted from https://discuss.pytorch.org/t/balanced-sampling-between-classes-with-torchvision-dataloader/2703/3"""
