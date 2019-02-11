@@ -204,12 +204,17 @@ def generate_evenly_distributed_data_sparse(dim = 2000,
   arrangements are possible.
   """
   indices = [numpy.random.choice(dim, size = num_active, replace = False)
-      for i in range(num_samples)]
+      for _ in range(num_samples)]
   data = SM32()
-  data.reshape(num_samples, dim)
-  for sample, datapoint in enumerate(indices):
-    for index in datapoint:
-      data[sample, index] = 1.
+
+  data.reshape(0, dim)
+  for row in indices:
+    data.addRowNZ(row, [1]*num_active)
+
+  # data.reshape(num_samples, dim)
+  # for sample, datapoint in enumerate(indices):
+  #   for index in datapoint:
+  #     data[sample, index] = 1.
 
   return data
 

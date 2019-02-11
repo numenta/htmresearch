@@ -21,6 +21,7 @@
 
 import numpy
 import copy
+import time
 from itertools import izip as zip, count
 from nupic.bindings.algorithms import TemporalMemory as TM
 from scipy.spatial.distance import cosine
@@ -167,14 +168,32 @@ def exp_wrapper(params):
   return run_tm_dim_experiment(**params)
 
 if __name__ == "__main__":
-  p = Pool(cpu_count())
   exp_params = []
-  for dim in reversed(range(300, 4100, 100)):
-    for num_active in [256, 128, 64]:
+  # for dim in reversed(range(300, 4100, 100)):
+  #   for num_active in [256, 128, 64]:
+  #     exp_params.append({
+  #       "test_dims": [dim],
+  #       "num_active" : num_active,
+  #       "seed": dim*num_active
+  #     })
+  # numExperiments = len(exp_params)
+
+  for dim in reversed(range(4100, 5100, 100)):
+    for num_active in [256]:
       exp_params.append({
         "test_dims": [dim],
         "num_active" : num_active,
         "seed": dim*num_active
       })
+  numExperiments = len(exp_params)
 
-  p.map(exp_wrapper, exp_params)
+  pool = Pool(processes=cpu_count()-1)
+  rs = pool.map_async(exp_wrapper, exp_params, chunksize=1)
+  while not rs.ready():
+    remaining = rs._number_left
+    pctDone = 100.0 - (100.0*remaining) / numExperiments
+    print "    =>", remaining, "experiments remaining, percent complete=",pctDone
+    time.sleep(5)
+  pool.close()  # No more work
+  pool.join()
+  result = rs.get()

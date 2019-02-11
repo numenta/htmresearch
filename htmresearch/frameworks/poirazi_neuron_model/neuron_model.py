@@ -106,16 +106,19 @@ class Matrix_Neuron(object):
     activations = self.nonlinearity(activations)
     return activations.rowSums()
 
+
   def HTM_style_initialize_on_data(self, data, labels):
     """
-    Uses a style of initialization inspired by the temporal memory.  When a new positive example is found,
-    a dendrite is chosen and a number of synapses are created to the example.
+    Uses a style of initialization inspired by the temporal memory.  When a new
+    positive example is found, a dendrite is chosen and a number of synapses are
+    created to the example.
 
-    This works intelligently with an amount of data larger than the number of available dendrites.
-    In this case, data is clustered, and then similar datapoints are allotted to shared dendrites,
-    with as many overlapping bits as possible chosen.  In practice, it is still better to simply
-    allocate enough dendrites to have one per datapoint, but this method at least allows initialization
-    to work on larger amounts of data.
+    This works intelligently with an amount of data larger than the number of
+    available dendrites. In this case, data is clustered, and then similar
+    datapoints are allotted to shared dendrites, with as many overlapping bits
+    as possible chosen.  In practice, it is still better to simply allocate
+    enough dendrites to have one per datapoint, but this method at least allows
+    initialization to work on larger amounts of data.
     """
     current_dendrite = 0
     self.dendrites = SM32()
@@ -159,6 +162,62 @@ class Matrix_Neuron(object):
         current_dendrite += 1
 
     self.initialize_permanences()
+
+
+  def HTM_style_initialize_on_positive_data(self, data):
+    """
+    Train neuron on every point in this dataset.
+
+    Uses a style of initialization inspired by the temporal memory.  When a new
+    positive example is found, a dendrite is chosen and a number of synapses are
+    created to the example.
+
+    This works intelligently with an amount of data larger than the number of
+    available dendrites. In this case, data is clustered, and then similar
+    datapoints are allotted to shared dendrites, with as many overlapping bits
+    as possible chosen.  In practice, it is still better to simply allocate
+    enough dendrites to have one per datapoint, but this method at least allows
+    initialization to work on larger amounts of data.
+    """
+    current_dendrite = 0
+    self.dendrites = SM32()
+    self.dendrites.reshape(self.dim, self.num_dendrites)
+
+    if data.nRows() > self.num_dendrites:
+      print "Neuron using clustering to initialize dendrites"
+      data = (data.toDense())
+      model = KMeans(n_clusters = self.num_dendrites, n_jobs=1)
+      clusters = model.fit_predict(data)
+      multisets = [[Counter(), []] for i in range(self.num_dendrites)]
+      sparse_data = [[i for i, d in enumerate(datapoint) if d == 1] for datapoint in data]
+
+      for datapoint, cluster in zip(sparse_data, clusters):
+        multisets[cluster][0] = multisets[cluster][0] + Counter(datapoint)
+        multisets[cluster][1].append(set(datapoint))
+
+      for i, multiset in enumerate(multisets):
+        shared_elements = set(map(lambda x: x[0], filter(lambda x: x[1] > 1, multiset[0].most_common(self.dendrite_length))))
+        dendrite_connections = shared_elements
+        while len(shared_elements) < self.dendrite_length:
+          most_distant_point = multiset[1][numpy.argmin([len(dendrite_connections.intersection(point)) for point in multiset[1]])]
+          new_connection = random.sample(most_distant_point - dendrite_connections, 1)[0]
+          dendrite_connections.add(new_connection)
+
+        for synapse in dendrite_connections:
+          self.dendrites[synapse, current_dendrite] = 1.
+        current_dendrite += 1
+
+    else:
+      for i in range(data.nRows()):
+        ones = data.rowNonZeros(i)[0]
+        dendrite_connections = numpy.random.choice(ones, size = self.dendrite_length, replace = False)
+        for synapse in dendrite_connections:
+          self.dendrites[synapse, current_dendrite] = 1.
+
+        current_dendrite += 1
+
+    self.initialize_permanences()
+
 
   def HTM_style_train_on_data(self, data, labels):
     for i in range(data.nRows()):

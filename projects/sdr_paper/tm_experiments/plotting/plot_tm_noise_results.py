@@ -338,7 +338,7 @@ layout = Layout(
     ]),)
 
 fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
+plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_noise.png', scale=4)
+py.image.save_as(figure, 'tm_noise.pdf', scale=1)

@@ -107,7 +107,7 @@ trace1 = Scatter(
     x=synapses,
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=32 n=2000"
@@ -118,7 +118,7 @@ trace2 = Scatter(
     x=synapses,
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=32 n=4000"
@@ -129,7 +129,7 @@ trace3 = Scatter(
     x=synapses,
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=256 n=16000"
@@ -140,7 +140,7 @@ trace4 = Scatter(
     x=synapses,
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         shape='spline'
     ),
     name="a=512 n=16000"
@@ -151,7 +151,7 @@ trace5 = Scatter(
     x=synapses,
     line=Line(
         color='rgb(0, 0, 0)',
-        width=3,
+        width=2,
         dash='dash',
         shape='spline',
     ),
@@ -168,14 +168,14 @@ layout = Layout(
     width=855,
     height=700,
     xaxis=XAxis(
-        title='Number of synapses on segment',
+        title='Number of synapses on segment (s)',
         titlefont=Font(
-            family='',
+            family='Arial',
             size=24,
             color='rgb(0, 0, 0)',
         ),
         tickfont=Font(
-            family='',
+            family='Arial',
             size=18,
             color='rgb(0, 0, 0)',
         ),
@@ -189,18 +189,38 @@ layout = Layout(
         exponentformat='power',
         autorange=True,
         titlefont=Font(
-            family='',
+            family='Arial',
             size=24,
             color='rgb(0, 0, 0)',
         ),
         tickfont=Font(
-            family='',
-            size=18,
+            family='Arial',
+            size=12,
             color='rgb(0, 0, 0)',
         ),
         showline=True,
     ),
     annotations=Annotations([
+      Annotation(
+            x=3,
+            y=0.1143,
+            xref='x',
+            yref='paper',
+            text='$\\theta=\\frac{s}{2}$',
+            showarrow=False,
+            font=Font(
+                family='Arial',
+                size=18,
+                color=''
+            ),
+            align='left',
+            textangle=0,
+            bordercolor='',
+            borderwidth=1,
+            borderpad=1,
+            bgcolor='rgba(0, 0, 0, 0)',
+            opacity=1
+        ),
       Annotation(
         # arrow -21, 60
             x=21.64,
@@ -212,8 +232,8 @@ layout = Layout(
             ax=-21,
             ay=60,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=18,
                 color='rgba(0, 0, 0, 0)',
             ),
             align='right',
@@ -235,8 +255,8 @@ layout = Layout(
             ax = -89,
             ay = 72,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=18,
                 color='rgba(0, 0, 0, 0)'
             ),
             align='right',
@@ -281,8 +301,8 @@ layout = Layout(
             ax = 42,
             ay=-46,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=18,
                 color='rgba(0, 0, 0, 0)',
             ),
             align='left',
@@ -303,8 +323,8 @@ layout = Layout(
             ax = 0,
             ay=-30,
             font=Font(
-                family='',
-                size=24,
+                family='Arial',
+                size=18,
                 color='rgba(0, 0, 0, 0)',
             ),
             align='left',
@@ -319,7 +339,7 @@ layout = Layout(
     )
 
 fig = Figure(data=data, layout=layout)
-plot_url = py.plot(fig)
+plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/effect_of_s.pdf', scale=4)
+py.image.save_as(figure, 'images/effect_of_s.pdf', scale=1)

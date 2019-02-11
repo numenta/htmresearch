@@ -32,6 +32,8 @@ plotlyAPIKey = os.environ['PLOTLY_API_KEY']
 
 py.sign_in(plotlyUser, plotlyAPIKey)
 
+# n ranges from 10,000 to 20,000
+#
 # theta	avgError	stdev	min	max	median
 # 3	0.036662656	0.045076188	0.000126298	0.189184284	0.018156949
 # 4	0.008381634	0.013555152	2.53E-06	0.062735256	0.002227752
@@ -56,11 +58,16 @@ py.sign_in(plotlyUser, plotlyAPIKey)
 # 23	1.01E-23	6.19E-23	0	4.45E-22	2.90E-34
 # 24	3.43E-25	2.13E-24	0	1.54E-23	2.60E-36
 
-# Median error values
-errors = [0.018156949,0.002227752,0.000210173,1.58e-05,9.60e-07,4.83e-08,
-          2.04e-09,7.40e-11,2.49e-12,7.63e-14,2.05e-15,4.88e-17,1.03e-18,
-          1.95e-20,3.28e-22,4.90e-24,5.32e-26,4.11e-28,2.68e-30,2.91e-32,
-          2.90e-34,2.60e-36]
+# Median error values when n ranges from 10,000 to 200,000
+# errors = [0.018156949,0.002227752,0.000210173,1.58e-05,9.60e-07,4.83e-08,
+#           2.04e-09,7.40e-11,2.49e-12,7.63e-14,2.05e-15,4.88e-17,1.03e-18,
+#           1.95e-20,3.28e-22,4.90e-24,5.32e-26,4.11e-28,2.68e-30,2.91e-32,
+#           2.90e-34,2.60e-36]
+
+# Median error values when n ranges from 1,000 to 20,000
+errors =  [0.017325533, 0.001989467, 0.00017097, 1.20e-05, 6.57e-07, 3.33e-08,
+1.35e-09, 4.80e-11, 1.54e-12, 3.41e-14, 6.40e-16, 9.34e-18, 1.37e-19, 1.43e-21,
+1.42e-23, 1.12e-25, 5.18e-28, 3.90e-30, 1.70e-32, 9.21e-35, 4.62e-37, 2.07e-39]
 
 # Compute log error, log(error - 2*stdev), log(error + 2*stdev)
 lnerror= []
@@ -92,8 +99,8 @@ trace2_1 = Scatter(
     name="error"
 )
 trace2_2 = Scatter(
-    y=lnerror[6:],
-    x=[9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
+    y=lnerror[5:],
+    x=[8, 9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
     line=Line(
         color='rgb(0, 0, 0)',
         width=3,
@@ -102,8 +109,8 @@ trace2_2 = Scatter(
     name="error"
 )
 trace3 = Scatter(
-    y=lbound[6:],
-    x=[9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
+    y=lbound[5:],
+    x=[8, 9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24],
     fill='tonexty',
     line=Line(
         color='rgb(255, 255, 255)',
@@ -137,7 +144,7 @@ layout = Layout(
         showline=True,
     ),
     yaxis=YAxis(
-        title='Probability of false positives',
+        title='Median probability of false positives',
         type='log',
         exponentformat='power',
         autorange=True,
@@ -156,15 +163,15 @@ layout = Layout(
     ),
     annotations=Annotations([
       Annotation(
-            x=14.776699029126213,
-            y=0.5538461538461539,
+            x=8.256699029126213,
+            y=0.8238461538461539,
             xref='x',
             yref='paper',
-            text='Median false positive error',
+            text='Minimum observed NMDA threshold = 8',
             showarrow=True,
             font=Font(
                 family='Arial',
-                size=24,
+                size=22,
                 color='rgb(0, 0, 0)',
             ),
             xanchor='auto',
@@ -184,15 +191,15 @@ layout = Layout(
             opacity=1
         ),
     Annotation(
-          x=9.79611650485437,
+          x=9.0,
           y=0.46153846153846156,
           xref='x',
           yref='paper',
-          text='$\\text{Error rate} \leq 10^{-9}$',
+          text='$\\text{Error rates} \leq 10^{-7}$',
           showarrow=True,
           font=Font(
               family='Arial',
-              size=24,
+              size=22,
               color='rgb(0, 0, 0)',
           ),
           xanchor='auto',
@@ -218,4 +225,4 @@ fig = Figure(data=data, layout=layout)
 plot_url = py.plot(fig, auto_open=False)
 print "url=",plot_url
 figure = py.get_figure(plot_url)
-py.image.save_as(figure, 'images/optimal_threshold.pdf', scale=2)
+py.image.save_as(figure, 'images/optimal_threshold.pdf', scale=1)
