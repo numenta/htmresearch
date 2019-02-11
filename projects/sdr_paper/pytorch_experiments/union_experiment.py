@@ -19,7 +19,7 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 """
-Analyze model unions by testing a previously MNSIT trained model with two
+Analyze model unions by testing a previously MNIST trained model with two
 MNIST training datasets overlaid on top of each other. Compute multi-label
 accuracy using "Exact match" metric.
 """
