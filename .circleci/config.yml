@@ -1,0 +1,96 @@
+version: 2
+jobs:
+  validate-contributor:
+    machine: true
+    steps:
+      - checkout
+      - run:
+          name: Validate contributor license
+          command: ci/validate-contributor.sh
+  
+  build-and-test:
+    macos:
+      xcode: '9.0.1'
+    working_directory: ~/numenta/htmresearch
+    parallelism: 1      
+    environment:
+      PYTHONPATH: ~/Library/Python/2.7/lib/python/site-packages
+      PYBIN: ~/Library/Python/2.7/bin
+          
+    steps:
+      # Machine Setup
+      - run:
+          name: Make sure to use OS X in CircleCI Web UI
+          command: |
+            if [[ "$OSTYPE" != "darwin"* ]]; then
+              echo "Must set option to use OS X in CircleCI Web UI" && exit 1;
+            fi
+      - run: sudo systemsetup -settimezone 'GMT'
+      - run:
+          name: Restoring system python
+          command: |
+            brew update
+            brew uninstall python
+            curl https://bootstrap.pypa.io/get-pip.py | python - --user
+            echo 'export PATH=$HOME/Library/Python/2.7/bin:$PATH' >> $BASH_ENV
+      - checkout
+
+      # Dependencies
+      # Restore the dependency cache
+      - restore_cache:
+          keys:
+          # This branch if available
+          - v1-dep-{{ .Branch }}-
+          # Default branch if not
+          - v1-dep-master-
+          # Any branch if there are none on the default branch - this should be unnecessary if you have your default branch configured correctly
+          - v1-dep-      
+      - run:
+          name: Install dependencies
+          command: |
+            pip install --user --upgrade --ignore-installed setuptools setuptools-scm wheel
+            pip install --no-cache-dir --user -r requirements.txt  --verbose || exit          
+            brew update
+            brew install freetype libpng        
+      # Save dependency cache
+      - save_cache:
+          key: v1-dep-{{ .Branch }}-{{ epoch }}
+          paths:
+          # This is a broad list of cache paths to include many possible development environments
+          # You can probably delete some of these entries
+          - vendor/bundle
+          - ~/virtualenvs
+          - ~/.m2
+          - ~/.ivy2
+          - ~/.bundle
+          - ~/.go_workspace
+          - ~/.gradle
+          - ~/.cache/bower
+      
+      # Build                          
+      - run:
+          name: Building wheel
+          environment:
+            VERBOSE: 1
+          command: python setup.py bdist_wheel
+      
+      # Test          
+      - run:
+          name: Running python tests
+          command: |
+            mkdir test_reports
+            pip install --user --find-links=`pwd`/dist/ htmresearch
+            py.test --junitxml=test_reports/py_test_report.xml -n 6 tests/frameworks/layers/ tests/regions/ tests/algorithms/
+      - store_test_results:
+          path: test_reports            
+      - store_artifacts:
+          path: dist     
+
+workflows:
+  version: 2
+  build-test-deploy:
+    jobs:
+      - validate-contributor
+      - build-and-test:
+          requires:
+            - validate-contributor
