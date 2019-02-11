@@ -318,3 +318,18 @@ class AudioFromSTFT(object):
         stft = data['stft']
         data['istft_samples'] = librosa.core.istft(stft, dtype=data['samples'].dtype)
         return data
+
+
+class Unsqueeze(object):
+  """
+  Unsqueeze audio data into a single tensor
+  """
+  def __init__(self, tensor_name, model_type):
+    self.model_type = model_type
+    self.tensor_name = tensor_name
+
+  def __call__(self, data):
+    data = data[self.tensor_name]
+    if self.model_type in ["resnet9", "cnn"]:
+      data = torch.unsqueeze(data, 0)
+    return data

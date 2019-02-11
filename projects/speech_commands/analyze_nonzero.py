@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------
 # Numenta Platform for Intelligent Computing (NuPIC)
-# Copyright (C) 2018, Numenta, Inc.  Unless you have an agreement
+# Copyright (C) 2019, Numenta, Inc.  Unless you have an agreement
 # with Numenta, Inc., for a separate license for this software code, the
 # following terms and conditions apply:
 #
@@ -25,15 +25,14 @@ import logging
 import multiprocessing
 import os
 
-import numpy as np
-import torch
-from torchvision import datasets, transforms
-from tqdm import tqdm
-
+from htmresearch.frameworks.pytorch.audio_transforms import *
 from htmresearch.frameworks.pytorch.benchmark_utils import (
   register_nonzero_counter, unregister_counter_nonzero)
-from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.model_utils import evaluateModel
+from htmresearch.frameworks.pytorch.speech_commands_dataset import SpeechCommandsDataset
+from torch.utils.data import DataLoader
+from torchvision import transforms
+from tqdm import tqdm
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -44,8 +43,8 @@ import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 import pandas as pd
-from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
-  MNISTSparseExperiment
+from htmresearch.frameworks.pytorch.sparse_speech_experiment import (
+  SparseSpeechExperiment)
 
 
 
@@ -71,15 +70,28 @@ def analyzeWeightPruning(args):
 
   device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-  # Dataset transformations used during training. See mnist_sparse_experiment.py
-  transform = transforms.Compose([transforms.ToTensor(),
-                                  transforms.Normalize((0.1307,), (0.3081,))])
+  datadir = os.path.join(params["datadir"], "speech_commands")
+  testDataDir = os.path.join(datadir, "test")
 
-  # Initialize MNIST test dataset for this experiment
-  test_loader = torch.utils.data.DataLoader(
-    datasets.MNIST(params["datadir"], train=False, download=True,
-                   transform=transform),
-    batch_size=params["test_batch_size"], shuffle=True)
+  # Initialize speech test dataset for this experiment
+  n_mels = 32
+  testFeatureTransform = transforms.Compose([
+    FixAudioLength(),
+    ToMelSpectrogram(n_mels=n_mels),
+    ToTensor('mel_spectrogram', 'input'),
+    Unsqueeze(tensor_name="input", model_type=params["model_type"])
+  ])
+  testDataset = SpeechCommandsDataset(
+    testDataDir,
+    testFeatureTransform,
+    silence_percentage=0,
+  )
+
+  test_loader = DataLoader(testDataset,
+                           batch_size=params["batch_size"],
+                           sampler=None,
+                           shuffle=False
+                           )
 
   # Load pre-trained model and evaluate with test dataset
   model = torch.load(os.path.join(path, "model.pt"), map_location=device)
@@ -106,18 +118,39 @@ def analyzeWeightPruning(args):
   # Compute noise score
   noise_values = tqdm([0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5],
                       position=position)
+  # Create noise dataset with noise transform
+  noiseTransform = transforms.Compose([
+    FixAudioLength(),
+    ToSTFT(),
+    ToMelSpectrogramFromSTFT(n_mels=n_mels),
+    DeleteSTFT(),
+    ToTensor('mel_spectrogram', 'input'),
+    Unsqueeze(tensor_name="input", model_type=params["model_type"])
+  ])
+
+  noiseDataset = SpeechCommandsDataset(
+    testDataDir,
+    noiseTransform,
+    silence_percentage=0,
+  )
+  noise_loader = DataLoader(noiseDataset,
+                            batch_size=params["batch_size"],
+                            sampler=None,
+                            shuffle=False
+                            )
+
   for noise in noise_values:
     noise_values.set_description("{}.noise({})".format(desc, noise))
 
+    xfrom = AddNoise(noise)
     # Add noise to dataset transforms
-    transform.transforms.append(
-      RandomNoise(noise, whiteValue=0.1307 + 2 * 0.3081))
+    noiseTransform.transforms.insert(1, xfrom)
 
     # Evaluate model with noise
-    results = evaluateModel(model=model, loader=test_loader, device=device)
+    results = evaluateModel(model=model, loader=noise_loader, device=device)
 
     # Remove noise from dataset transforms
-    transform.transforms.pop()
+    noiseTransform.transforms.remove(xfrom)
 
     # Update noise score
     noise_score += results["total_correct"]
@@ -184,7 +217,7 @@ def run(pool, expName, name, args):
 
 def main():
   # Initialize experiment options and parameters
-  suite = MNISTSparseExperiment()
+  suite = SparseSpeechExperiment()
   suite.parse_opt()
   suite.parse_cfg()
   experiments = suite.options.experiments or suite.cfgparser.sections()
@@ -199,6 +232,7 @@ def main():
     args = []
     for exp in results:
       params = suite.get_params(exp)
+      params["datadir"] = suite.cfgparser.defaults()["datadir"]
       for i, minWeight in enumerate(np.linspace(0.0, 0.1, 21)):
         args.append((exp, params, minWeight, -1, i))
 
@@ -211,7 +245,6 @@ def main():
     # Analyze dutycycle pruning units with dutycycle below 5% from target density
     args[:, 3] = 0.05  # set minDutycycle to 5% for all experiments
     run(pool, expName, "Dutycycle Pruning (5%)", args)
-
 
     # Analyze dutycycle pruning units with dutycycle below 10% from target density
     args[:, 3] = 0.10  # set minDutycycle to 10% for all experiments
