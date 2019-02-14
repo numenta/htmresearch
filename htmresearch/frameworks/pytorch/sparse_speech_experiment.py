@@ -66,8 +66,10 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     self.startTime = time.time()
     print(params)
-    torch.manual_seed(params["seed"] + repetition)
-    np.random.seed(params["seed"] + repetition)
+    seed = params["seed"] + repetition
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     # Get our directories correct
     self.dataDir = os.path.join(params["datadir"], "speech_commands")

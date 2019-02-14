@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 import os
+import random
 import sys
 import traceback
 import numpy as np
@@ -60,8 +61,10 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     self.startTime = time.time()
     print(params)
-    torch.manual_seed(params["seed"] + repetition)
-    np.random.seed(params["seed"] + repetition)
+    seed = params["seed"] + repetition
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     # Get our directories correct
     self.dataDir = params["datadir"]
