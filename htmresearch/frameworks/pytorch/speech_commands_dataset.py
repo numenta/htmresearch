@@ -215,7 +215,7 @@ class PreprocessedSpeechDataset(Dataset):
       # Free all cached memory
       logging.warning("Low memory : %d", mem.available)
       self._data = dict.fromkeys(self._data)
-      gc.collect(2)
+      gc.collect()
 
     folder = os.path.join(self._root, str(self._epoch), self._subset)
     data = []
