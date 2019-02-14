@@ -108,3 +108,6 @@ robotium-solo-5.0.1.jar.properties
 /projects/speech_commands/old_results
 /data
 /projects/thalamus/images
+projects/speech_commands/data/processed
+projects/speech_commands/data/raw
+speech_commands_v0.01.tar.gz
