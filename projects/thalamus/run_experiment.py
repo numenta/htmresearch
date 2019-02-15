@@ -23,12 +23,46 @@ from __future__ import print_function
 
 import os
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from PIL import Image
 
 from htmresearch.frameworks.thalamus.thalamus import Thalamus
-from htmresearch.frameworks.thalamus.thalamus_utils import *
+from htmresearch.frameworks.thalamus.thalamus_utils import (
+  createLocationEncoder, encodeLocation, trainThalamusLocations,
+  defaultDtype)
+
+
+# TODO: implement an overlap matrix to show that the location codes are overlapping
+
+# TODO: implement feature filtering. Can have R, G, B ganglion inputs segregated
+# into different relay cells. Only the R ones will burst, the rest are tonic.
+
+# TODO: change color scheme so that grey is nothing and blue is tonic.
+
+# TODO: implement a filling in mechanism.
+
+# TODO: fan-out from ganglion cells to relay cells are not currently implemented.
+# We should have ganglion cells also on the dendrites.
+
+
+def loadImage(t, filename="cajal.jpg"):
+  """
+  Load the given gray scale image. Threshold it to black and white and crop it
+  to be the dimensions of the FF input for the thalamus.  Return a binary numpy
+  matrix where 1 corresponds to black, and 0 corresponds to white.
+  """
+  image = Image.open("cajal.jpg").convert("1")
+  image.load()
+  box = (0, 0, t.inputWidth, t.inputHeight)
+  image = image.crop(box)
+
+  # Here a will be a binary numpy array where True is white. Convert to floating
+  # point numpy array where white is 0.0
+  a = np.asarray(image)
+  im = np.ones((t.inputWidth, t.inputHeight))
+  im[a] = 0
+
+  return im
 
 
 def plotActivity(activity, filename,
@@ -60,6 +94,7 @@ def inferThalamus(t, l6Input, ffInput):
 
 
 def locationsTest():
+  """Test with square and blocky A"""
   t = Thalamus()
 
   encoder = createLocationEncoder(t)
@@ -95,6 +130,36 @@ def locationsTest():
                  cmap="coolwarm")
 
 
+def largeThalamus():
+  print("Initializing thalamus")
+  t = Thalamus(
+    trnCellShape=(250, 250),
+    relayCellShape=(250, 250),
+    inputShape=(250, 250),
+  )
+
+  encoder = createLocationEncoder(t)
+  trainThalamusLocations(t, encoder)
+
+  print("Loading image")
+  ff = loadImage(t)
+  plotActivity(ff, "cajal_input.jpg", title="Feed forward input")
+
+  l6Activity = np.zeros(encoder.getWidth(), dtype=defaultDtype)
+  for x in range(110,150,10):
+    print("Testing with x=", x)
+    ff = loadImage(t)
+    inferThalamus(t, encodeLocation(encoder, x, x, l6Activity), ff)
+    plotActivity(t.burstReadyCells, "relay_burstReady_" + str(x) + ".jpg",
+                 title="Burst-ready cells (x,y)=({},{})".format(x, x),
+                 )
+    plotActivity(ff, "cajal_relay_output_" + str(x) + ".jpg",
+                 title="Relay cell activity",
+                 cmap="coolwarm")
+
+  return t
+
+
 # Simple tests for debugging
 def trainThalamus(t):
   # Learn
@@ -106,19 +171,11 @@ def basicTest():
   t = Thalamus()
 
   trainThalamus(t)
-
   ff = np.zeros((32,32))
   ff.reshape(-1)[[8, 9, 98, 99]] = 1.0
   inferThalamus(t, [0, 1, 2, 3, 4, 5], ff)
 
-  encoder = createLocationEncoder(t)
-  output = np.zeros(encoder.getWidth(), dtype=defaultDtype)
-
-  # Positions go from 0 to 1000 in both x and y directions
-  encoder.encodeIntoArray((np.array([100, 200]), 10), output)
-
 
 if __name__ == '__main__':
 
-  # basicTest()
-  locationsTest()
+  largeThalamus()

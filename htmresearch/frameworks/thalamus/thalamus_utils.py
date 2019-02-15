@@ -27,11 +27,7 @@ Utility functions
 
 from __future__ import print_function
 
-import os
 import numpy as np
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 
 from nupic.encoders.base import defaultDtype
 from nupic.encoders.coordinate import CoordinateEncoder
@@ -47,6 +43,8 @@ def createLocationEncoder(t):
 
 
 def encodeLocation(encoder, x, y, output, radius=5):
+  # Radius of 7 or 8 gives an overlap of about 8 or 9 with neighoring pixels
+  # Radius of 5 about 3
   encoder.encodeIntoArray((np.array([x * radius, y * radius]), radius), output)
   return output.nonzero()[0]
 
