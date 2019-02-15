@@ -20,6 +20,7 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
+import math
 import numpy as np
 
 import torch
@@ -40,6 +41,7 @@ class LinearSDR(nn.Module):
                weightSparsity=0.4,
                boostStrength=1.0,
                useBatchNorm=True,
+               normalizeWeights=False
                ):
     """
     A sparse linear layer with fixed sparsity, weight sparsity, and boosting.
@@ -67,6 +69,8 @@ class LinearSDR(nn.Module):
     :param useBatchNorm:
       If True, applies batchNorm1D after the linear step, before k-winners
       is applied.
+    :param normalizeWeights:
+      If True, initialize weights normalizing to the number of non-zeros
 
     """
     super(LinearSDR, self).__init__()
@@ -82,6 +86,8 @@ class LinearSDR(nn.Module):
     if useBatchNorm:
       self.bn = nn.BatchNorm1d(self.n, affine=False)
 
+    if normalizeWeights:
+      self.normalizeWeights()
 
     # Boosting related variables
     self.dutyCyclePeriod = 1000
@@ -106,6 +112,24 @@ class LinearSDR(nn.Module):
 
       self.zeroWts = (zeroIndices[:, 0], zeroIndices[:, 1])
       self.rezeroWeights()
+
+
+  def normalizeWeights(self):
+    """
+    Initialize the weights using kaiming_uniform initialization normalized to
+    the number of non-zeros in the layer instead of the whole input size.
+    Similar to torch.nn.Linear.reset_parameters() but applying weight sparsity
+    to the input size
+    """
+    _, inputSize = self.l1.weight.shape
+    fan = int(inputSize * self.weightSparsity)
+    gain = nn.init.calculate_gain('leaky_relu', math.sqrt(5))
+    std = gain / math.sqrt(fan)
+    bound = math.sqrt(3.0) * std  # Calculate uniform bounds from standard deviation
+    nn.init.uniform_(self.l1.weight, -bound, bound)
+    if self.l1.bias is not None:
+        bound = 1 / math.sqrt(fan)
+        nn.init.uniform_(self.l1.bias, -bound, bound)
 
 
   def rezeroWeights(self):
