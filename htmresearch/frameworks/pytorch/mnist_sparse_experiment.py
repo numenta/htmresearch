@@ -127,8 +127,14 @@ class MNISTSparseExperiment(PyExperimentSuite):
       if isinstance(c1_k, basestring):
         c1_k = map(int, c1_k.split("_"))
 
+      # Parse 'c1_input_shape; parameter
+      if "c1_input_shape" in params:
+        c1_input_shape = map(int, params["c1_input_shape"].split("_"))
+      else:
+        c1_input_shape = (1, 28, 28)
+
       sp_model = SparseNet(
-        inputSize=(1, 28, 28),
+        inputSize=c1_input_shape,
         outChannels=c1_out_channels,
         c_k=c1_k,
         dropout=params["dropout"],
