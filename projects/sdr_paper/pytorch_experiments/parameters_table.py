@@ -21,7 +21,7 @@
 # ----------------------------------------------------------------------
 import math
 import os
-
+from __future__ import print_function
 from tabulate import tabulate
 
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import MNISTSparseExperiment
@@ -104,4 +104,7 @@ if __name__ == '__main__':
 
       paramsTable.append([name, l1_f, l1_sp, l2_f, l2_sp, l3_n, l3_sp, wt_sp])
 
+  print()
   print(tabulate(paramsTable, headers="firstrow", tablefmt="grid"))
+  print()
+  print(tabulate(paramsTable, headers="firstrow", tablefmt="latex"))
