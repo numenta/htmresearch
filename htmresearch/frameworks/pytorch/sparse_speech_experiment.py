@@ -180,7 +180,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
       if params["lr_scheduler"] != "ReduceLROnPlateau":
         self.lr_scheduler.step()
 
-    self.train(params, epoch=iteration)
+    self.train(params, epoch=iteration, repetition=repetition)
 
     # Run validation test
     if self.validation_loader is not None:
@@ -238,7 +238,8 @@ class SparseSpeechExperiment(PyExperimentSuite):
     Save the full model once we are done.
     """
     if params.get("saveNet", True):
-      saveDir = os.path.join(params["path"], params["name"], "model.pt")
+      saveDir = os.path.join(params["path"], params["name"],
+                             "model_{}.pt".format(rep))
       torch.save(self.model, saveDir)
 
 
@@ -286,7 +287,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     return optimizer
 
 
-  def train(self, params, epoch):
+  def train(self, params, epoch, repetition):
     """
     Train one epoch of this model by iterating through mini batches. An epoch
     ends after one pass through the training set, or if the number of mini
@@ -294,7 +295,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     # Check for pre-trained model
     modelCheckpoint = os.path.join(params["path"], params["name"],
-                                   "model_{}.pt".format(epoch))
+                                   "model_{}_{}.pt".format(repetition, epoch))
     if os.path.exists(modelCheckpoint):
       self.model = torch.load(modelCheckpoint, map_location=self.device)
       return
