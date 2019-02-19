@@ -63,7 +63,8 @@ class SparseNet(nn.Module):
                boostStrength=1.0,
                boostStrengthFactor=1.0,
                dropout=0.0,
-               useBatchNorm=True):
+               useBatchNorm=True,
+               normalizeWeights=False):
     """
     A network with one or more hidden layers, which can be a sequence of
     k-sparse CNN followed by a sequence of k-sparse linear layer with optional
@@ -135,6 +136,11 @@ class SparseNet(nn.Module):
     :param useBatchNorm:
       If True, applies batchNorm for each layer.
     :type useBatchNorm: bool
+
+    :param normalizeWeights:
+      If True, each LinearSDR layer will have its weights normalized to the
+      number of non-zeros instead of the whole input size
+    :type normalizeWeights: bool
 
     """
     super(SparseNet, self).__init__()
@@ -212,6 +218,7 @@ class SparseNet(nn.Module):
                                   weightSparsity=weightSparsity,
                                   boostStrength=boostStrength,
                                   useBatchNorm=useBatchNorm,
+                                  normalizeWeights=normalizeWeights
                                   ))
         # Add dropout after each hidden layer
         if dropout > 0.0:
