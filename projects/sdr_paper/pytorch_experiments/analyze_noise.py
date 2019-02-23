@@ -27,6 +27,8 @@ from collections import OrderedDict, defaultdict
 from os.path import basename
 
 import numpy as np
+from torchvision import datasets, transforms
+from pytorch.image_transforms import RandomNoise
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -162,6 +164,41 @@ def configureDropoutByTotalCorrectPlot(suite, experiments, labels, linestyles):
 
 
 
+def plotImagesWithNoise(suite, noise_values, plotPath):
+  """
+  Plot Sample MNIST images with noise
+  :param suite: The configured experiment suite. Must call `parse_opt` and `
+                parse_cfg` before calling this functions
+  :param noise: list of noise values to plot
+  """
+  datadir = suite.cfgparser.defaults()["datadir"]
+
+  transform = transforms.Compose([transforms.ToTensor(),
+                                  transforms.Normalize((0.1307,), (0.3081,))])
+  dataset = datasets.MNIST(datadir, train=False, download=True,
+                           transform=transform)
+
+  num_noise = len(noise_values)
+  fig = plt.figure(figsize=(num_noise, 4))
+  for y in range(4):
+    for x in range(num_noise):
+      transform.transforms.append(
+        RandomNoise(noise_values[x], whiteValue=0.1307 + 2 * 0.3081))
+      img, _ = dataset[y]
+      transform.transforms.pop()
+
+      ax = fig.add_subplot(4, num_noise, y * num_noise + x + 1)
+      ax.set_axis_off()
+      ax.imshow(img.numpy().reshape((28, 28)), cmap='gray')
+      if y == 0:
+        ax.set_title("{0}%".format(noise_values[x] * 100))
+
+  plt.tight_layout()
+  plt.savefig(plotPath)
+  plt.close()
+
+
+
 if __name__ == '__main__':
   # Initialize experiment options and parameters
   suite = MNISTSparseExperiment()
@@ -189,6 +226,9 @@ if __name__ == '__main__':
   plotNoiseCurve(suite=suite, values=NOISE_VALUES, results=results, format=format,
                  plotPath=plotPath)
 
+  plotPath = os.path.join(path, "mnist_images_with_noise.pdf")
+  plotImagesWithNoise(suite=suite, noise_values=[0.0, 0.1, 0.2, 0.3, 0.4, 0.5],
+                      plotPath=plotPath)
 
   # # Plot Noise Curve (LinearNN)
   # results, format = configureNoisePlot(suite,

@@ -23,10 +23,6 @@ from __future__ import print_function
 
 import matplotlib
 matplotlib.use('Agg')
-import tarfile
-from os import path
-import os
-import shutil
 
 from htmresearch.frameworks.pytorch.sparse_speech_experiment import \
   SparseSpeechExperiment

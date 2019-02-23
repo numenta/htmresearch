@@ -1,9 +1,0 @@
-datasetConfigs:
-- configurationName: "raw_data"
-  inputDatasets:
-  - path: "speech_commands"
-    dataSetName: "numenta/speech_commands_dataset/raw_data"
-- configurationName: "preprocessed"
-  inputDatasets:
-  - path: "speech_commands"
-    dataSetName: "numenta/speech_commands_dataset/icml19"

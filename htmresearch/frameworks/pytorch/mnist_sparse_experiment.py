@@ -21,6 +21,7 @@
 
 from __future__ import print_function
 import os
+import random
 import sys
 import traceback
 import numpy as np
@@ -60,8 +61,10 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     self.startTime = time.time()
     print(params)
-    torch.manual_seed(params["seed"] + repetition)
-    np.random.seed(params["seed"] + repetition)
+    seed = params["seed"] + repetition
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     # Get our directories correct
     self.dataDir = params["datadir"]
@@ -124,8 +127,14 @@ class MNISTSparseExperiment(PyExperimentSuite):
       if isinstance(c1_k, basestring):
         c1_k = map(int, c1_k.split("_"))
 
+      # Parse 'c1_input_shape; parameter
+      if "c1_input_shape" in params:
+        c1_input_shape = map(int, params["c1_input_shape"].split("_"))
+      else:
+        c1_input_shape = (1, 28, 28)
+
       sp_model = SparseNet(
-        inputSize=(1, 28, 28),
+        inputSize=c1_input_shape,
         outChannels=c1_out_channels,
         c_k=c1_k,
         dropout=params["dropout"],

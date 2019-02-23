@@ -66,8 +66,10 @@ class SparseSpeechExperiment(PyExperimentSuite):
     """
     self.startTime = time.time()
     print(params)
-    torch.manual_seed(params["seed"] + repetition)
-    np.random.seed(params["seed"] + repetition)
+    seed = params["seed"] + repetition
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+    random.seed(seed)
 
     # Get our directories correct
     self.dataDir = os.path.join(params["datadir"], "speech_commands")
@@ -100,8 +102,14 @@ class SparseSpeechExperiment(PyExperimentSuite):
       if isinstance(c1_k, basestring):
         c1_k = map(int, c1_k.split("_"))
 
+      # Parse 'c1_input_shape; parameter
+      if "c1_input_shape" in params:
+        c1_input_shape = map(int, params["c1_input_shape"].split("_"))
+      else:
+        c1_input_shape = (1, 32, 32)
+
       sp_model = SparseNet(
-        inputSize=params.get("c1_input_shape", (1, 32, 32)),
+        inputSize=c1_input_shape,
         outputSize=len(self.train_loader.dataset.classes),
         outChannels=c1_out_channels,
         c_k=c1_k,
@@ -172,7 +180,7 @@ class SparseSpeechExperiment(PyExperimentSuite):
       if params["lr_scheduler"] != "ReduceLROnPlateau":
         self.lr_scheduler.step()
 
-    self.train(params, epoch=iteration)
+    self.train(params, epoch=iteration, repetition=repetition)
 
     # Run validation test
     if self.validation_loader is not None:
@@ -230,7 +238,8 @@ class SparseSpeechExperiment(PyExperimentSuite):
     Save the full model once we are done.
     """
     if params.get("saveNet", True):
-      saveDir = os.path.join(params["path"], params["name"], "model.pt")
+      saveDir = os.path.join(params["path"], params["name"],
+                             "model_{}.pt".format(rep))
       torch.save(self.model, saveDir)
 
 
@@ -278,12 +287,19 @@ class SparseSpeechExperiment(PyExperimentSuite):
     return optimizer
 
 
-  def train(self, params, epoch):
+  def train(self, params, epoch, repetition):
     """
     Train one epoch of this model by iterating through mini batches. An epoch
     ends after one pass through the training set, or if the number of mini
     batches exceeds the parameter "batches_in_epoch".
     """
+    # Check for pre-trained model
+    modelCheckpoint = os.path.join(params["path"], params["name"],
+                                   "model_{}_{}.pt".format(repetition, epoch))
+    if os.path.exists(modelCheckpoint):
+      self.model = torch.load(modelCheckpoint, map_location=self.device)
+      return
+
     self.model.train()
     for batch_idx, (batch, target) in enumerate(self.train_loader):
       data = batch["input"]
@@ -314,11 +330,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
     self.model.postEpoch()
 
-    # Save on every epoch
+    # Save model checkpoint on every epoch
     if params.get("save_every_epoch", False):
-      saveDir = os.path.join(params["path"], params["name"],
-                             "model_{}.pt".format(epoch))
-      torch.save(self.model, saveDir)
+      torch.save(self.model, modelCheckpoint)
 
 
 

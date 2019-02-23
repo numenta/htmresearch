@@ -25,18 +25,14 @@ Adapted from https://github.com/tugstugi/pytorch-speech-commands
 Google speech commands dataset.
 """
 
-import gc
 import cPickle as pickle
+import gc
 import itertools
-import logging
-import psutil
 import os
-import numpy as np
 
 import librosa
-
+import numpy as np
 from torch.utils.data import Dataset
-
 
 __all__ = ['CLASSES', 'SpeechCommandsDataset', 'BackgroundNoiseDataset',
            'PreprocessedSpeechDataset']
@@ -156,8 +152,6 @@ class BackgroundNoiseDataset(Dataset):
     return data
 
 
-# Minimum memory required to load a single epoch of preprocessed speech data
-MIN_PREPROCESSED_MEMORY = 4 * 1024 * 1024 * 1024  # 4Gb
 
 class PreprocessedSpeechDataset(Dataset):
   """
@@ -178,18 +172,18 @@ class PreprocessedSpeechDataset(Dataset):
     self._subset = subset
     self._silence_percentage = silence_percentage
 
-    # Data for each epoch lazily loaded
-    self._data = {int(e): None for e in os.listdir(root) if e.isdigit()}
+    self.data = None
 
     # Circular list of all epochs in this dataset
-    self._all_epochs = itertools.cycle(sorted(self._data.keys()))
+    epochs = sorted([int(e) for e in os.listdir(root) if e.isdigit()])
+    self._all_epochs = itertools.cycle(epochs)
 
     # load first epoch
-    self._epoch = self.next_epoch()
+    self.next_epoch()
 
 
   def __len__(self):
-    return len(self._data[self._epoch])
+    return len(self.data)
 
 
   def __getitem__(self, index):
@@ -199,26 +193,16 @@ class PreprocessedSpeechDataset(Dataset):
     :return: (audio, target) where target is index of the target class.
     :rtype: tuple[dict, int]
     """
-    return self._data[self._epoch][index]
+    return self.data[index]
 
 
-  def _load(self):
+  def next_epoch(self):
     """
-    Load data for the current epoch
+    Load next epoch from disk
     """
-    if self._data[self._epoch] is not None:
-      return
-
-    # Check available memory
-    mem = psutil.virtual_memory()
-    if mem.available < MIN_PREPROCESSED_MEMORY:
-      # Free all cached memory
-      logging.warning("Low memory : %d", mem.available)
-      self._data = dict.fromkeys(self._data)
-      gc.collect(2)
-
-    folder = os.path.join(self._root, str(self._epoch), self._subset)
-    data = []
+    epoch = next(self._all_epochs)
+    folder = os.path.join(self._root, str(epoch), self._subset)
+    self.data = []
     silence = None
 
     gc.disable()
@@ -233,22 +217,13 @@ class PreprocessedSpeechDataset(Dataset):
         silence = audio
       else:
         target = self.classes.index(os.path.basename(command))
-        data.extend(itertools.product(audio, [target]))
+        self.data.extend(itertools.product(audio, [target]))
 
     gc.enable()
 
     target = self.classes.index("silence")
-    data += [(silence, target)] * int(len(data) * self._silence_percentage)
-    self._data[self._epoch] = data
-
-
-  def next_epoch(self):
-    """
-    Get next epoch from a circular list of available epochs
-    """
-    self._epoch = next(self._all_epochs)
-    self._load()
-    return self._epoch
+    self.data += [(silence, target)] * int(len(self.data) * self._silence_percentage)
+    return epoch
 
 
   def make_weights_for_balanced_classes(self):
@@ -256,13 +231,13 @@ class PreprocessedSpeechDataset(Dataset):
 
     nclasses = len(self.classes)
     count = np.ones(nclasses)
-    for item in self:
+    for item in self.data:
       count[item[1]] += 1
 
     N = float(sum(count))
     weight_per_class = N / count
-    weight = np.zeros(len(self))
-    for idx, item in enumerate(self):
+    weight = np.zeros(len(self.data))
+    for idx, item in enumerate(self.data):
       weight[idx] = weight_per_class[item[1]]
     return weight
 
