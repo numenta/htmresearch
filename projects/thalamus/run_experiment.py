@@ -26,10 +26,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image
 
+import skimage
+from skimage import data
+from skimage.util import img_as_float
+from skimage.filters import gabor_kernel
+from scipy import ndimage as ndi
+
 from htmresearch.frameworks.thalamus.thalamus import Thalamus
 from htmresearch.frameworks.thalamus.thalamus_utils import (
   createLocationEncoder, encodeLocation, trainThalamusLocations,
-  defaultDtype)
+  getUnionLocations, defaultDtype)
 
 
 # TODO: implement an overlap matrix to show that the location codes are overlapping
@@ -66,9 +72,9 @@ def loadImage(t, filename="cajal.jpg"):
 
 
 def plotActivity(activity, filename,
-                 title="",
+                 title="", vmin=0.0, vmax=2.0,
                  cmap="Greys"):
-  plt.imshow(activity, vmin=0.0, vmax=2.0, origin="upper", cmap=cmap)
+  plt.imshow(activity, vmin=vmin, vmax=vmax, origin="upper", cmap=cmap)
   plt.title(title)
   plt.colorbar()
   plt.savefig(os.path.join("images", filename))
@@ -87,10 +93,11 @@ def inferThalamus(t, l6Input, ffInput):
   print("\n-----------")
   t.reset()
   t.deInactivateCells(l6Input)
-  t.computeFeedForwardActivity(ffInput)
-  print("L6 input:", l6Input)
-  print("Active TRN cells: ", t.activeTRNCellIndices)
-  print("Burst ready relay cells: ", t.burstReadyCellIndices)
+  ffOutput = t.computeFeedForwardActivity(ffInput)
+  # print("L6 input:", l6Input)
+  # print("Active TRN cells: ", t.activeTRNCellIndices)
+  # print("Burst ready relay cells: ", t.burstReadyCellIndices)
+  return ffOutput
 
 
 def locationsTest():
@@ -107,8 +114,8 @@ def locationsTest():
     ff[:] = 0
     ff[10:20, 10:20] = 1
     plotActivity(ff, "square_ff_input.jpg", title="Feed forward input")
-    inferThalamus(t, encodeLocation(encoder, x, x, output), ff)
-    plotActivity(ff, "square_relay_output_" + str(x) + ".jpg",
+    ffOutput = inferThalamus(t, encodeLocation(encoder, x, x, output), ff)
+    plotActivity(ffOutput, "square_relay_output_" + str(x) + ".jpg",
                  title="Relay cell activity",
                  cmap="coolwarm")
 
@@ -121,24 +128,26 @@ def locationsTest():
     ff[10:20, 10] = 1
     ff[10:20, 20] = 1
     plotActivity(ff, "A_ff_input.jpg", title="Feed forward input")
-    inferThalamus(t, encodeLocation(encoder, x, x, output), ff)
+    ffOutput = inferThalamus(t, encodeLocation(encoder, x, x, output), ff)
     plotActivity(t.burstReadyCells, "relay_burstReady_" + str(x) + ".jpg",
                  title="Burst-ready cells (x,y)=({},{})".format(x, x),
                  )
-    plotActivity(ff, "A_relay_output_" + str(x) + ".jpg",
+    plotActivity(ffOutput, "A_relay_output_" + str(x) + ".jpg",
                  title="Relay cell activity",
                  cmap="coolwarm")
 
 
-def largeThalamus():
+def largeThalamus(w=250):
   print("Initializing thalamus")
   t = Thalamus(
-    trnCellShape=(250, 250),
-    relayCellShape=(250, 250),
-    inputShape=(250, 250),
+    trnCellShape=(w, w),
+    relayCellShape=(w, w),
+    inputShape=(w, w),
+    l6CellCount=128*128,
+    trnThreshold=15,
   )
 
-  encoder = createLocationEncoder(t)
+  encoder = createLocationEncoder(t, w=17)
   trainThalamusLocations(t, encoder)
 
   print("Loading image")
@@ -146,18 +155,126 @@ def largeThalamus():
   plotActivity(ff, "cajal_input.jpg", title="Feed forward input")
 
   l6Activity = np.zeros(encoder.getWidth(), dtype=defaultDtype)
-  for x in range(110,150,10):
+  for x in range(w/2-60,w/2+60,40):
     print("Testing with x=", x)
     ff = loadImage(t)
-    inferThalamus(t, encodeLocation(encoder, x, x, l6Activity), ff)
+    l6Code = list(getUnionLocations(encoder, x, x, 20))
+    print("Num active cells in L6 union:", len(l6Code),"out of", t.l6CellCount)
+    ffOutput = inferThalamus(t, l6Code, ff)
     plotActivity(t.burstReadyCells, "relay_burstReady_" + str(x) + ".jpg",
                  title="Burst-ready cells (x,y)=({},{})".format(x, x),
                  )
-    plotActivity(ff, "cajal_relay_output_" + str(x) + ".jpg",
+    plotActivity(ffOutput, "cajal_relay_output_" + str(x) + ".jpg",
                  title="Relay cell activity",
                  cmap="coolwarm")
 
+  # The eye
+  x=150
+  y=110
+  print("Testing with x,y=", x, y)
+  ff = loadImage(t)
+  l6Code = list(getUnionLocations(encoder, x, y, 20))
+  print("Num active cells in L6 union:", len(l6Code),"out of", t.l6CellCount)
+  ffOutput = inferThalamus(t, l6Code, ff)
+  plotActivity(t.burstReadyCells, "relay_burstReady_eye.jpg",
+               title="Burst-ready cells (x,y)=({},{})".format(x, y),
+               )
+  plotActivity(ffOutput, "cajal_relay_output_eye.jpg",
+               title="Filtered activity",
+               cmap="Greys")
+
+  # The ear
+  x=25
+  y=150
+  print("Testing with x,y=", x, y)
+  ff = loadImage(t)
+  l6Code = list(getUnionLocations(encoder, x, y, 20))
+  print("Num active cells in L6 union:", len(l6Code),"out of", t.l6CellCount)
+  ffOutput = inferThalamus(t, l6Code, ff)
+  plotActivity(t.burstReadyCells, "relay_burstReady_ear.jpg",
+               title="Burst-ready cells (x,y)=({},{})".format(x, y),
+               )
+  plotActivity(ffOutput, "cajal_relay_output_ear.jpg",
+               title="Filtered activity",
+               cmap="Greys")
+
   return t
+
+
+def power(image, kernel):
+  # Normalize images for better comparison.
+  image = (image - image.mean()) / image.std()
+  return np.sqrt(ndi.convolve(image, np.real(kernel), mode='wrap') ** 2 +
+                 ndi.convolve(image, np.imag(kernel), mode='wrap') ** 2)
+
+def filtered(w=250):
+  """
+  In this example we filter the image into several channels using gabor filters. L6 activity is used to select
+  one of those channels. Only activity selected by those channels burst.
+  """
+  # prepare filter bank kernels
+  kernels = []
+  for theta in range(4):
+    theta = theta / 4. * np.pi
+    for sigma in (1, 3):
+      for frequency in (0.05, 0.25):
+        kernel = np.real(gabor_kernel(frequency, theta=theta,
+                                      sigma_x=sigma, sigma_y=sigma))
+        kernels.append(kernel)
+
+  print("Initializing thalamus")
+
+  t = Thalamus(
+    trnCellShape=(w, w),
+    relayCellShape=(w, w),
+    inputShape=(w, w),
+    l6CellCount=128*128,
+    trnThreshold=15,
+  )
+
+
+  ff = loadImage(t)
+
+  for i,k in enumerate(kernels):
+    plotActivity(k, "kernel"+str(i)+".jpg", "Filter kernel", vmax=k.max(),
+                 vmin=k.min())
+    filtered0 = power(ff, k)
+    ft = np.zeros((w, w))
+    ft[filtered0 > filtered0.mean() + filtered0.std()] = 1.0
+    plotActivity(ft, "filtered"+str(i)+".jpg", "Filtered image", vmax=1.0)
+
+  encoder = createLocationEncoder(t, w=17)
+  trainThalamusLocations(t, encoder)
+
+  filtered0 = power(ff, kernels[3])
+  ft = np.zeros((w, w))
+  ft[filtered0 > filtered0.mean() + filtered0.std()] = 1.0
+
+  # Get a salt and pepper burst ready image
+  print("Getting unions")
+  l6Code = list(getUnionLocations(encoder, 125, 125, 150, step=10))
+  print("Num active cells in L6 union:", len(l6Code),"out of", t.l6CellCount)
+  ffOutput = inferThalamus(t, l6Code, ft)
+  plotActivity(t.burstReadyCells, "relay_burstReady_filtered.jpg",
+               title="Burst-ready cells",
+               )
+  plotActivity(ffOutput, "cajal_relay_output_filtered.jpg",
+               title="Filtered activity",
+               cmap="Greys")
+
+  # Get a more detailed filtered image
+  print("Getting unions")
+  l6Code = list(getUnionLocations(encoder, 125, 125, 150, step=3))
+  print("Num active cells in L6 union:", len(l6Code),"out of", t.l6CellCount)
+  ffOutput_all = inferThalamus(t, l6Code, ff)
+  ffOutput_filtered = inferThalamus(t, l6Code, ft)
+  ffOutput3 = ffOutput_all*0.4 + ffOutput_filtered
+  plotActivity(t.burstReadyCells, "relay_burstReady_all.jpg",
+               title="Burst-ready cells",
+               )
+  plotActivity(ffOutput3, "cajal_relay_output_filtered2.jpg",
+               title="Filtered activity",
+               cmap="Greys")
 
 
 # Simple tests for debugging
@@ -178,4 +295,6 @@ def basicTest():
 
 if __name__ == '__main__':
 
-  largeThalamus()
+  # largeThalamus(250)
+  # basicTest()
+  filtered(250)

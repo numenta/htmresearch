@@ -122,11 +122,10 @@ class Thalamus(object):
 
 
     self.l6CellCount = l6CellCount
-    self.trnThreshold = trnThreshold
     self.relayThreshold = relayThreshold
     self.seed = seed
     self.rng = Random(seed)
-    self.trnActivationThreshold = 5
+    self.trnActivationThreshold = trnThreshold
 
     self.trnConnections = SparseMatrixConnections(
       trnCellShape[0]*trnCellShape[1], l6CellCount)
@@ -185,11 +184,8 @@ class Thalamus(object):
     self.activeTRNCellIndices = self.trnConnections.mapSegmentsToCells(
       self.activeTRNSegments)
 
-    # print("trnOverlaps:", self.trnOverlaps,
-    #       "active segments:", self.activeTRNSegments)
-    for s, idx in zip(self.activeTRNSegments, self.activeTRNCellIndices):
-      print(self.trnOverlaps[s], idx, self.trnIndextoCoord(idx))
-
+    # for s, idx in zip(self.activeTRNSegments, self.activeTRNCellIndices):
+    #   print(self.trnOverlaps[s], idx, self.trnIndextoCoord(idx))
 
     # Figure out which relay cells have dendrites in de-inactivated state
     self.relayOverlaps = self.relayConnections.computeActivity(
@@ -217,18 +213,22 @@ class Thalamus(object):
       feedForwardInput is modified to contain 0, 1, or 2. A "2" indicates
       bursting cells.
     """
-    pass
+    ff = feedForwardInput.copy()
     # For each relay cell, see if any of its FF inputs are active.
-    # for x in range(self.relayWidth):
-    #   for y in range(self.relayHeight):
-    #     inputCells = self._preSynapticFFCells(x, y)
-    #     print(inputCells)
-
+    for x in range(self.relayWidth):
+      for y in range(self.relayHeight):
+        inputCells = self._preSynapticFFCells(x, y)
+        for idx in inputCells:
+          if feedForwardInput[idx] != 0:
+            ff[x, y] = 1.0
+            continue
 
     # If yes, and it is in burst mode, this cell bursts
     # If yes, and it is not in burst mode, then we just get tonic input.
 
-    feedForwardInput += self.burstReadyCells * feedForwardInput
+    # ff += self.burstReadyCells * ff
+    ff2 = ff * 0.4 + self.burstReadyCells * ff
+    return ff2
 
 
   def reset(self):
