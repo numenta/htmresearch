@@ -56,6 +56,8 @@ class SparseNet(nn.Module):
                k=200,
                outChannels=0,
                c_k=0,
+               kernelSize=5,
+               stride=1,
                inputSize=28*28,
                outputSize=10,
                kInferenceFactor=1.0,
@@ -99,6 +101,14 @@ class SparseNet(nn.Module):
       layer. The sparsity of this layer will be c_k / c_n. If c_k >= c_n, the
       layer acts as a traditional convolutional layer.
     :type c_k: int or list[int]
+
+    :param kernelSize:
+      Kernel size to use in each k-sparse convolutional layer.
+    :type kernelSize: int or list[int]
+
+    :param stride:
+      Stride value to use in each k-sparse convolutional layer.
+    :type stride: int or list[int]
 
     :param inputSize:
       If the CNN layer is enable this parameter holds a tuple representing
@@ -157,6 +167,10 @@ class SparseNet(nn.Module):
     if type(c_k) is not list:
       c_k = [c_k]
     assert(len(outChannels) == len(c_k))
+    if type(kernelSize) is not list:
+      kernelSize = [kernelSize]
+    if type(stride) is not list:
+      stride = [stride]
 
     # Validate linear sdr params
     if type(n) is not list:
@@ -176,8 +190,10 @@ class SparseNet(nn.Module):
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.boostStrengthFactor = boostStrengthFactor
     self.boostStrength = boostStrength
-    self.kernelSize = 5
+    self.kernelSize = kernelSize
+    self.stride = stride
     self.learningIterations = 0
+
 
     inputFeatures = inputSize
     cnnSdr = nn.Sequential()
@@ -187,7 +203,8 @@ class SparseNet(nn.Module):
         module = CNNSDR2d(imageShape=inputFeatures,
                           outChannels=outChannels[i],
                           k=c_k[i],
-                          kernelSize=self.kernelSize,
+                          kernelSize=self.kernelSize[i],
+                          stride=self.stride[i],
                           kInferenceFactor=kInferenceFactor,
                           boostStrength=boostStrength,
                           useBatchNorm=useBatchNorm,

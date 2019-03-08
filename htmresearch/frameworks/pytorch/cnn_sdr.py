@@ -41,6 +41,7 @@ class CNNSDR2d(nn.Module):
                outChannels=20,
                k=20,
                kernelSize=5,
+               stride=1,
                kInferenceFactor=1.5,
                boostStrength=1.0,
                useBatchNorm=True,
@@ -62,6 +63,9 @@ class CNNSDR2d(nn.Module):
 
     :param kernelSize:
       Size of the CNN kernel.
+
+    :param stride:
+      stride of the convolution.
 
     :param kInferenceFactor:
       During inference (training=False) we increase k by this factor.
@@ -109,10 +113,11 @@ class CNNSDR2d(nn.Module):
     self.kInferenceFactor = kInferenceFactor
     self.kernelSize = kernelSize
     self.imageShape = imageShape
-    self.stride = 1
+    self.stride = stride
     self.padding = 0
 
-    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize)
+    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize,
+                         stride=stride)
 
     self.bn = None
     if useBatchNorm:
