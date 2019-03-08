@@ -66,7 +66,8 @@ class SparseNet(nn.Module):
                boostStrengthFactor=1.0,
                dropout=0.0,
                useBatchNorm=True,
-               normalizeWeights=False):
+               normalizeWeights=False,
+               useSoftmax=True):
     """
     A network with one or more hidden layers, which can be a sequence of
     k-sparse CNN followed by a sequence of k-sparse linear layer with optional
@@ -152,6 +153,9 @@ class SparseNet(nn.Module):
       number of non-zeros instead of the whole input size
     :type normalizeWeights: bool
 
+    :param useSoftmax:
+      If True, use soft max to compute probabilities
+    :type useSoftmax: bool
     """
     super(SparseNet, self).__init__()
 
@@ -159,8 +163,7 @@ class SparseNet(nn.Module):
 
     # Validate CNN sdr params
     if isinstance(inputSize, collections.Sequence):
-      assert(inputSize[1] == inputSize[2],
-             "sparseCNN only supports square images")
+      assert inputSize[1] == inputSize[2], "sparseCNN only supports square images"
 
     if type(outChannels) is not list:
       outChannels = [outChannels]
@@ -245,8 +248,13 @@ class SparseNet(nn.Module):
         inputFeatures = n[i]
 
     # Add one fully connected layer after all hidden layers
-    self.fc = nn.Linear(self.n[-1], outputSize)
-    self.softmax = nn.LogSoftmax(dim=1)
+    self.fc = nn.Linear(inputFeatures, outputSize)
+
+    # Use softmax to compute probabilities
+    if useSoftmax:
+      self.softmax = nn.LogSoftmax(dim=1)
+    else:
+      self.softmax = None
 
 
   def postEpoch(self):
@@ -277,7 +285,9 @@ class SparseNet(nn.Module):
     x = self.flatten(x)
     x = self.linearSdr(x)
     x = self.fc(x)
-    x = self.softmax(x)
+
+    if self.softmax is not None:
+      x = self.softmax(x)
 
     if self.training:
       batchSize = x.shape[0]
