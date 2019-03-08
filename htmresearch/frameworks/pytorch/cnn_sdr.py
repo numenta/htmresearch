@@ -57,8 +57,8 @@ class CNNSDR2d(nn.Module):
 
     :param k:
       Number of ON (non-zero) units per iteration in this convolutional layer.
-      The sparsity of this layer will be k / self.outputLength. If k >=
-      self.outputLength, the layer acts as a traditional convolutional layer.
+      The sparsity of this layer will be k / self.outputLength. If k <= 0 or
+      k >= self.outputLength, the layer acts as a traditional convolutional layer.
 
     :param kernelSize:
       Size of the CNN kernel.
@@ -124,6 +124,8 @@ class CNNSDR2d(nn.Module):
     shape = self.outputSize()
     self.maxpoolWidth = int(math.floor(shape[2] / 2.0))
     self.outputLength = int(self.maxpoolWidth * self.maxpoolWidth * outChannels)
+    if k <= 0:
+      self.k = self.outputLength
 
     print("output shape before maxpool:", shape)
     print("maxpool width:", self.maxpoolWidth)
