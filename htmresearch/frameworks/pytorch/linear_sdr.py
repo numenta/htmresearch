@@ -84,7 +84,7 @@ class LinearSDR(nn.Module):
 
     self.bn = None
     if useBatchNorm:
-      self.bn = nn.BatchNorm1d(self.n, affine=False)
+      self.bn = nn.LayerNorm(self.n)
 
     if normalizeWeights:
       self.normalizeWeights()
