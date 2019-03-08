@@ -22,3 +22,5 @@ scikit-image>=0.14.1
 nupic
 htmresearch_core
 librosa>=0.6.2
+gym>=0.10.11
+atari_py
