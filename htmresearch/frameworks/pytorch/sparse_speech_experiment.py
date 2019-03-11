@@ -113,6 +113,8 @@ class SparseSpeechExperiment(PyExperimentSuite):
         outputSize=len(self.train_loader.dataset.classes),
         outChannels=c1_out_channels,
         c_k=c1_k,
+        kernelSize=[5] * len(c1_k),
+        stride=[1] * len(c1_k),
         dropout=params["dropout"],
         n=n,
         k=k,

@@ -41,6 +41,7 @@ class CNNSDR2d(nn.Module):
                outChannels=20,
                k=20,
                kernelSize=5,
+               stride=1,
                kInferenceFactor=1.5,
                boostStrength=1.0,
                useBatchNorm=True,
@@ -57,11 +58,14 @@ class CNNSDR2d(nn.Module):
 
     :param k:
       Number of ON (non-zero) units per iteration in this convolutional layer.
-      The sparsity of this layer will be k / self.outputLength. If k >=
-      self.outputLength, the layer acts as a traditional convolutional layer.
+      The sparsity of this layer will be k / self.outputLength. If k <= 0 or
+      k >= self.outputLength, the layer acts as a traditional convolutional layer.
 
     :param kernelSize:
       Size of the CNN kernel.
+
+    :param stride:
+      stride of the convolution.
 
     :param kInferenceFactor:
       During inference (training=False) we increase k by this factor.
@@ -109,10 +113,11 @@ class CNNSDR2d(nn.Module):
     self.kInferenceFactor = kInferenceFactor
     self.kernelSize = kernelSize
     self.imageShape = imageShape
-    self.stride = 1
+    self.stride = stride
     self.padding = 0
 
-    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize)
+    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize,
+                         stride=stride)
 
     self.bn = None
     if useBatchNorm:
@@ -124,6 +129,8 @@ class CNNSDR2d(nn.Module):
     shape = self.outputSize()
     self.maxpoolWidth = int(math.floor(shape[2] / 2.0))
     self.outputLength = int(self.maxpoolWidth * self.maxpoolWidth * outChannels)
+    if k <= 0:
+      self.k = self.outputLength
 
     print("output shape before maxpool:", shape)
     print("maxpool width:", self.maxpoolWidth)
