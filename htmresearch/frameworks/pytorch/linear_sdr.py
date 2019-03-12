@@ -54,8 +54,8 @@ class LinearSDR(nn.Module):
 
     :param k:
       Number of ON units in this layer. The sparsity of this layer will be
-      k / n. If k >= n, the layer acts as a traditional fully connected RELU
-      layer.
+      k / n. If k <= 0 or k >= n, the layer acts as a traditional fully
+      connected RELU layer.
 
     :param kInferenceFactor:
       During inference (training=False) we increase k by this factor.
@@ -81,6 +81,8 @@ class LinearSDR(nn.Module):
     self.l1 = nn.Linear(inputFeatures, self.n)
     self.weightSparsity = weightSparsity
     self.learningIterations = 0
+    if self.k <= 0:
+      self.k = self.n
 
     self.bn = None
     if useBatchNorm:

@@ -22,6 +22,7 @@
 from __future__ import print_function
 import math
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -41,7 +42,9 @@ class CNNSDR2d(nn.Module):
                outChannels=20,
                k=20,
                kernelSize=5,
+               stride=1,
                kInferenceFactor=1.5,
+               weightSparsity=0.5,
                boostStrength=1.0,
                useBatchNorm=True,
                ):
@@ -57,14 +60,20 @@ class CNNSDR2d(nn.Module):
 
     :param k:
       Number of ON (non-zero) units per iteration in this convolutional layer.
-      The sparsity of this layer will be k / self.outputLength. If k >=
-      self.outputLength, the layer acts as a traditional convolutional layer.
+      The sparsity of this layer will be k / self.outputLength. If k <= 0 or
+      k >= self.outputLength, the layer acts as a traditional convolutional layer.
 
     :param kernelSize:
       Size of the CNN kernel.
 
+    :param stride:
+      stride of the convolution.
+
     :param kInferenceFactor:
       During inference (training=False) we increase k by this factor.
+
+    :param weightSparsity:
+      Pct of weights that are allowed to be non-zero in the layer.
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
@@ -107,12 +116,14 @@ class CNNSDR2d(nn.Module):
     self.outChannels = outChannels
     self.k = k
     self.kInferenceFactor = kInferenceFactor
+    self.weightSparsity = weightSparsity
     self.kernelSize = kernelSize
     self.imageShape = imageShape
-    self.stride = 1
+    self.stride = stride
     self.padding = 0
 
-    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize)
+    self.cnn = nn.Conv2d(imageShape[0], outChannels, kernel_size=kernelSize,
+                         stride=stride)
 
     self.bn = None
     if useBatchNorm:
@@ -124,6 +135,8 @@ class CNNSDR2d(nn.Module):
     shape = self.outputSize()
     self.maxpoolWidth = int(math.floor(shape[2] / 2.0))
     self.outputLength = int(self.maxpoolWidth * self.maxpoolWidth * outChannels)
+    if k <= 0:
+      self.k = self.outputLength
 
     print("output shape before maxpool:", shape)
     print("maxpool width:", self.maxpoolWidth)
@@ -137,11 +150,37 @@ class CNNSDR2d(nn.Module):
       self.register_buffer("dutyCycle", torch.zeros((1, self.outChannels, 1, 1)))
 
 
+    # For each unit, decide which weights are going to be zero
+    if self.weightSparsity < 1.0:
+      inChannels = imageShape[0]
+      inputSize = inChannels * kernelSize * kernelSize
+      numZeros = int(round((1.0 - self.weightSparsity) * inputSize))
+
+      outputIndices = np.arange(outChannels)
+      inputIndices = np.array([np.random.permutation(inputSize)[:numZeros]
+                               for _ in outputIndices], dtype=np.long)
+
+      # Create tensor indices for all non-zero weights
+      zeroIndices = np.empty((outChannels, numZeros, 2), dtype=np.long)
+      zeroIndices[:, :, 0] = outputIndices[:, None]
+      zeroIndices[:, :, 1] = inputIndices
+      zeroIndices = torch.LongTensor(zeroIndices.reshape(-1, 2))
+
+      self.zeroWts = (zeroIndices[:, 0], zeroIndices[:, 1])
+      self.rezeroWeights()
+
+
+  def rezeroWeights(self):
+    if self.weightSparsity < 1.0:
+      self.cnn.weight.data.view(self.outChannels, -1)[self.zeroWts] = 0.0
+
+
   def forward(self, x):
     batchSize = x.shape[0]
     self.learningIterations += batchSize
 
     if self.training:
+      self.rezeroWeights()
       k = self.k
     else:
       k = min(int(round(self.k * self.kInferenceFactor)), self.outputLength)
