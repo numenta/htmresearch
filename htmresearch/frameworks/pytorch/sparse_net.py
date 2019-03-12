@@ -62,6 +62,7 @@ class SparseNet(nn.Module):
                outputSize=10,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
+               weightSparsityCNN=0.5,
                boostStrength=1.0,
                boostStrengthFactor=1.0,
                dropout=0.0,
@@ -127,8 +128,12 @@ class SparseNet(nn.Module):
     :type kInferenceFactor: float
 
     :param weightSparsity:
-      Pct of weights that are allowed to be non-zero.
-    :type weightSparsity: float
+      Pct of weights that are allowed to be non-zero in each linear layer.
+    :type weightSparsity: float or list[float]
+
+    :param weightSparsityCNN:
+      Pct of weights that are allowed to be non-zero in each convolutional layer.
+    :type weightSparsityCNN: float or list[float]
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
@@ -159,7 +164,6 @@ class SparseNet(nn.Module):
     """
     super(SparseNet, self).__init__()
 
-    assert(weightSparsity >= 0)
 
     # Validate CNN sdr params
     if isinstance(inputSize, collections.Sequence):
@@ -168,21 +172,33 @@ class SparseNet(nn.Module):
     if type(outChannels) is not list:
       outChannels = [outChannels]
     if type(c_k) is not list:
-      c_k = [c_k]
+      c_k = [c_k] * len(outChannels)
     assert(len(outChannels) == len(c_k))
     if type(kernelSize) is not list:
-      kernelSize = [kernelSize]
+      kernelSize = [kernelSize] * len(outChannels)
+    assert(len(outChannels) == len(kernelSize))
     if type(stride) is not list:
-      stride = [stride]
+      stride = [stride] * len(outChannels)
+    assert(len(outChannels) == len(stride))
+    if type(weightSparsityCNN) is not list:
+      weightSparsityCNN = [weightSparsityCNN] * len(outChannels)
+    assert(len(outChannels) == len(weightSparsityCNN))
+    for i in range(len(outChannels)):
+      assert (weightSparsityCNN[i] >= 0)
 
     # Validate linear sdr params
     if type(n) is not list:
       n = [n]
     if type(k) is not list:
-      k = [k]
+      k = [k] * len(n)
     assert(len(n) == len(k))
     for i in range(len(n)):
       assert(k[i] <= n[i])
+    if type(weightSparsity) is not list:
+      weightSparsity = [weightSparsity] * len(n)
+    assert(len(n) == len(weightSparsity))
+    for i in range(len(n)):
+      assert (weightSparsity[i] >= 0)
 
     self.k = k
     self.kInferenceFactor = kInferenceFactor
@@ -209,6 +225,7 @@ class SparseNet(nn.Module):
                           kernelSize=self.kernelSize[i],
                           stride=self.stride[i],
                           kInferenceFactor=kInferenceFactor,
+                          weightSparsity=weightSparsityCNN[i],
                           boostStrength=boostStrength,
                           useBatchNorm=useBatchNorm,
                           )
@@ -235,7 +252,7 @@ class SparseNet(nn.Module):
                                   n=n[i],
                                   k=k[i],
                                   kInferenceFactor=kInferenceFactor,
-                                  weightSparsity=weightSparsity,
+                                  weightSparsity=weightSparsity[i],
                                   boostStrength=boostStrength,
                                   useBatchNorm=useBatchNorm,
                                   normalizeWeights=normalizeWeights
