@@ -284,6 +284,10 @@ class SparseNet(nn.Module):
         for module in self.cnnSdr.children():
           if hasattr(module, "setBoostStrength"):
             module.setBoostStrength(self.boostStrength)
+          if hasattr(module, "rezeroWeights"):
+            # The optimizer is updating the weights during training after the forward
+            # step. Therefore we need to re-zero the weights after every epoch
+            module.rezeroWeights()
 
       for module in self.linearSdr.children():
         if hasattr(module, "setBoostStrength"):
