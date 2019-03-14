@@ -1,6 +1,7 @@
 '''Train CIFAR10 with PyTorch.'''
 from __future__ import print_function
 
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -85,8 +86,8 @@ print('==> Building model..')
 # netInstance = GoogLeNet()
 # netInstance = LeNet()
 # netInstance = DenseNet121()
-# netInstance = densenet_cifar()
-netInstance = sparse_densenet_cifar()
+# netInstance = densenet_cifar(growth_rate=18)
+netInstance = sparse_densenet_cifar(sparsity=0.15, growth_rate=18)
 # netInstance = ResNeXt29_2x64d()
 # netInstance = MobileNet()
 # netInstance = MobileNetV2()
@@ -108,12 +109,14 @@ if args.resume:
     # Load checkpoint.
     print('==> Resuming from checkpoint..')
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!'
-    # checkpoint = torch.load('./checkpoint/ckptSmallDensenetSDR.t7',
+    # checkpoint = torch.load('./checkpoint/ckptSparseDensenet_cifar.t7',
     #                         map_location=device)
     # net.load_state_dict(checkpoint['net'])
-    # best_acc = checkpoint['acc']
-    # start_epoch = checkpoint['epoch']
-    net = torch.load('./checkpoint/modelSmallDensenetSDR.pt', map_location=device)
+    best_acc = 88.2
+    start_epoch = 30
+    net = torch.load('./checkpoint/modelSparseDensenet_cifar.pt', map_location=device)
+    if isinstance(net, torch.nn.DataParallel) and device == "cpu":
+        net = net.module
 
 
 criterion = nn.CrossEntropyLoss()
@@ -177,7 +180,7 @@ def test(epoch):
     # Save checkpoint.
     acc = 100.*correct/total
     if acc > best_acc:
-        print('Saving..')
+        print('Saving..',acc,epoch)
         state = {
             'net': net.state_dict(),
             'acc': acc,
@@ -185,9 +188,9 @@ def test(epoch):
         }
         if not os.path.isdir('checkpoint'):
             os.mkdir('checkpoint')
-        torch.save(state, './checkpoint/ckptSparseDensenet_cifar.t7')
+        torch.save(state, './checkpoint/ckptSparseDensenet_cifar_s15_k50_gr18.t7')
         best_acc = acc
-        torch.save(net, './checkpoint/modelSparseDensenet_cifar.pt')
+        torch.save(net, './checkpoint/modelSparseDensenet_cifar_s15_k50_gr18.pt')
 
 
 def testNoise(net, noiseLevel=0.3):
@@ -195,7 +198,8 @@ def testNoise(net, noiseLevel=0.3):
     transform_noise_test = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-        RandomNoise(noiseLevel, whiteValue=0.5 + 2 * 0.20),
+        RandomNoise(noiseLevel, whiteValue=0.5 + 2 * 0.20,
+                    blackValue=0.5 - 2*0.2),
     ])
 
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True,
@@ -226,12 +230,15 @@ def testNoise(net, noiseLevel=0.3):
           % (noiseLevel, test_loss, 100. * correct / total, correct, total))
 
 
-for epoch in range(start_epoch, start_epoch+30):
+for epoch in range(start_epoch, start_epoch+150):
     scheduler.step()
     train(epoch)
     test(epoch)
 
-print("Running noise tests with sparse net")
-for noiseLevel in [0.0, 0.1, 0.2]:
-    testNoise(net, noiseLevel)
+    # Run noise tests every 10 epochs
+    if epoch > 0 and epoch % 10 == 0:
+        print("Running noise tests at epoch", epoch)
+        for noiseLevel in np.arange(0.0, 0.2, 0.025):
+            testNoise(net, noiseLevel)
+        print("-----\n\n")
 

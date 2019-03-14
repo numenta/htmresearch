@@ -94,7 +94,7 @@ class DenseNet(nn.Module):
 
 
 class SparseTransition(nn.Module):
-    def __init__(self, in_planes, out_planes, imSize=32*32):
+    def __init__(self, in_planes, out_planes, imSize=32*32, sparsity=0.1):
         super(SparseTransition, self).__init__()
         self.bn = nn.BatchNorm2d(in_planes)
         self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=1, bias=False)
@@ -102,7 +102,7 @@ class SparseTransition(nn.Module):
         self.dutyCyclePeriod = 1000
         self.boostStrength = 1.5
         self.learningIterations = 0
-        self.k = int(0.2*(in_planes*imSize))
+        self.k = int(sparsity*(in_planes*imSize))
         print "Sparse Transition init: in_planes:", in_planes, "out_planes:", out_planes, "k:", self.k
 
 
@@ -125,7 +125,8 @@ class SparseTransition(nn.Module):
 
 
 class SparseDenseNet(nn.Module):
-    def __init__(self, block, nblocks, growth_rate=12, reduction=0.5, num_classes=10):
+    def __init__(self, block, nblocks, growth_rate=12, reduction=0.5, num_classes=10,
+                 sparsity=0.1):
         super(SparseDenseNet, self).__init__()
         self.growth_rate = growth_rate
 
@@ -135,25 +136,27 @@ class SparseDenseNet(nn.Module):
         self.dense1 = self._make_dense_layers(block, num_planes, nblocks[0])
         num_planes += nblocks[0]*growth_rate
         out_planes = int(math.floor(num_planes*reduction))
-        self.trans1 = SparseTransition(num_planes, out_planes)
+        self.trans1 = SparseTransition(num_planes, out_planes, sparsity=sparsity)
         num_planes = out_planes
 
         self.dense2 = self._make_dense_layers(block, num_planes, nblocks[1])
         num_planes += nblocks[1]*growth_rate
         out_planes = int(math.floor(num_planes*reduction))
-        self.trans2 = SparseTransition(num_planes, out_planes, 16*16)
+        self.trans2 = SparseTransition(num_planes, out_planes, 16*16, sparsity=sparsity)
         num_planes = out_planes
 
         self.dense3 = self._make_dense_layers(block, num_planes, nblocks[2])
         num_planes += nblocks[2]*growth_rate
         out_planes = int(math.floor(num_planes*reduction))
-        self.trans3 = SparseTransition(num_planes, out_planes, 8*8)
+        self.trans3 = SparseTransition(num_planes, out_planes, 8*8, sparsity=sparsity)
         num_planes = out_planes
 
         self.dense4 = self._make_dense_layers(block, num_planes, nblocks[3])
         num_planes += nblocks[3]*growth_rate
 
+        print "Number of inputs into linearSDR=", num_planes
         self.bn = nn.BatchNorm2d(num_planes)
+        print "linearSDR weightSparsity = 0.3, k=50/500"
         self.linearSDR = LinearSDR(inputFeatures=num_planes,
                                     n=500,
                                     k=50,
@@ -190,7 +193,7 @@ class SparseDenseNet(nn.Module):
             self.trans1.boostStrength = self.trans1.boostStrength * 0.9
             self.linearSDR.setBoostStrength(self.linearSDR.boostStrength * 0.9)
             self.linearSDR.rezeroWeights()
-            print("boostStrength is now:", self.linearSDR.boostStrength)
+            print "boostStrength is now:", self.linearSDR.boostStrength
 
 
 def DenseNet121():
@@ -208,11 +211,14 @@ def DenseNet201():
 def DenseNet161():
     return DenseNet(Bottleneck, [6,12,36,24], growth_rate=48)
 
-def densenet_cifar():
-    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=12)
+def densenet_cifar(growth_rate=12):
+    print "Running densenet_cifar with growth rate", growth_rate
+    return DenseNet(Bottleneck, [6,12,24,16], growth_rate=growth_rate)
 
-def sparse_densenet_cifar():
-    return SparseDenseNet(Bottleneck, [6,12,24,16], growth_rate=12)
+def sparse_densenet_cifar(sparsity=0.1, growth_rate=12):
+    print "Running sparse_densenet_cifar with sparsity=",sparsity,
+    print "growth rate=", growth_rate
+    return SparseDenseNet(Bottleneck, [6,12,24,16], growth_rate=growth_rate, sparsity=sparsity)
 
 def test():
     net = densenet_cifar()
