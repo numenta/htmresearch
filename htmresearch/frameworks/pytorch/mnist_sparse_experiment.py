@@ -298,9 +298,21 @@ class MNISTSparseExperiment(PyExperimentSuite):
                          self.resultsDir + "/figure_" + str(epoch) + "_" +
                          str(model.getLearningIterations()))
 
-    trainModel(model=self.model, loader=self.train_loader,
+
+    # Adjust first epoch batch size to stabilize the dutycycles at the
+    # beginning of the training
+    loader = self.train_loader
+    batches_in_epoch = params["batches_in_epoch"]
+    if "first_epoch_batch_size" in params:
+      if epoch == 0:
+        batches_in_epoch = params.get("batches_in_first_epoch", batches_in_epoch)
+        loader = torch.utils.data.DataLoader(self.train_loader.dataset,
+                                             batch_size=params["first_epoch_batch_size"],
+                                             sampler=self.train_loader.sampler)
+
+    trainModel(model=self.model, loader=loader,
                optimizer=self.optimizer, device=self.device,
-               batches_in_epoch=params["batches_in_epoch"],
+               batches_in_epoch=batches_in_epoch,
                batch_callback=log)
 
     self.model.postEpoch()
