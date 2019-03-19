@@ -42,7 +42,7 @@ def getSparseNet():
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--gamma', default=0.95, type=float, help='learning rate gamma')
+parser.add_argument('--gamma', default=0.9, type=float, help='learning rate gamma')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 args = parser.parse_args()
 
@@ -73,7 +73,8 @@ else:
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 
-trainloader = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
+trainloader1 = torch.utils.data.DataLoader(trainset, batch_size=16, shuffle=True)
+trainloader128 = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
@@ -119,12 +120,23 @@ if args.resume:
         net = net.module
 
 
+
 criterion = nn.CrossEntropyLoss()
-optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
-scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=args.gamma)
+
+def createOptimizer(net, lr, gamma):
+    print("Resetting optimizer learning rate")
+    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
+    return optimizer, scheduler
+
 
 # Training
-def train(epoch):
+def train(epoch, optimizer, scheduler):
+    if epoch == 0:
+        trainloader = trainloader1
+    else:
+        trainloader = trainloader128
+
     print('\nEpoch: %d, learningRate=%g' % (epoch, scheduler.get_lr()[0]))
     net.train()
     train_loss = 0
@@ -230,15 +242,24 @@ def testNoise(net, noiseLevel=0.3):
           % (noiseLevel, test_loss, 100. * correct / total, correct, total))
 
 
-for epoch in range(start_epoch, start_epoch+150):
+optimizer, scheduler = createOptimizer(net, args.lr, args.gamma)
+for epoch in range(start_epoch, start_epoch+201):
+
     scheduler.step()
-    train(epoch)
+    train(epoch, optimizer, scheduler)
     test(epoch)
 
-    # Run noise tests every 10 epochs
-    if epoch > 0 and epoch % 10 == 0:
+    # Reset learning rate and run noise tests
+    if scheduler.get_lr()[0] < 0.002:
         print("Running noise tests at epoch", epoch)
         for noiseLevel in np.arange(0.0, 0.2, 0.025):
             testNoise(net, noiseLevel)
         print("-----\n\n")
 
+        optimizer, scheduler = createOptimizer(net, args.lr / 10.0, args.gamma)
+
+
+print("Running final noise tests", epoch)
+for noiseLevel in np.arange(0.0, 0.2, 0.025):
+    testNoise(net, noiseLevel)
+print("-----\n\n")
