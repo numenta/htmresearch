@@ -21,10 +21,10 @@ doi:10.3389/fncir.2016.00023. PDF:
 http://journal.frontiersin.org/article/10.3389/fncir.2016.00023/full
 
 
-SDR Properties Calculations.xlsx
-================================
+SDR Properties Calculations
+===========================
 
-This excel file contains the formulas in the SDR papers. You can plug in
+**SDR Properties Calculations.xlsx**: This excel file contains the formulas in the SDR papers. You can plug in
 different numbers and it tells you the result of various formulas.  Excel  uses
 very high precision math, so you can compute the numbers for any  reasonable set
 of parameters. (A much wider range than you can by simulations.) This
@@ -32,16 +32,16 @@ spreadsheet was used to compute the numbers in the examples and the tables in
 the SDR paper.
 
 
-sdr_math_neuron_paper.ipynb
-===========================
-
-An ipython notebook showing how to implement and compute the functions in
+**sdr_math_neuron_paper.ipynb**: An ipython notebook showing how to implement and compute the functions in
 python using a symbolic math library.  This notebook also contains some of the
 loops used to generate the numbers in the plots.
 
+**scalar_sdrs.py**: tests and plots properties of sparse scalar SDR vector matching. Can we get the same nice
+exponential behavior of binary SDRs? Yes, if the vectors are scaled appropriately.
+
 
 Optimal threshold
-=================
+-----------------
 
 compute_optimal_threshold.py computes averaged errors over a wide range of
 values. The file plot_optimal_threshold.py plots the curve as a function of
@@ -49,7 +49,7 @@ theta and outlines the "optimal" area.
 
 
 sdr_calculations[12].cpp
-=====================
+------------------------
 
 These C++ programs simulate SDR classification with various parameters.  In
 particular it simulates the "Classifying a Set of Vectors" setup. You can set
@@ -164,6 +164,7 @@ noise figure.  Uses a single Poirazi-style neuron to recognize noisy data.
 Computes the probability of a pattern not being correctly recognized as a
 function of noise level, given a certain dendrite activation threshold.
 
+
 TM Experiments
 ==============
 
@@ -175,7 +176,7 @@ Data must be manually copied into the plotting script, but the scripts currently
 contain the data used to generate the figures in the paper.
 
 Experiments
-===========
+-----------
 
 run_tm_dim_experiment: corresponds to the TM accuracy vs. sparsity figure.  Uses
 the TM to illustrate the importance of sparsity, by plotting the performance
@@ -199,8 +200,7 @@ Note on using NuPIC Core
 
 The executable `sdr_calculations` is a C++ program that is a client of
 `nupic.core`. As such it is an example of how to write C++ programs that use
-that repository as an external library. I have tried to make it as simple as
-possible.
+that repository as an external library. 
 
 There is a single, very simplistic, Makefile that shows how to compile and link
 such code.  The Makefile assumes the environment variable `NUPIC_CORE` is
