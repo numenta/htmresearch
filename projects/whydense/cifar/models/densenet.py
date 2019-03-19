@@ -190,8 +190,10 @@ class SparseDenseNet(nn.Module):
 
     def postEpoch(self):
         if self.training:
-            self.trans1.boostStrength = self.trans1.boostStrength * 0.9
-            self.linearSDR.setBoostStrength(self.linearSDR.boostStrength * 0.9)
+            self.trans1.boostStrength = self.trans1.boostStrength * 0.95
+            self.trans2.boostStrength = self.trans2.boostStrength * 0.95
+            self.trans2.boostStrength = self.trans3.boostStrength * 0.95
+            self.linearSDR.setBoostStrength(self.linearSDR.boostStrength * 0.95)
             self.linearSDR.rezeroWeights()
             print "boostStrength is now:", self.linearSDR.boostStrength
 
