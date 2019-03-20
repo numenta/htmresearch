@@ -149,7 +149,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
         useBatchNorm=params["use_batch_norm"],
         normalizeWeights=params.get("normalize_weights", False)
       )
-      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
+      # print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     else:
       sp_model = SparseNet(
         n=n,
@@ -224,7 +224,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       # Tracebacks are not printed if using multiprocessing so we do it here
       tb = sys.exc_info()[2]
       traceback.print_tb(tb)
-      raise RuntimeError("Something went wrong in iterate")
+      raise RuntimeError("Something went wrong in iterate", e)
 
     return ret
 
@@ -233,7 +233,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once we are done.
     """
-    if params.get("saveNet", True):
+    if params.get("savenet", True):
       # Save the full model once we are done.
       saveDir = os.path.join(params["path"], params["name"], "model.pt")
       torch.save(self.model, saveDir)
