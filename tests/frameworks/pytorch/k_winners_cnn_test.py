@@ -24,6 +24,7 @@ import unittest
 
 import torch
 import htmresearch.frameworks.pytorch.functions as F
+from htmresearch.frameworks.pytorch.modules import KWinners2d
 
 
 class TestContext(object):
@@ -248,6 +249,33 @@ class KWinnersCNNTest(unittest.TestCase):
     diff = (dutyCycle.reshape(-1) - newDuty).abs().sum()
     self.assertLessEqual(diff, 0.001)
 
+
+  def testKWinners2dModule(self):
+    x = self.x2
+
+    kw = KWinners2d(n=12, k=4, channels=3, kInferenceFactor=0.5,
+                    boostStrength=1.0, boostStrengthFactor=0.5,
+                    dutyCyclePeriod=1000)
+
+    expected = torch.zeros_like(x)
+    expected[0, 0, 1, 0] = 1.1
+    expected[0, 0, 1, 1] = 1.2
+    expected[0, 1, 0, 1] = 1.2
+    expected[0, 2, 1, 0] = 1.3
+    expected[1, 0, 0, 0] = 1.4
+    expected[1, 1, 0, 0] = 1.5
+    expected[1, 1, 0, 1] = 1.6
+    expected[1, 2, 1, 1] = 1.7
+
+    result = kw(x)
+    self.assertEqual(result.shape, expected.shape)
+
+    numCorrect = (result == expected).sum()
+    self.assertEqual(numCorrect, result.reshape(-1).size()[0])
+
+    newDuty = torch.tensor([1.5000, 1.5000, 1.0000]) / 4.0
+    diff = (kw.dutyCycle.reshape(-1) - newDuty).abs().sum()
+    self.assertLessEqual(diff, 0.001)
 
 
 if __name__ == "__main__":
