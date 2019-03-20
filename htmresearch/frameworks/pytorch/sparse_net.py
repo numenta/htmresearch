@@ -233,7 +233,7 @@ class SparseNet(nn.Module):
     # CNN Layers
     for i in range(len(outChannels)):
       if outChannels[i] != 0:
-        inChannels, h, w = inputSize
+        inChannels, h, w = inputFeatures
         cnn = nn.Conv2d(in_channels=inChannels,
                         out_channels=outChannels[i],
                         kernel_size=kernelSize[i],
