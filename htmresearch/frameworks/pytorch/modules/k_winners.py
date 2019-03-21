@@ -298,11 +298,6 @@ class KWinners2d(KWinnersBase):
     self.dutyCycle.reshape(-1).add_(s)
     self.dutyCycle.div_(period)
 
-    # This seems to happen, but very rarely. Keep an eye on it.
-    if s.sum() == 0:
-      print("x's are not zero", s)
-      # raise RuntimeError()
-
 
   def entropy(self):
     entropy = super(KWinners2d, self).entropy()
