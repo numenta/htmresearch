@@ -23,9 +23,8 @@ from __future__ import print_function
 import unittest
 
 import torch
-from htmresearch.frameworks.pytorch.k_winners import (
-  KWinnersCNN, updateDutyCycleCNN
-)
+import htmresearch.frameworks.pytorch.functions as F
+from htmresearch.frameworks.pytorch.modules import KWinners2d
 
 
 class TestContext(object):
@@ -80,7 +79,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     ctx = TestContext()
 
-    result = KWinnersCNN.forward(ctx, x, self.dutyCycle, k=4, boostStrength=0.0)
+    result = F.k_winners2d.forward(ctx, x, self.dutyCycle, k=4, boostStrength=0.0)
 
     expected = torch.zeros_like(x)
     expected[0, 0, 1, 0] = 1.1
@@ -100,7 +99,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     # Test that gradient values are in the right places, that their sum is
     # equal, and that they have exactly the right number of nonzeros
-    grad_x, _, _, _ = KWinnersCNN.backward(ctx, self.gradient)
+    grad_x, _, _, _ = F.k_winners2d.backward(ctx, self.gradient)
     grad_x = grad_x.reshape(-1)
     self.assertEqual(
       (grad_x[indices] == self.gradient.reshape(-1)[indices]).sum(), 4)
@@ -117,7 +116,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     ctx = TestContext()
 
-    result = KWinnersCNN.forward(ctx, x, self.dutyCycle, k=3, boostStrength=0.0)
+    result = F.k_winners2d.forward(ctx, x, self.dutyCycle, k=3, boostStrength=0.0)
 
     expected = torch.zeros_like(x)
     expected[0, 0, 1, 1] = 1.2
@@ -136,7 +135,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     # Test that gradient values are in the right places, that their sum is
     # equal, and that they have exactly the right number of nonzeros
-    grad_x, _, _, _ = KWinnersCNN.backward(ctx, self.gradient)
+    grad_x, _, _, _ = F.k_winners2d.backward(ctx, self.gradient)
     grad_x = grad_x.reshape(-1)
     self.assertEqual(
       (grad_x[indices] == self.gradient.reshape(-1)[indices]).sum(), 3)
@@ -153,7 +152,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     ctx = TestContext()
 
-    result = KWinnersCNN.forward(ctx, x, self.dutyCycle, k=4, boostStrength=0.0)
+    result = F.k_winners2d.forward(ctx, x, self.dutyCycle, k=4, boostStrength=0.0)
 
     expected = torch.zeros_like(x)
     expected[0, 0, 1, 0] = 1.1
@@ -177,7 +176,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     # Test that gradient values are in the right places, that their sum is
     # equal, and that they have exactly the right number of nonzeros
-    out_grad, _, _, _ = KWinnersCNN.backward(ctx, self.gradient2)
+    out_grad, _, _, _ = F.k_winners2d.backward(ctx, self.gradient2)
     out_grad = out_grad.reshape(2, -1)
     in_grad = self.gradient2.reshape(2, -1)
     self.assertEqual((out_grad == in_grad).sum(), 8)
@@ -192,7 +191,7 @@ class KWinnersCNNTest(unittest.TestCase):
 
     ctx = TestContext()
 
-    result = KWinnersCNN.forward(ctx, x, self.dutyCycle, k=3, boostStrength=0.0)
+    result = F.k_winners2d.forward(ctx, x, self.dutyCycle, k=3, boostStrength=0.0)
 
     expected = torch.zeros_like(x)
     expected[0, 0, 1, 1] = 1.2
@@ -214,13 +213,13 @@ class KWinnersCNNTest(unittest.TestCase):
 
     # Test that gradient values are in the right places, that their sum is
     # equal, and that they have exactly the right number of nonzeros
-    out_grad, _, _, _ = KWinnersCNN.backward(ctx, self.gradient2)
+    out_grad, _, _, _ = F.k_winners2d.backward(ctx, self.gradient2)
     out_grad = out_grad.reshape(2, -1)
     in_grad = self.gradient2.reshape(2, -1)
     self.assertEqual((out_grad == in_grad).sum(), 6)
     self.assertEqual(len(out_grad.nonzero()), 6)
 
-
+  @unittest.skip("FIXME: Create test for KWinners2d module instead")
   def testDutyCycleUpdate(self):
     """
     Start with equal duty cycle, boost factor=0, k=4, batch size=2
@@ -250,6 +249,33 @@ class KWinnersCNNTest(unittest.TestCase):
     diff = (dutyCycle.reshape(-1) - newDuty).abs().sum()
     self.assertLessEqual(diff, 0.001)
 
+
+  def testKWinners2dModule(self):
+    x = self.x2
+
+    kw = KWinners2d(n=12, k=4, channels=3, kInferenceFactor=0.5,
+                    boostStrength=1.0, boostStrengthFactor=0.5,
+                    dutyCyclePeriod=1000)
+
+    expected = torch.zeros_like(x)
+    expected[0, 0, 1, 0] = 1.1
+    expected[0, 0, 1, 1] = 1.2
+    expected[0, 1, 0, 1] = 1.2
+    expected[0, 2, 1, 0] = 1.3
+    expected[1, 0, 0, 0] = 1.4
+    expected[1, 1, 0, 0] = 1.5
+    expected[1, 1, 0, 1] = 1.6
+    expected[1, 2, 1, 1] = 1.7
+
+    result = kw(x)
+    self.assertEqual(result.shape, expected.shape)
+
+    numCorrect = (result == expected).sum()
+    self.assertEqual(numCorrect, result.reshape(-1).size()[0])
+
+    newDuty = torch.tensor([1.5000, 1.5000, 1.0000]) / 4.0
+    diff = (kw.dutyCycle.reshape(-1) - newDuty).abs().sum()
+    self.assertLessEqual(diff, 0.001)
 
 
 if __name__ == "__main__":
