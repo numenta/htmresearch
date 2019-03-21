@@ -149,7 +149,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
         useBatchNorm=params["use_batch_norm"],
         normalizeWeights=params.get("normalize_weights", False)
       )
-      # print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     else:
       sp_model = SparseNet(
         n=n,

@@ -27,21 +27,18 @@ import torch
 
 class k_winners(torch.autograd.Function):
   """
-  A simplistic K-winner take all autograd function for experimenting with
-  sparsity.
+  A simple K-winner take all autograd function for creating layers with sparse
+  output.
 
-  Code adapted from this excellent tutorial:
-  https://github.com/jcjohnson/pytorch-examples
+   .. note::
+      Code adapted from this excellent tutorial:
+      https://github.com/jcjohnson/pytorch-examples
   """
 
 
   @staticmethod
   def forward(ctx, x, dutyCycles, k, boostStrength):
     """
-    In the forward pass we receive a context object and a Tensor containing the
-    input; we must return a Tensor containing the output, and we can use the
-    context object to cache objects for use in the backward pass.
-
     Use the boost strength to compute a boost factor for each unit represented
     in x. These factors are used to increase the impact of each unit to improve
     their chances of being chosen. This encourages participation of more columns
@@ -118,11 +115,8 @@ class k_winners(torch.autograd.Function):
   @staticmethod
   def backward(ctx, grad_output):
     """
-    In the backward pass we receive the context object and a Tensor containing
-    the gradient of the loss with respect to the output produced during the
-    forward pass. We can retrieve cached data from the context object, and must
-    compute and return the gradient of the loss with respect to the input to the
-    forward function.
+    In the backward pass, we set the gradient to 1 for the winning units, and 0
+    for the others.
     """
     indices, = ctx.saved_tensors
     grad_x = torch.zeros_like(grad_output, requires_grad=True)
@@ -138,13 +132,21 @@ class k_winners(torch.autograd.Function):
 
 class k_winners2d(torch.autograd.Function):
   """
-  A K-winner take all autograd function for CNN 2D inputs (batch, Channel, H, W)
+  A K-winner take all autograd function for CNN 2D inputs (batch, Channel, H, W).
+
+  .. seealso::
+       Function :class:`k_winners`
   """
 
 
   @staticmethod
   def forward(ctx, x, dutyCycles, k, boostStrength):
     """
+    Use the boost strength to compute a boost factor for each unit represented
+    in x. These factors are used to increase the impact of each unit to improve
+    their chances of being chosen. This encourages participation of more columns
+    in the learning process. See :meth:`k_winners.forward` for more details.
+
     :param ctx:
       Place where we can store information we will need to compute the gradients
       for the backward pass.
@@ -190,11 +192,8 @@ class k_winners2d(torch.autograd.Function):
   @staticmethod
   def backward(ctx, grad_output):
     """
-    In the backward pass we receive the context object and a Tensor containing
-    the gradient of the loss with respect to the output produced during the
-    forward pass. We can retrieve cached data from the context object, and must
-    compute and return the gradient of the loss with respect to the input to the
-    forward function.
+    In the backward pass, we set the gradient to 1 for the winning units, and 0
+    for the others.
     """
     batchSize = grad_output.shape[0]
     indices, = ctx.saved_tensors
