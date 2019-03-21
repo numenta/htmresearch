@@ -20,6 +20,9 @@
 # ----------------------------------------------------------------------
 import numpy as np
 import torch
+from torch.utils.data import Dataset
+
+
 
 def createValidationDataSampler(dataset, ratio):
   """
@@ -38,3 +41,49 @@ def createValidationDataSampler(dataset, ratio):
   validate = torch.utils.data.SubsetRandomSampler(indices=indices[training_count:])
   return (train, validate)
 
+
+
+class UnionDataset(Dataset):
+  """
+  Dataset used to create unions of two or more datasets. The union is created by
+  applying the given transformation to the items in the dataset
+  :param datasets: list of datasets of the same size to merge
+  :param transform: function used to merge 2 items in the datasets
+  """
+
+
+  def __init__(self, datasets, transform):
+
+    size = len(datasets[0])
+    for ds in datasets:
+      assert size == len(ds)
+
+    self.datasets = datasets
+    self.transform = transform
+
+
+  def __getitem__(self, index):
+    """
+    Return the union value and labels for the item in all datasets
+    :param index: The item to get
+    :return: tuple with the merged data and labels associated with the data
+    """
+    union_data = None
+    union_labels = []
+    dtype = None
+    device = None
+    for i, ds in enumerate(self.datasets):
+      data, label = ds[index]
+      if i == 0:
+        union_data = data
+        dtype = label.dtype
+        device = label.device
+      else:
+        union_data = self.transform(union_data, data)
+      union_labels.append(label)
+
+    return union_data, torch.tensor(union_labels, dtype=dtype, device=device)
+
+
+  def __len__(self):
+    return len(self.datasets[0])
