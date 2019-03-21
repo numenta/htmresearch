@@ -31,6 +31,7 @@ import torch
 import torch.nn as nn
 import tqdm
 
+from htmresearch.frameworks.pytorch.modules import Flatten
 from htmresearch.frameworks.pytorch.sparse_net import SparseNet
 from htmresearch.frameworks.rl import DQN
 from htmresearch.frameworks.rl.openai_utils import create_atari_environment
@@ -41,17 +42,6 @@ NUM_TIMESTEPS = int(1e6)
 ENVIRONMENT = "SeaquestDeterministic-v4"
 RESULTS_PATH = "results"
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-
-
-class Flatten(nn.Module):
-  """
-  Flatten input retaining batch dimension
-  """
-
-
-  def forward(self, x):
-    return x.view(x.size(0), -1)
 
 
 
