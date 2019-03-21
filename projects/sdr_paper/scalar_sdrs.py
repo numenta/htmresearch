@@ -382,7 +382,7 @@ def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
 
   print("Errors for kw=", kw)
   print(repr(errors))
-  plotMatches(listofkValues, listofNValues, errors,
+  plotMatches(listofNValues, errors,
               "images/scalar_effect_of_n_kw" + str(kw) + ".pdf")
 
 
@@ -421,9 +421,11 @@ def computeScaledProbabilities(
 
 
 
-def plotMatches(listofKValues, listofNValues, errors,
-                fileName = "images/scalar_effect_of_n.pdf"):
-  fig, ax = plt.subplots()
+def plotMatches(listofNValues, errors,
+                fileName = "images/scalar_effect_of_n.pdf",
+                fig=None, ax=None):
+  if fig is None:
+    fig, ax = plt.subplots()
 
   fig.suptitle("Probability of matching sparse scalar vectors")
   ax.set_xlabel("Dimensionality (n)")
@@ -449,16 +451,19 @@ def plotMatches(listofKValues, listofNValues, errors,
   ax.annotate(r"$a = \frac{n}{2}$", xy=(listofNValues[3]+100, errors[3, 3]/2.0),
                ha="left", color='black')
 
-  plt.minorticks_off()
-  plt.grid(True, alpha=0.3)
+  ax.minorticks_off()
+  ax.grid(True, alpha=0.3)
 
-  plt.savefig(fileName)
-  plt.close()
+  if fileName is not None:
+    plt.savefig(fileName)
+    plt.close()
 
 
-def plotScaledMatches(listofKValues, listOfScales, errors,
-                fileName = "images/scalar_effect_of_scale.pdf"):
-  fig, ax = plt.subplots()
+def plotScaledMatches(listOfScales, errors,
+                fileName = "images/scalar_effect_of_scale.pdf",
+                fig=None, ax=None):
+  if fig is None:
+    fig, ax = plt.subplots()
 
   fig.suptitle("Matching sparse scalar vectors: effect of scale")
   ax.set_xlabel("Scale factor (s)")
@@ -484,11 +489,12 @@ def plotScaledMatches(listofKValues, listOfScales, errors,
               xy=(listOfScales[1]-0.1, (errors[2, 1] + errors[2, 2]) / 2.0),
               ha="left", color='black')
 
-  plt.minorticks_off()
-  plt.grid(True, alpha=0.3)
+  ax.minorticks_off()
+  ax.grid(True, alpha=0.3)
 
-  plt.savefig(fileName)
-  plt.close()
+  if fileName is not None:
+    plt.savefig(fileName)
+    plt.close()
 
 
 def plotThetaDistribution(kw, fileName = "images/theta_distribution.pdf"):
@@ -523,13 +529,29 @@ def plotFalseMatches(listOfNoise, errors, kw,
   plt.close()
 
 
+def plotMatches2(listofNValues, errors,
+                 listOfScales, scaleErrors,
+                 fileName = "images/scalar_matches.pdf"):
+  """
+  Plot two figures side by side in an aspect ratio appropriate for the paper.
+  """
+  w, h = matplotlib.figure.figaspect(0.4)
+  fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(w,h))
+
+  plotMatches(listofNValues, errors, fileName=None, fig=fig, ax=ax1)
+  plotScaledMatches(listOfScales, scaleErrors, fileName=None, fig=fig, ax=ax2)
+
+  plt.savefig(fileName)
+  plt.close()
+
+
+
 def createPregeneratedGraphs():
   """
   Creates graphs based on previous runs of the scripts. Useful for editing
   graph format for writeups.
   """
   # Graph for computeMatchProbabilities(kw=32, nTrials=3000)
-  listofkValues = [64, 128, 256, -1]
   listofNValues = [250, 500, 1000, 1500, 2000, 2500]
   kw = 32
   errors = np.array([
@@ -543,15 +565,10 @@ def createPregeneratedGraphs():
      2.33225000e-02, 2.30650000e-02, 2.33988333e-02]
   ])
 
-  plotMatches(listofkValues, listofNValues, errors,
-              "images/scalar_effect_of_n_kw" + str(kw) + ".pdf")
-
 
   # Graph for computeScaledProbabilities(nTrials=3000)
   listOfScales = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
-  listofkValues = [64, 128, 256]
-  kw = 32
-  errors = np.array([
+  scaleErrors = np.array([
     [1.94166667e-05, 1.14900000e-03, 7.20725000e-03, 1.92405833e-02,
      3.60794167e-02, 5.70276667e-02, 7.88510833e-02],
     [3.12500000e-04, 7.07616667e-03, 2.71600000e-02, 5.72415833e-02,
@@ -559,8 +576,11 @@ def createPregeneratedGraphs():
     [3.97708333e-03, 3.31468333e-02, 8.04755833e-02, 1.28687750e-01,
      1.71220000e-01, 2.07019250e-01, 2.34703167e-01]
   ])
-  plotScaledMatches(listofkValues, listOfScales, errors,
-                    "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
+
+  plotMatches2(listofNValues, errors,
+               listOfScales, scaleErrors,
+               "images/scalar_matches_kw" + str(kw) + ".pdf")
+
 
 
 
