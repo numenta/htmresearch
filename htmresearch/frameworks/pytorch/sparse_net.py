@@ -245,7 +245,7 @@ class SparseNet(nn.Module):
 
         # Batch Norm
         if useBatchNorm:
-          bn = nn.BatchNorm2d(outChannels, affine=False)
+          bn = nn.BatchNorm2d(outChannels[i], affine=False)
           cnnSdr.add_module("cnnSdr{}_bn".format(i + 1), bn)
 
         # Max pool
