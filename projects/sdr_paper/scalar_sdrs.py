@@ -34,8 +34,8 @@ conditions:
 |Xw|_0 = k
 |Xi|_0 = a
 
-Non-zero entries in Xw are uniform in [-k, k]
-Non-zero entries in Xi are uniform in S*[0, 2*k]
+Non-zero entries in Xw are uniform in [-1/k, 1/k]
+Non-zero entries in Xi are uniform in S*[0, 2/k]
 
 Here Xw is the putative weight vector and Xi is a positive input vector
 (positive because presumably it is after a non-linearity such as ReLU or
@@ -61,7 +61,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
+from matplotlib.figure import figaspect
 
 
 def getSparseTensor(numNonzeros, inputSize, outputSize,
@@ -421,6 +421,44 @@ def computeScaledProbabilities(
 
 
 
+def computeMatchProbabilityOmega(k, bMax, theta, nTrials=100):
+  """
+  The Omega match probability estimates the probability of matching when
+  both vectors have exactly b components in common.  This function computes
+  this probability for b=1 to bMax.
+
+  For each value of b this function:
+
+  1) Creates nTrials instances of Xw(b) which are vectors with b components
+  where each component is uniform in [-1/k, 1/k].
+
+  2) Creates nTrials instances of Xi(b) which are vectors with b components
+  where each component is uniform in [0, 2/k].
+
+  3) Does every possible dot product of Xw(b) dot Xi(b), i.e. nTrials * nTrials
+  dot products.
+
+  4) Counts the fraction of cases where Xw(b) dot Xi(b) >= theta
+
+  Returns an array with bMax entries, where each entry contains the
+  probability computed in 4).
+
+  """
+  omegaProb = np.zeros(bMax+1)
+
+  for b in range(1, bMax+1):
+    xwb = getSparseTensor(b, b, nTrials, fixedRange=1.0/k)
+    xib = getSparseTensor(b, b, nTrials, onlyPositive=True, fixedRange=2.0/k)
+    r = xwb.matmul(xib.t())
+    numMatches = ((r >= theta).sum()).item()
+    omegaProb[b] = numMatches / float(nTrials * nTrials)
+
+  print(omegaProb)
+
+  return omegaProb
+
+
+
 def plotMatches(listofNValues, errors,
                 fileName = "images/scalar_effect_of_n.pdf",
                 fig=None, ax=None):
@@ -535,7 +573,7 @@ def plotMatches2(listofNValues, errors,
   """
   Plot two figures side by side in an aspect ratio appropriate for the paper.
   """
-  w, h = matplotlib.figure.figaspect(0.4)
+  w, h = figaspect(0.4)
   fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(w,h))
 
   plotMatches(listofNValues, errors, fileName=None, fig=fig, ax=ax1)
@@ -592,8 +630,10 @@ if __name__ == '__main__':
   # computeScaledProbabilities(nTrials=3000)
 
   # These are graphs using pregenerated numbers for the above
-  createPregeneratedGraphs()
+  # createPregeneratedGraphs()
 
+  theta, _ = getTheta(32)
+  computeMatchProbabilityOmega(32.0, 32, theta)
 
 
   # computeMatchProbabilities(kw=24, nTrials=1000)
