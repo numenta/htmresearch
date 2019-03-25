@@ -18,9 +18,12 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import collections
+import itertools
+
 import numpy as np
 import torch
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Subset
 
 
 
@@ -87,3 +90,30 @@ class UnionDataset(Dataset):
 
   def __len__(self):
     return len(self.datasets[0])
+
+
+
+def splitDataset(dataset, groupby):
+  """
+  Split the given dataset into multiple datasets grouped by the given groupby
+  function. For example::
+
+      # Split mnist dataset into 10 datasets, one dataset for each label
+      splitDataset(mnist, groupby=lambda x: x[1])
+
+      # Split mnist dataset into 5 datasets, one dataset for each label pair: [0,1], [2,3],...
+      splitDataset(mnist, groupby=lambda x: x[1] // 2)
+
+  :param dataset: Source dataset to split
+  :param groupby: Group by function. See :func:`itertools.groupby`
+  :return: List of datasets
+  """
+
+  # Split dataset based on the group by function and keep track of indices
+  indicesByGroup = collections.defaultdict(list)
+  for k, g in itertools.groupby(enumerate(dataset), key=lambda x: groupby(x[1])):
+    indicesByGroup[k].extend([i[0] for i in g])
+
+  # Sort by group and create a Subset dataset for each of the group indices
+  _, indices = zip(*(sorted(indicesByGroup.items(), key=lambda x: x[0])))
+  return [Subset(dataset, indices=i) for i in indices]
