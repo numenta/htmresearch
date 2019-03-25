@@ -239,9 +239,12 @@ class SparseNet(nn.Module):
                         kernel_size=kernelSize[i],
                         padding=padding[i],
                         stride=stride[i])
+
         if 0 < weightSparsityCNN[i] < 1:
           sparseCNN = htm.SparseWeights2d(cnn, weightSparsityCNN[i])
-        cnnSdr.add_module("cnnSdr{}_cnn".format(i + 1), sparseCNN)
+          cnnSdr.add_module("cnnSdr{}_cnn".format(i + 1), sparseCNN)
+        else:
+          cnnSdr.add_module("cnnSdr{}_cnn".format(i + 1), cnn)
 
         # Batch Norm
         if useBatchNorm:
