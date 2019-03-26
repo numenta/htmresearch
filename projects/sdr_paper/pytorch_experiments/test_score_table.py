@@ -64,8 +64,8 @@ def getErrorBars(expPath, suite):
 
   testScores = np.zeros(numExps)
   noiseScores = np.zeros(numExps)
-  for i,scoresForRepetition in enumerate(zip(results["testerror"], results[
-    "totalCorrect"])):
+  for i,scoresForRepetition in enumerate(
+          zip(results["testerror"], results["totalCorrect"])):
     maxTestScore, bestEpoch, maxNoiseScore = bestScore(scoresForRepetition)
     testScores[i] = maxTestScore
     noiseScores[i] = maxNoiseScore
