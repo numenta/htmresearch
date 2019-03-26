@@ -31,33 +31,49 @@ from htmresearch.frameworks.pytorch.mnist_sparse_experiment import \
   MNISTSparseExperiment
 
 
+def bestScore(scores):
+  """
+  Given a single repetition of a single experiment, return the test, and
+  total noise score from the epoch with maximum test accuracy.
+  """
+  testScores, totalCorrect = scores[0], scores[1]
+
+  bestEpoch = np.argmax(testScores)
+  maxTestScore = testScores[bestEpoch]
+  maxNoiseScore = totalCorrect[bestEpoch]
+
+  return maxTestScore, bestEpoch, maxNoiseScore
+
 
 def getErrorBars(expPath, suite):
   """
-  Go through each experiment in the path. Get the best scores for each
-  experiment whose hyperparameters were tuned based on accuracy on validation
-  set. Return the overall mean, and stdev for test accuracy and noise accuracy.
+  Go through each epoch in each repetition in this path. For each repetition
+  select the epoch with the best test score as the best epoch. Collect the test
+  score and noise score for that epoch, as the optimal for that repetition.
+
+  Return the overall mean, and stdev for test accuracy and noise accuracy across
+  the optimal values for each repetition.
   """
 
   # Get the iteration with maximum validation accuracy.
-  max_scores = suite.get_histories_over_repetitions(exp=expPath,
-                                                    tags=["testerror"],
-                                                    aggregate=np.max)
-  best = np.argmax(max_scores)
+  results = suite.get_all_histories_over_repetitions(
+    exp=expPath,
+    tags=["testerror", "totalCorrect"])
 
-  # Compute the mean and std
-  mean = suite.get_histories_over_repetitions(exp=expPath,
-                                              tags=["testerror", "totalCorrect"],
-                                              aggregate=np.mean)
-  std = suite.get_histories_over_repetitions(exp=expPath,
-                                             tags=["testerror", "totalCorrect"],
-                                             aggregate=np.std)
+  numExps = len(results["testerror"])
+
+  testScores = np.zeros(numExps)
+  noiseScores = np.zeros(numExps)
+  for i,scoresForRepetition in enumerate(
+          zip(results["testerror"], results["totalCorrect"])):
+    maxTestScore, bestEpoch, maxNoiseScore = bestScore(scoresForRepetition)
+    testScores[i] = maxTestScore
+    noiseScores[i] = maxNoiseScore
 
   return {
-    "test_score": (mean["testerror"][best], std["testerror"][best]),
-    "noise_score": (mean["totalCorrect"][best], std["totalCorrect"][best])
+    "test_score": (testScores.mean(), testScores.std()),
+    "noise_score": (noiseScores.mean(), noiseScores.std())
   }
-
 
 
 if __name__ == '__main__':

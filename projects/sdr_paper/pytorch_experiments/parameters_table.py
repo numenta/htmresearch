@@ -19,9 +19,9 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+from __future__ import print_function
 import math
 import os
-from __future__ import print_function
 from tabulate import tabulate
 
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import MNISTSparseExperiment
@@ -56,7 +56,14 @@ if __name__ == '__main__':
                   "L3 N", "L3 Sparsity",
                   "Wt Sparsity"]]
   for name in experiments:
-    exps = suite.get_exps(suite.get_exp(name)[0])
+
+    # Iterate over experiments, skipping over errors.
+    try:
+      exps = suite.get_exps(suite.get_exp(name)[0])
+    except:
+      print("Couldn't parse experiment:", name)
+      continue
+
     for exp in exps:
       if not os.path.exists(exp):
         continue
