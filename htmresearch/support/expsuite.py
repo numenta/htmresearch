@@ -363,8 +363,9 @@ class PyExperimentSuite(object):
 
 
     def get_all_histories_over_repetitions(self, exp, tags):
-        """ this function gets all histories of all repetitions using get_history() on the given
-            tag(s).
+        """
+        this function gets all histories of all repetitions using get_history()
+        on the given tag(s).
         """
         params = self.get_params(exp)
 
