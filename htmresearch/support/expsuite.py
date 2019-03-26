@@ -602,54 +602,59 @@ class PyExperimentSuite(object):
        
     def run_rep(self, params, rep):
         """ run a single repetition including directory creation, log files, etc. """
-        name = params['name']
-        fullpath = os.path.join(params['path'], params['name'])
-        logname = os.path.join(fullpath, '%i.log'%rep)
-        # check if repetition exists and has been completed
-        restore = 0
-        if os.path.exists(logname):
-            logfile = open(logname, 'r')
-            lines = logfile.readlines()
-            logfile.close()
-            
-            # if completed, continue loop
-            if 'iterations' in params and len(lines) == params['iterations']:
-                return False
-            # if not completed, check if restore_state is supported
-            if not self.restore_supported:
-                # not supported, delete repetition and start over
-                # print 'restore not supported, deleting %s' % logname
-                os.remove(logname)
-                restore = 0
+        try:
+            name = params['name']
+            fullpath = os.path.join(params['path'], params['name'])
+            logname = os.path.join(fullpath, '%i.log'%rep)
+            # check if repetition exists and has been completed
+            restore = 0
+            if os.path.exists(logname):
+                logfile = open(logname, 'r')
+                lines = logfile.readlines()
+                logfile.close()
+
+                # if completed, continue loop
+                if 'iterations' in params and len(lines) == params['iterations']:
+                    return False
+                # if not completed, check if restore_state is supported
+                if not self.restore_supported:
+                    # not supported, delete repetition and start over
+                    # print 'restore not supported, deleting %s' % logname
+                    os.remove(logname)
+                    restore = 0
+                else:
+                    restore = len(lines)
+
+            self.reset(params, rep)
+
+            if restore:
+                logfile = open(logname, 'a')
+                self.restore_state(params, rep, restore)
             else:
-                restore = len(lines)
-            
-        self.reset(params, rep)
-        
-        if restore:
-            logfile = open(logname, 'a')
-            self.restore_state(params, rep, restore)
-        else:
-            logfile = open(logname, 'w')
-            
-        # loop through iterations and call iterate
-        for it in xrange(restore, params['iterations']):
-            dic = self.iterate(params, rep, it) or {}
-            dic['iteration'] = it
+                logfile = open(logname, 'w')
 
-            if self.restore_supported:
-                self.save_state(params, rep, it)
+            # loop through iterations and call iterate
+            for it in xrange(restore, params['iterations']):
+                dic = self.iterate(params, rep, it) or {}
+                dic['iteration'] = it
 
-            if dic is not None:
-              json.dump(dic, logfile)
-              logfile.write('\n')
-              logfile.flush()
+                if self.restore_supported:
+                    self.save_state(params, rep, it)
 
-        logfile.close()
+                if dic is not None:
+                  json.dump(dic, logfile)
+                  logfile.write('\n')
+                  logfile.flush()
 
-        self.finalize(params, rep)
-    
-    
+            logfile.close()
+
+            self.finalize(params, rep)
+
+        except:
+            import traceback
+            traceback.print_exc()
+
+
     def reset(self, params, rep):
         """ needs to be implemented by subclass. """
         pass
