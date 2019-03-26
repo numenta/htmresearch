@@ -301,6 +301,7 @@ class PyExperimentSuite(object):
 
         return histories, params
     
+
     def get_histories_over_repetitions(self, exp, tags, aggregate):
         """ this function gets all histories of all repetitions using get_history() on the given
             tag(s), and then applies the function given by 'aggregate' to all corresponding values
@@ -359,10 +360,64 @@ class PyExperimentSuite(object):
                 results[tag] = aggregated
             
         return results
-        
-            
-    
-    def browse(self): 
+
+
+    def get_all_histories_over_repetitions(self, exp, tags):
+        """ this function gets all histories of all repetitions using get_history() on the given
+            tag(s).
+        """
+        params = self.get_params(exp)
+
+        # explicitly make tags list in case of 'all'
+        if tags == 'all':
+            tags = self.get_history(exp, 0, 'all').keys()
+
+        # make list of tags if it is just a string
+        if not hasattr(tags, '__iter__'):
+            tags = [tags]
+
+        results = {}
+        for tag in tags:
+            # get all histories
+            histories = zeros((params['repetitions'], params['iterations']))
+            skipped = []
+            for i in range(params['repetitions']):
+                try:
+                    histories[i, :] = self.get_history(exp, i, tag)
+                except ValueError:
+                    h = self.get_history(exp, i, tag)
+                    if len(h) == 0:
+                        # history not existent, skip it
+                        print(
+                                    'warning: history %i has length 0 (expected: %i). it will be skipped.' % (
+                            i, params['iterations']))
+                        skipped.append(i)
+                    elif len(h) > params['iterations']:
+                        # if history too long, crop it
+                        print(
+                                    'warning: history %i has length %i (expected: %i). it will be truncated.' % (
+                            i, len(h), params['iterations']))
+                        h = h[:params['iterations']]
+                        histories[i, :] = h
+                    elif len(h) < params['iterations']:
+                        # if history too short, crop everything else
+                        print(
+                                    'warning: history %i has length %i (expected: %i). all other histories will be truncated.' % (
+                            i, len(h), params['iterations']))
+                        params['iterations'] = len(h)
+                        histories = histories[:, :params['iterations']]
+                        histories[i, :] = h
+
+            # remove all rows that have been skipped
+            histories = delete(histories, skipped, axis=0)
+            params['repetitions'] -= len(skipped)
+
+            results[tag] = histories
+
+        return results
+
+
+    def browse(self):
         """ go through all subfolders (starting at '.') and return information
             about the existing experiments. if the -B option is given, all 
             parameters are shown, -b only displays the most important ones.
