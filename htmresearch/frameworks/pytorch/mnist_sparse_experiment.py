@@ -68,10 +68,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     # Get our directories correct
     self.dataDir = params["datadir"]
-    self.resultsDir = os.path.join(params["path"], params["name"], "plots")
+    if params.get("create_plots", False):
+      self.resultsDir = os.path.join(params["path"], params["name"], "plots")
 
-    if not os.path.exists(self.resultsDir):
-      os.makedirs(self.resultsDir)
+      if not os.path.exists(self.resultsDir):
+        os.makedirs(self.resultsDir)
 
     self.use_cuda = not params["no_cuda"] and torch.cuda.is_available()
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
