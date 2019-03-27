@@ -52,13 +52,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
   """
 
 
-  def parse_cfg(self):
-    super(SparseSpeechExperiment, self).parse_cfg()
-    # Change the current working directory to be relative to 'experiments.cfg'
-    projectDir = os.path.dirname(self.options.config)
-    projectDir = os.path.abspath(projectDir)
-    os.chdir(projectDir)
-
 
   def reset(self, params, repetition):
     """
