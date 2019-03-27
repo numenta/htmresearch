@@ -19,9 +19,38 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
+"""
+
+This code computes, through simulation, the probability of matching two random
+scalar sparse vectors. Xw and Xi both have dimensionality n.
+
+A "match" occurs when Xw dot Xi > theta.
+
+We can test probabilities under different initialization conditions for Xi and
+Xw, and for different theta's. We can get nice exponential dropoffs with
+dimensionality, similar to binary sparse vectors, under the following
+conditions:
+
+|Xw|_0 = k
+|Xi|_0 = a
+
+Non-zero entries in Xw are uniform in [-1/k, 1/k]
+Non-zero entries in Xi are uniform in S*[0, 2/k]
+
+Here Xw is the putative weight vector and Xi is a positive input vector
+(positive because presumably it is after a non-linearity such as ReLU or
+K-Winners). Theta is defined as mean(Xw dot Xw) / 2.0. We define it this way to
+provide a certain amount of invariance to noise in the inputs. A pretty
+corrupted version of Xw will still match Xw.
+
+S controls the scale of Xi relative to Xw. By varying S, we can plot the
+effect of scaling on the match probabilities.
+
+"""
+
+
 from __future__ import print_function
 
-import math
 import time
 from multiprocessing import Pool
 
@@ -32,9 +61,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-
-# Need to run it from htmresearch top level:
-# python projects/sdr_paper/pytorch_experiments/analyze_model.py model_path
+from matplotlib.figure import figaspect
 
 
 def getSparseTensor(numNonzeros, inputSize, outputSize,
@@ -105,17 +132,6 @@ def plotDot(dot, title="Histogram of dot products",
   plt.savefig(path)
   plt.close()
 
-# def conv_output_shape(h_w, kernel_size=1, stride=1, pad=0, dilation=1):
-#   """
-#   Utility function for computing output of convolutions
-#   takes a tuple of (h,w) and returns a tuple of (h,w)
-#   """
-#   if type(kernel_size) is not tuple:
-#       kernel_size = (kernel_size, kernel_size)
-#   h = floor( ((h_w[0] + (2 * pad) - ( dilation * (kernel_size[0] - 1) ) - 1 )/ stride) + 1)
-#   w = floor( ((h_w[1] + (2 * pad) - ( dilation * (kernel_size[1] - 1) ) - 1 )/ stride) + 1)
-#   return h, w
-
 
 def getTheta(k, nTrials=100000):
   """
@@ -145,24 +161,20 @@ def returnMatches(kw, kv, n, theta, inputScaling=1.0):
 
   :return: percent that matched, number that matched, total match comparisons
   """
-  # How many prototypes to store
-  m1 = 2
+  # How many weight vectors and input vectors to generate at a time
+  m1 = 4
   m2 = 1000
 
-  weights = getSparseTensor(kw, n, m1, fixedRange=1.0 / kw )
+  weights = getSparseTensor(kw, n, m1, fixedRange=1.0 / kw)
 
   # Initialize random input vectors using given scaling and see how many match
   inputVectors = getSparseTensor(kv, n, m2,
                                  onlyPositive=True,
-                                 fixedRange=inputScaling / kw,
+                                 fixedRange= 2*inputScaling / kw,
                                  )
   dot = inputVectors.matmul(weights.t())
   numMatches = ((dot >= theta).sum()).item()
   pctMatches = numMatches / float(m1*m2)
-
-  # plotDot(dot,
-  #         title="Histogram of overlaps 100 out of 2000",
-  #         path="dot_100_2000.pdf")
 
   return pctMatches, numMatches, m1*m2
 
@@ -341,9 +353,9 @@ def computeMatchProbabilityParallel(args, numWorkers=8):
 
 def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
                               listofNValues=[250, 500, 1000, 1500, 2000, 2500],
-                              inputScale=2.0,
+                              inputScale=1.0,
                               kw=24,
-                              numWorkers=8,
+                              numWorkers=10,
                               nTrials=1000,
                               ):
 
@@ -356,7 +368,7 @@ def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
     for ni, n in enumerate(listofNValues):
       args.append({
           "k": k, "kw": kw, "n": n, "theta": theta,
-          "nTrials": nTrials, "inputScaling": 1.0,
+          "nTrials": nTrials, "inputScaling": inputScale,
           "errorIndex": [ki, ni],
           })
 
@@ -369,18 +381,22 @@ def computeMatchProbabilities(listofkValues=[64, 128, 256, -1],
     errors[r["errorIndex"][0], r["errorIndex"][1]] = r["pctMatches"]
 
   print("Errors for kw=", kw)
-  print(errors)
-  plotMatches(listofkValues, listofNValues, errors,
+  print(repr(errors))
+  plotMatches(listofNValues, errors,
               "images/scalar_effect_of_n_kw" + str(kw) + ".pdf")
 
 
-def computeScaledProbabilities(listOfScales=[1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0],
-                               listofkValues=[64, 128, 256],
-                               kw=32,
-                               n=1000,
-                               numWorkers=8,
-                               nTrials=1000,
-                               ):
+def computeScaledProbabilities(
+        listOfScales=[1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0],
+        listofkValues=[64, 128, 256],
+        kw=32,
+        n=1000,
+        numWorkers=10,
+        nTrials=1000,
+  ):
+  """
+  Compute the impact of S on match probabilities for a fixed value of n.
+  """
   # Create arguments for the possibilities we want to test
   args = []
   theta, _ = getTheta(kw)
@@ -399,33 +415,57 @@ def computeScaledProbabilities(listOfScales=[1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 
     errors[r["errorIndex"][0], r["errorIndex"][1]] = r["pctMatches"]
 
   print("Errors using scaled inputs, for kw=", kw)
-  print(errors)
+  print(repr(errors))
   plotScaledMatches(listofkValues, listOfScales, errors,
               "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
 
 
-  # Nice errors using scaled inputs, for kw= 32 and nTrials=6000 (12,000,000
-  # matches per datapoint.
-  listOfScales = [1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0]
-  listofkValues = [64, 128, 256]
-  kw = 32
-  errors = np.array([
-        [0.00000000e+00, 0.00000000e+00, 0.00000000e+00, 2.50000000e-07,
-         2.58333333e-06, 2.13333333e-05, 8.45833333e-05, 2.52750000e-04],
-        [0.00000000e+00, 0.00000000e+00, 2.50000000e-07, 9.66666667e-06,
-         7.62500000e-05, 3.23666667e-04, 9.75666667e-04, 2.22650000e-03],
-        [0.00000000e+00, 6.66666667e-07, 2.89166667e-05, 2.93000000e-04,
-         1.29500000e-03, 3.71925000e-03, 7.98591667e-03, 1.42828333e-02]
-  ])
-  plotScaledMatches(listofkValues, listOfScales, errors,
-                    "images/scalar_effect_of_scale_kw" + str(kw) + ".pdf")
+
+def computeMatchProbabilityOmega(k, bMax, theta, nTrials=100):
+  """
+  The Omega match probability estimates the probability of matching when
+  both vectors have exactly b components in common.  This function computes
+  this probability for b=1 to bMax.
+
+  For each value of b this function:
+
+  1) Creates nTrials instances of Xw(b) which are vectors with b components
+  where each component is uniform in [-1/k, 1/k].
+
+  2) Creates nTrials instances of Xi(b) which are vectors with b components
+  where each component is uniform in [0, 2/k].
+
+  3) Does every possible dot product of Xw(b) dot Xi(b), i.e. nTrials * nTrials
+  dot products.
+
+  4) Counts the fraction of cases where Xw(b) dot Xi(b) >= theta
+
+  Returns an array with bMax entries, where each entry contains the
+  probability computed in 4).
+
+  """
+  omegaProb = np.zeros(bMax+1)
+
+  for b in range(1, bMax+1):
+    xwb = getSparseTensor(b, b, nTrials, fixedRange=1.0/k)
+    xib = getSparseTensor(b, b, nTrials, onlyPositive=True, fixedRange=2.0/k)
+    r = xwb.matmul(xib.t())
+    numMatches = ((r >= theta).sum()).item()
+    omegaProb[b] = numMatches / float(nTrials * nTrials)
+
+  print(omegaProb)
+
+  return omegaProb
 
 
-def plotMatches(listofKValues, listofNValues, errors,
-                fileName = "images/scalar_effect_of_n.pdf"):
-  fig, ax = plt.subplots()
 
-  fig.suptitle("Prob. of matching a sparse random input")
+def plotMatches(listofNValues, errors,
+                fileName = "images/scalar_effect_of_n.pdf",
+                fig=None, ax=None):
+  if fig is None:
+    fig, ax = plt.subplots()
+
+  fig.suptitle("Probability of matching sparse scalar vectors")
   ax.set_xlabel("Dimensionality (n)")
   ax.set_ylabel("Frequency of matches")
   ax.set_yscale("log")
@@ -446,21 +486,24 @@ def plotMatches(listofKValues, listofNValues, errors,
                ha="left", color='black')
   ax.annotate(r"$a = 256$", xy=(listofNValues[3]+100, errors[2,3]),
                ha="left", color='black')
-  ax.annotate(r"$a = \frac{n}{2}$", xy=(listofNValues[3]+100, errors[3,3]),
+  ax.annotate(r"$a = \frac{n}{2}$", xy=(listofNValues[3]+100, errors[3, 3]/2.0),
                ha="left", color='black')
 
-  plt.minorticks_off()
-  plt.grid(True, alpha=0.3)
+  ax.minorticks_off()
+  ax.grid(True, alpha=0.3)
 
-  plt.savefig(fileName)
-  plt.close()
+  if fileName is not None:
+    plt.savefig(fileName)
+    plt.close()
 
 
-def plotScaledMatches(listofKValues, listOfScales, errors,
-                fileName = "images/scalar_effect_of_scale.pdf"):
-  fig, ax = plt.subplots()
+def plotScaledMatches(listOfScales, errors,
+                fileName = "images/scalar_effect_of_scale.pdf",
+                fig=None, ax=None):
+  if fig is None:
+    fig, ax = plt.subplots()
 
-  fig.suptitle("Prob. of matching a sparse random input")
+  fig.suptitle("Matching sparse scalar vectors: effect of scale")
   ax.set_xlabel("Scale factor (s)")
   ax.set_ylabel("Frequency of matches")
   ax.set_yscale("log")
@@ -473,19 +516,23 @@ def plotScaledMatches(listofKValues, listOfScales, errors,
           label="a=128 (predicted)", marker="o", color='black')
 
 
-  ax.annotate(r"$a = 64$", xy=(listOfScales[3]+0.2, errors[0, 3]),
+  ax.annotate(r"$a=64$",
+              xy=(listOfScales[1]+0.2, errors[0, 1]),
               xytext=(-5, 2), textcoords="offset points", ha="left",
               color='black')
-  ax.annotate(r"$a = 128$", xy=(listOfScales[3]+0.2, errors[1, 3]),
-               ha="left", color='black')
-  ax.annotate(r"$a = 256$", xy=(listOfScales[3]+0.2, errors[2, 3]),
-               ha="left", color='black')
+  ax.annotate(r"$a=128$",
+              xy=(listOfScales[1]-0.1, (2*errors[1, 1] + errors[1, 2]) / 3.0),
+              ha="left", color='black')
+  ax.annotate(r"$a=256$",
+              xy=(listOfScales[1]-0.1, (errors[2, 1] + errors[2, 2]) / 2.0),
+              ha="left", color='black')
 
-  plt.minorticks_off()
-  plt.grid(True, alpha=0.3)
+  ax.minorticks_off()
+  ax.grid(True, alpha=0.3)
 
-  plt.savefig(fileName)
-  plt.close()
+  if fileName is not None:
+    plt.savefig(fileName)
+    plt.close()
 
 
 def plotThetaDistribution(kw, fileName = "images/theta_distribution.pdf"):
@@ -520,22 +567,84 @@ def plotFalseMatches(listOfNoise, errors, kw,
   plt.close()
 
 
+def plotMatches2(listofNValues, errors,
+                 listOfScales, scaleErrors,
+                 fileName = "images/scalar_matches.pdf"):
+  """
+  Plot two figures side by side in an aspect ratio appropriate for the paper.
+  """
+  w, h = figaspect(0.4)
+  fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(w,h))
+
+  plotMatches(listofNValues, errors, fileName=None, fig=fig, ax=ax1)
+  plotScaledMatches(listOfScales, scaleErrors, fileName=None, fig=fig, ax=ax2)
+
+  plt.savefig(fileName)
+  plt.close()
+
+
+
+def createPregeneratedGraphs():
+  """
+  Creates graphs based on previous runs of the scripts. Useful for editing
+  graph format for writeups.
+  """
+  # Graph for computeMatchProbabilities(kw=32, nTrials=3000)
+  listofNValues = [250, 500, 1000, 1500, 2000, 2500]
+  kw = 32
+  errors = np.array([
+    [3.65083333e-03, 3.06166667e-04, 1.89166667e-05,
+     4.16666667e-06, 1.50000000e-06, 9.16666667e-07],
+    [2.44633333e-02, 3.64491667e-03, 3.16083333e-04,
+     6.93333333e-05, 2.16666667e-05, 8.66666667e-06],
+    [7.61641667e-02, 2.42496667e-02, 3.75608333e-03,
+     9.78333333e-04, 3.33250000e-04, 1.42250000e-04],
+    [2.31302500e-02, 2.38609167e-02, 2.28072500e-02,
+     2.33225000e-02, 2.30650000e-02, 2.33988333e-02]
+  ])
+
+
+  # Graph for computeScaledProbabilities(nTrials=3000)
+  listOfScales = [1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0]
+  scaleErrors = np.array([
+    [1.94166667e-05, 1.14900000e-03, 7.20725000e-03, 1.92405833e-02,
+     3.60794167e-02, 5.70276667e-02, 7.88510833e-02],
+    [3.12500000e-04, 7.07616667e-03, 2.71600000e-02, 5.72415833e-02,
+     8.95497500e-02, 1.21294333e-01, 1.50582500e-01],
+    [3.97708333e-03, 3.31468333e-02, 8.04755833e-02, 1.28687750e-01,
+     1.71220000e-01, 2.07019250e-01, 2.34703167e-01]
+  ])
+
+  plotMatches2(listofNValues, errors,
+               listOfScales, scaleErrors,
+               "images/scalar_matches_kw" + str(kw) + ".pdf")
+
+
+
 
 if __name__ == '__main__':
 
+  # The main graphs (takes about 12-15 mins each)
+  #
+  # computeMatchProbabilities(kw=32, nTrials=3000)
+  # computeScaledProbabilities(nTrials=3000)
+
+  # These are graphs using pregenerated numbers for the above
+  # createPregeneratedGraphs()
+
+  theta, _ = getTheta(32)
+  computeMatchProbabilityOmega(32.0, 32, theta)
+
+
   # computeMatchProbabilities(kw=24, nTrials=1000)
   # computeMatchProbabilities(kw=16, nTrials=3000)
-  # computeMatchProbabilities(kw=32, nTrials=3000)
   # computeMatchProbabilities(kw=48, nTrials=3000)
   # computeMatchProbabilities(kw=64, nTrials=3000)
   # computeMatchProbabilities(kw=96, nTrials=3000)
 
   # plotThetaDistribution(32)
 
-  computeFalseNegativesParallel(kw=32, nTrials=10000)
-  computeFalseNegativesParallel(kw=64, nTrials=10000)
-  computeFalseNegativesParallel(kw=128, nTrials=10000)
+  # computeFalseNegativesParallel(kw=32, nTrials=10000)
+  # computeFalseNegativesParallel(kw=64, nTrials=10000)
+  # computeFalseNegativesParallel(kw=128, nTrials=10000)
 
-  # computeScaledProbabilities(nTrials=6000)
-
-  # TODO Compute false negatives
