@@ -97,3 +97,5 @@ if __name__ == '__main__':
       testScoresTable.append([params["name"], test_score, noise_score])
 
   print(tabulate(testScoresTable, headers="firstrow", tablefmt="grid"))
+  print()
+  print(tabulate(testScoresTable, headers="firstrow", tablefmt="latex"))
