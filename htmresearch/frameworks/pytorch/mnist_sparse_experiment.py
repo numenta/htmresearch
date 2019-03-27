@@ -68,10 +68,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     # Get our directories correct
     self.dataDir = params["datadir"]
-    self.resultsDir = os.path.join(params["path"], params["name"], "plots")
+    if params.get("create_plots", False):
+      self.resultsDir = os.path.join(params["path"], params["name"], "plots")
 
-    if not os.path.exists(self.resultsDir):
-      os.makedirs(self.resultsDir)
+      if not os.path.exists(self.resultsDir):
+        os.makedirs(self.resultsDir)
 
     self.use_cuda = not params["no_cuda"] and torch.cuda.is_available()
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
@@ -142,20 +143,23 @@ class MNISTSparseExperiment(PyExperimentSuite):
         dropout=params["dropout"],
         n=n,
         k=k,
+        outputSize=10,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
+        weightSparsityCNN=params["weight_sparsity_cnn"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         useBatchNorm=params["use_batch_norm"],
         normalizeWeights=params.get("normalize_weights", False)
       )
-      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     else:
       sp_model = SparseNet(
         n=n,
         k=k,
+        outputSize=10,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
+        weightSparsityCNN=params["weight_sparsity_cnn"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         dropout=params["dropout"],
@@ -224,7 +228,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       # Tracebacks are not printed if using multiprocessing so we do it here
       tb = sys.exc_info()[2]
       traceback.print_tb(tb)
-      raise RuntimeError("Something went wrong in iterate")
+      raise RuntimeError("Something went wrong in iterate", e)
 
     return ret
 
@@ -233,7 +237,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once we are done.
     """
-    if params.get("saveNet", True):
+    if params.get("savenet", True):
       # Save the full model once we are done.
       saveDir = os.path.join(params["path"], params["name"], "model.pt")
       torch.save(self.model, saveDir)
