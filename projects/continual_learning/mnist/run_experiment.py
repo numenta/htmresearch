@@ -19,6 +19,15 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from .flatten import *
-from .k_winners import *
-from .sparse_weights import *
+from __future__ import print_function
+
+import matplotlib
+
+matplotlib.use('Agg')
+
+from htmresearch.frameworks.pytorch.continual_learning_experiment import \
+  BaselineContinualLearningExperiment
+
+if __name__ == '__main__':
+  suite = BaselineContinualLearningExperiment()
+  suite.start()

@@ -30,24 +30,6 @@ import htmresearch.frameworks.pytorch.modules as htm
 
 
 
-class Flatten(nn.Module):
-  """
-  Simple module used to flatten the tensors before passing data from CNN layer
-  to the linear layer
-  """
-
-
-  def __init__(self, size):
-    super(Flatten, self).__init__()
-    self.size = size
-
-
-  def forward(self, x):
-    x = x.view(-1, self.size)
-    return x
-
-
-
 class SparseNet(nn.Module):
 
   def __init__(self,
@@ -278,7 +260,7 @@ class SparseNet(nn.Module):
       self.cnnSdr = None
 
     # Flatten input before passing to linear layers
-    self.flatten = Flatten(inputFeatures)
+    self.flatten = htm.Flatten(inputFeatures)
 
     # Linear layers
     self.linearSdr = nn.Sequential()

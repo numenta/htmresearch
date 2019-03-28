@@ -31,7 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-from htmresearch.frameworks.pytorch.UnionDataset import UnionDataset
+from htmresearch.frameworks.pytorch.dataset_utils import UnionDataset
 from htmresearch.frameworks.pytorch.mnist_sparse_experiment import MNISTSparseExperiment
 from tabulate import tabulate
 from torchvision import datasets, transforms

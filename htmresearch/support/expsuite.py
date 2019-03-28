@@ -92,6 +92,11 @@ class PyExperimentSuite(object):
         self.cfgparser = ConfigParser()
         if not self.cfgparser.read(self.options.config):
             raise SystemExit('config file %s not found.'%self.options.config) 
+
+        # Change the current working directory to be relative to 'experiments.cfg'
+        projectDir = os.path.dirname(self.options.config)
+        projectDir = os.path.abspath(projectDir)
+        os.chdir(projectDir)
             
     
     def mkdir(self, path):
