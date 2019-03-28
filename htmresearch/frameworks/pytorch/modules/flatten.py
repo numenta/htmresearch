@@ -18,7 +18,13 @@
 #
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
+import torch.nn as nn
 
-from .flatten import *
-from .k_winners import *
-from .sparse_weights import *
+
+
+class Flatten(nn.Module):
+  """
+  Flatten input retaining batch dimension
+  """
+  def forward(self, x):
+    return x.view(x.size(0), -1)
