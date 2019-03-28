@@ -260,7 +260,7 @@ class SparseNet(nn.Module):
       self.cnnSdr = None
 
     # Flatten input before passing to linear layers
-    self.flatten = htm.Flatten(inputFeatures)
+    self.flatten = htm.Flatten()
 
     # Linear layers
     self.linearSdr = nn.Sequential()

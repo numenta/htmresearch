@@ -658,6 +658,7 @@ class PyExperimentSuite(object):
         except:
             import traceback
             traceback.print_exc()
+            raise
 
 
     def reset(self, params, rep):
