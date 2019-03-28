@@ -119,7 +119,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
         useBatchNorm=params["use_batch_norm"],
         normalizeWeights=params.get("normalize_weights", False)
       )
-      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     elif params["model_type"] == "resnet9":
       sp_model = resnet9(num_classes=len(self.train_loader.dataset.classes),
                          in_channels=1)
