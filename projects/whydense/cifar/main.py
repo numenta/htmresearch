@@ -15,40 +15,37 @@ import os
 import argparse
 
 from models import *
-# from utils import progress_bar
-from htmresearch.frameworks.pytorch.sparse_net import SparseNet
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
-
-
-def getSparseNet():
-    """This gets about 72% accuracy on the test set after 60-70 epochs"""
-    net = SparseNet(
-        inputSize=(3, 32, 32),
-        outChannels=[30, 40],
-        c_k=[400, 400],
-        dropout=False,
-        n=400,
-        k=50,
-        boostStrength=1.5,
-        weightSparsity=0.3,
-        boostStrengthFactor=0.85,
-        kInferenceFactor=1.5,
-        useBatchNorm=True,
-        normalizeWeights=False
-    )
-
-    return net
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--gamma', default=0.9, type=float, help='learning rate gamma')
+parser.add_argument('--gamma', default=0.85, type=float, help='learning rate gamma')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
+parser.add_argument('--quick', '-q', action='store_true', help='one batch epochs, for debugging')
 args = parser.parse_args()
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 best_acc = 0  # best test accuracy
 start_epoch = 0  # start from epoch 0 or last checkpoint epoch
+
+# Model
+print('==> Building model..')
+# netInstance = VGG('VGG19')
+# netInstance = ResNet18()
+# netInstance = PreActResNet18()
+# netInstance = GoogLeNet()
+# netInstance = LeNet()
+# netInstance = DenseNet121()
+# netInstance = densenet_cifar(growth_rate=12)
+netInstance = notso_densenet_cifar(sparsity=0.15, growth_rate=12)
+# netInstance = ResNeXt29_2x64d()
+# netInstance = MobileNet()
+# netInstance = MobileNetV2()
+# netInstance = DPN92()
+# netInstance = ShuffleNetG2()
+# netInstance = SENet18()
+# netInstance = ShuffleNetV2(1)
 
 # Data
 print('==> Preparing data..')
@@ -79,25 +76,7 @@ testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False)
 
 classes = ('plane', 'car', 'bird', 'cat', 'deer', 'dog', 'frog', 'horse', 'ship', 'truck')
 
-# Model
-print('==> Building model..')
-# netInstance = VGG('VGG19')
-# netInstance = ResNet18()
-# netInstance = PreActResNet18()
-# netInstance = GoogLeNet()
-# netInstance = LeNet()
-# netInstance = DenseNet121()
-# netInstance = densenet_cifar(growth_rate=18)
-netInstance = sparse_densenet_cifar(sparsity=0.15, growth_rate=18)
-# netInstance = ResNeXt29_2x64d()
-# netInstance = MobileNet()
-# netInstance = MobileNetV2()
-# netInstance = DPN92()
-# netInstance = ShuffleNetG2()
-# netInstance = SENet18()
-# netInstance = ShuffleNetV2(1)
 
-# netInstance = getSparseNet()
 netInstance = netInstance.to(device)
 
 if device == 'cuda':
@@ -161,7 +140,11 @@ def train(epoch, optimizer, scheduler):
         # progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
         #     % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
+        if args.quick and batch_idx % 1 == 0:
+          break
+
     netInstance.postEpoch()
+
 
 def test(epoch):
     # print('\nTesting')
@@ -243,7 +226,7 @@ def testNoise(net, noiseLevel=0.3):
 
 
 optimizer, scheduler = createOptimizer(net, args.lr, args.gamma)
-for epoch in range(start_epoch, start_epoch+201):
+for epoch in range(start_epoch, start_epoch+20):
 
     scheduler.step()
     train(epoch, optimizer, scheduler)
