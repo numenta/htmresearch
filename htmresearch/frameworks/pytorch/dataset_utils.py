@@ -112,7 +112,7 @@ def splitDataset(dataset, groupby):
   # Split dataset based on the group by function and keep track of indices
   indicesByGroup = collections.defaultdict(list)
   for k, g in itertools.groupby(enumerate(dataset), key=lambda x: groupby(x[1])):
-    indicesByGroup[k].extend([i[0] for i in g])
+    indicesByGroup[k.item()].extend([i[0] for i in g])
 
   # Sort by group and create a Subset dataset for each of the group indices
   _, indices = zip(*(sorted(indicesByGroup.items(), key=lambda x: x[0])))
