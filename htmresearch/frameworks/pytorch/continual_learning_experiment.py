@@ -148,7 +148,7 @@ class BaselineContinualLearningExperiment(PyExperimentSuite):
 
     self.k = params.get("k", self.n)
     self.k_inference_factor = params.get("k_inference_factor", 1.0)
-    self.boost_strength = params.get("boost_strength", 1.0)
+    self.boost_strength = params.get("boost_strength", 0.0)
     self.boost_strength_factor = params.get("boost_strength_factor", 1.0)
     self.weight_sparsity = params.get("weight_sparsity", 1.0)
     self.weight_sparsity_cnn = params.get("weight_sparsity_cnn", 1.0)
@@ -165,19 +165,21 @@ class BaselineContinualLearningExperiment(PyExperimentSuite):
       nn.Conv2d(in_channels=self.in_channels, out_channels=self.out_channels[0],
                 kernel_size=self.kernel_size[0], stride=self.stride[0],
                 padding=self.padding[0]),
-      nn.MaxPool2d(kernel_size=2),
-      nn.ReLU(),
+      nn.BatchNorm2d(self.out_channels[0]),
+      nn.ReLU(inplace=True),
+      nn.MaxPool2d(2),
 
       nn.Conv2d(in_channels=self.out_channels[0], out_channels=self.out_channels[1],
                 kernel_size=self.kernel_size[1], stride=self.stride[1],
                 padding=self.padding[1]),
-      nn.MaxPool2d(kernel_size=2),
-      nn.ReLU(),
+      nn.BatchNorm2d(self.out_channels[1]),
+      nn.ReLU(inplace=True),
+      nn.MaxPool2d(2),
 
       Flatten(),
 
       nn.Linear(self.cnn_output_len[1], self.n),
-      nn.ReLU(),
+      nn.ReLU(inplace=True),
 
       nn.Linear(self.n, self.output_size),
       nn.LogSoftmax(dim=1)
@@ -199,22 +201,22 @@ class BaselineContinualLearningExperiment(PyExperimentSuite):
       nn.Conv2d(in_channels=self.in_channels, out_channels=self.out_channels[0],
                 kernel_size=self.kernel_size[0], stride=self.stride[0],
                 padding=self.padding[0]),
-      nn.MaxPool2d(kernel_size=2),
       KWinners2d(n=self.cnn_output_len[0], k=self.cnn_k[0],
                  channels=self.out_channels[0],
                  kInferenceFactor=self.k_inference_factor,
                  boostStrength=self.boost_strength,
                  boostStrengthFactor=self.boost_strength_factor),
+      nn.MaxPool2d(kernel_size=2),
 
       nn.Conv2d(in_channels=self.out_channels[0], out_channels=self.out_channels[1],
                 kernel_size=self.kernel_size[1], stride=self.stride[1],
                 padding=self.padding[1]),
-      nn.MaxPool2d(kernel_size=2),
       KWinners2d(n=self.cnn_output_len[1], k=self.cnn_k[1],
                  channels=self.out_channels[1],
                  kInferenceFactor=self.k_inference_factor,
                  boostStrength=self.boost_strength,
                  boostStrengthFactor=self.boost_strength_factor),
+      nn.MaxPool2d(kernel_size=2),
 
       Flatten(),
 
@@ -256,7 +258,7 @@ class BaselineContinualLearningExperiment(PyExperimentSuite):
 
     # Use 'iterations' to represent the task (0=[0-1], ..,5=[8-9])
     task = iteration
-
+    training_loss = []
     position = self.cfgparser.sections().index(self.name) * 2
     for epoch in tqdm.trange(self.epochs, position=position,
                              desc="{}:{}".format(self.name, task)):
@@ -272,11 +274,13 @@ class BaselineContinualLearningExperiment(PyExperimentSuite):
                                                  batch_size=batch_size,
                                                  shuffle=True)
       self.preEpoch()
-      trainModel(model=self.model, loader=train_loader,
-                 optimizer=self.optimizer, device=self.device,
-                 batches_in_epoch=batches_in_epoch,
-                 criterion=self.loss_function,
-                 progress_bar={"desc": "training", "position": position + 1})
+      loss = trainModel(model=self.model, loader=train_loader,
+                        optimizer=self.optimizer, device=self.device,
+                        batches_in_epoch=batches_in_epoch,
+                        criterion=self.loss_function,
+                        progress_bar={
+                          "desc": "training", "position": position + 1})
+      training_loss.append(loss)
       self.postEpoch()
 
     # Test on all trained tasks combined
@@ -284,10 +288,12 @@ class BaselineContinualLearningExperiment(PyExperimentSuite):
     test_loader = torch.utils.data.DataLoader(dataset=combined_datasets,
                                               batch_size=self.test_batch_size,
                                               shuffle=True)
-    return evaluateModel(model=self.model, device=self.device,
-                         loader=test_loader,
-                         criterion=self.loss_function,
-                         progress={"desc": "testing", "position": position + 1})
+    res = {"training_loss": training_loss}
+    res.update(evaluateModel(model=self.model, device=self.device,
+                             loader=test_loader,
+                             criterion=self.loss_function,
+                             progress={"desc": "testing", "position": position + 1}))
+    return res
 
 
   def preEpoch(self):
