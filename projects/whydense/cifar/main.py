@@ -2,6 +2,7 @@
 from __future__ import print_function
 
 import numpy as np
+import time
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -20,7 +21,8 @@ from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--gamma', default=0.85, type=float, help='learning rate gamma')
+parser.add_argument('--gamma', default=0.9, type=float, help='learning rate gamma')
+parser.add_argument('--epochs', default=80, type=int, help='number of epochs to run')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--quick', '-q', action='store_true', help='one batch epochs, for debugging')
 args = parser.parse_args()
@@ -38,7 +40,7 @@ print('==> Building model..')
 # netInstance = LeNet()
 # netInstance = DenseNet121()
 # netInstance = densenet_cifar(growth_rate=12)
-netInstance = notso_densenet_cifar(sparsity=0.15, growth_rate=12)
+netInstance = notso_densenet_cifar(growth_rate=12)
 # netInstance = ResNeXt29_2x64d()
 # netInstance = MobileNet()
 # netInstance = MobileNetV2()
@@ -46,6 +48,8 @@ netInstance = notso_densenet_cifar(sparsity=0.15, growth_rate=12)
 # netInstance = ShuffleNetG2()
 # netInstance = SENet18()
 # netInstance = ShuffleNetV2(1)
+
+print(netInstance)
 
 # Data
 print('==> Preparing data..')
@@ -70,7 +74,7 @@ else:
     trainset = torchvision.datasets.CIFAR10(root='./data', train=True, download=True, transform=transform_train)
     testset = torchvision.datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
 
-trainloader1 = torch.utils.data.DataLoader(trainset, batch_size=16, shuffle=True)
+trainloader1 = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 trainloader128 = torch.utils.data.DataLoader(trainset, batch_size=128, shuffle=True)
 testloader = torch.utils.data.DataLoader(testset, batch_size=100, shuffle=False)
 
@@ -111,12 +115,13 @@ def createOptimizer(net, lr, gamma):
 
 # Training
 def train(epoch, optimizer, scheduler):
+    start_time = time.time()
     if epoch == 0:
         trainloader = trainloader1
     else:
         trainloader = trainloader128
 
-    print('\nEpoch: %d, learningRate=%g' % (epoch, scheduler.get_lr()[0]))
+    print('\n\nEpoch: %d, learningRate=%g' % (epoch, scheduler.get_lr()[0]))
     net.train()
     train_loss = 0
     correct = 0
@@ -144,7 +149,7 @@ def train(epoch, optimizer, scheduler):
           break
 
     netInstance.postEpoch()
-
+    print("Training time for epoch=", time.time() - start_time)
 
 def test(epoch):
     # print('\nTesting')
@@ -170,7 +175,11 @@ def test(epoch):
             #     # progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
             #     # % (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
-    print('Test Done. Loss: %.3f | Acc: %.3f%% (%d/%d)\n'
+            if args.quick and batch_idx % 1 == 0:
+              break
+
+
+    print('Test Done. Loss: %.3f | Acc: %.3f%% (%d/%d)'
           % (test_loss, 100. * correct / total, correct, total))
     # Save checkpoint.
     acc = 100.*correct/total
@@ -226,20 +235,24 @@ def testNoise(net, noiseLevel=0.3):
 
 
 optimizer, scheduler = createOptimizer(net, args.lr, args.gamma)
-for epoch in range(start_epoch, start_epoch+20):
+for epoch in range(start_epoch, start_epoch+args.epochs):
+
+    start_time = time.time()
 
     scheduler.step()
     train(epoch, optimizer, scheduler)
     test(epoch)
 
     # Reset learning rate and run noise tests
-    if scheduler.get_lr()[0] < 0.002:
+    if scheduler.get_lr()[0] < 0.0000:
         print("Running noise tests at epoch", epoch)
         for noiseLevel in np.arange(0.0, 0.2, 0.025):
             testNoise(net, noiseLevel)
         print("-----\n\n")
 
         optimizer, scheduler = createOptimizer(net, args.lr / 10.0, args.gamma)
+
+    print("Full epoch time=", time.time() - start_time)
 
 
 print("Running final noise tests", epoch)
