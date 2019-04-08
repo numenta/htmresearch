@@ -34,7 +34,7 @@ from torchvision import transforms, datasets
 
 from htmresearch.frameworks.pytorch.model_utils import trainModel, evaluateModel
 from htmresearch.frameworks.pytorch.modules.not_so_densenet import (
-  densenet_cifar, notso_densenet_cifar
+  densenet_cifar, NotSoDenseNet, SparseBottleneck
 )
 from htmresearch.support.expsuite import PyExperimentSuite
 
@@ -91,17 +91,26 @@ class CIFARExperiment(PyExperimentSuite):
     self.testset = datasets.CIFAR10(root=dataDir, train=False, download=True,
                                transform=self.transform_test)
 
-    # Assume weight_sparsity == 1.0 for dense networks
     if self.dense:
       self.model = densenet_cifar(growth_rate=self.growth_rate)
     else:
-      self.model = None
+      self.model = NotSoDenseNet(
+        block=SparseBottleneck,
+        nblocks=self.nblocks,
+        growth_rate=self.growth_rate,
+        dense_sparsities=self.dense_sparsities,
+        transition_sparsities=self.transition_sparsities,
+        linear_sparsity=self.linear_sparsity,
+        linear_weight_sparsity=self.linear_weight_sparsity,
+      )
 
-    print("Setting device")
-    self.model.to(self.device)
+    print("Torch reports", torch.cuda.device_count(), "GPUs available")
     if torch.cuda.device_count() > 1:
       print("Using", torch.cuda.device_count(), "GPUs")
       self.model = torch.nn.DataParallel(self.model)
+
+    print("Setting device to", self.device)
+    self.model.to(self.device)
 
     self.optimizer = self.createOptimizer(self.model)
     self.lr_scheduler = self.createLearningRateScheduler(self.optimizer)
@@ -133,17 +142,27 @@ class CIFARExperiment(PyExperimentSuite):
 
     # Optimizer
     self.optimizer_class = eval(params.get("optimizer", "torch.optim.SGD"))
-    self.lr = params.get("learning_rate", 0.1)
+    self.lr = params.get("learning_rate", 0.05)
     self.momentum = params.get("momentum", 0.9)
     self.weight_decay = params.get("weight_decay", 0.0)
     self.optimizer_params = eval(params.get("optimizer_params", "{}"))
     self.lr_scheduler_gamma = params.get("lr_scheduler_gamma", 0.95)
-    self.loss_function = eval(params.get("loss_function", "torch.nn.functional.nll_loss"))
+    self.loss_function = eval(params.get("loss_function", "torch.nn.functional.cross_entropy"))
 
     # Network parameters
-    self.dense = params.get("dense", True)
+    self.dense = params.get("dense", False)
     self.growth_rate = params.get("growth_rate", 12)
-
+    self.nblocks = map(int,
+                       params.get("nblocks", "6, 12, 24, 16").split(", "))
+    self.dense_sparsities = map(float,
+                                params.get("dense_sparsities",
+                                           "1.0, 1.0, 1.0, 1.0").split(", "))
+    self.transition_sparsities = map(float,
+                                     params.get("transition_sparsities",
+                                                "0.1, 0.1, 0.2").split(", "))
+    self.linear_sparsity = params.get("linear_sparsity", 0.0)
+    self.linear_weight_sparsity = params.get("linear_weight_sparsity", 0.3)
+    self.linear_n = params.get("linear_n", 500)
 
 
   def createLearningRateScheduler(self, optimizer):
@@ -194,7 +213,7 @@ class CIFARExperiment(PyExperimentSuite):
     print("Training time for epoch=", time.time() - t1)
 
     # Test on all trained tasks combined
-    test_loader = torch.utils.data.DataLoader(dataset=self.testset ,
+    test_loader = torch.utils.data.DataLoader(dataset=self.testset,
                                               batch_size=self.test_batch_size,
                                               shuffle=True)
     ret = evaluateModel(model=self.model, device=self.device,
@@ -202,7 +221,7 @@ class CIFARExperiment(PyExperimentSuite):
                          batches_in_epoch=self.test_batches_in_epoch,
                          criterion=self.loss_function)
 
-    print("Loss = {:5.4f}, Accuracy = {:5.3f}%".format(ret["loss"], 100.0*ret["accuracy"]))
+    print("Test loss = {:5.4f}, Accuracy = {:5.3f}%".format(ret["loss"], 100.0*ret["accuracy"]))
     print("Full epoch time =", time.time() - t1)
 
     return ret

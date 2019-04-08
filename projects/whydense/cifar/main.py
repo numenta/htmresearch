@@ -15,14 +15,17 @@ import torchvision.transforms as transforms
 import os
 import argparse
 
-from models import *
+# from models import *
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
+from htmresearch.frameworks.pytorch.modules.not_so_densenet import (
+  densenet_cifar, notso_densenet_cifar
+)
 
 
 parser = argparse.ArgumentParser(description='PyTorch CIFAR10 Training')
 parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
 parser.add_argument('--gamma', default=0.9, type=float, help='learning rate gamma')
-parser.add_argument('--epochs', default=80, type=int, help='number of epochs to run')
+parser.add_argument('--epochs', default=50, type=int, help='number of epochs to run')
 parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--quick', '-q', action='store_true', help='one batch epochs, for debugging')
 args = parser.parse_args()
@@ -108,7 +111,7 @@ criterion = nn.CrossEntropyLoss()
 
 def createOptimizer(net, lr, gamma):
     print("Resetting optimizer learning rate")
-    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.9, weight_decay=5e-4)
+    optimizer = optim.SGD(net.parameters(), lr=lr, momentum=0.0, weight_decay=0.0)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1, gamma=gamma)
     return optimizer, scheduler
 
@@ -244,7 +247,7 @@ for epoch in range(start_epoch, start_epoch+args.epochs):
     test(epoch)
 
     # Reset learning rate and run noise tests
-    if scheduler.get_lr()[0] < 0.0000:
+    if scheduler.get_lr()[0] < 0.0001:
         print("Running noise tests at epoch", epoch)
         for noiseLevel in np.arange(0.0, 0.2, 0.025):
             testNoise(net, noiseLevel)

@@ -29,8 +29,7 @@ import numpy as np
 from tabulate import tabulate
 
 from htmresearch.frameworks.pytorch.modules import (
-  SparseWeights, KWinners2d, KWinners,
-  updateBoostStrength, rezeroWeights)
+  SparseWeights, KWinners2d, KWinners, updateBoostStrength, rezeroWeights)
 
 
 
@@ -51,7 +50,6 @@ class SparseBottleneck(nn.Module):
         kInferenceFactor=1.25, boostStrength=1.5, boostStrengthFactor=0.95)
       print "SparseBottleneck init: in_planes:", in_planes, "conv2OutputSize:", conv2OutputSize, "k:", self.k
     else:
-      print "SparseBottleneck init: Skipping k-winners, sparsity too high"
       self.kwinners2 = None
 
   def forward(self, x):
@@ -61,7 +59,6 @@ class SparseBottleneck(nn.Module):
       out = self.kwinners2(out)
     out = torch.cat([out,x], 1)
     return out
-
 
 
 
@@ -81,7 +78,6 @@ class SparseTransition(nn.Module):
         boostStrengthFactor=0.95)
       print "Sparse Transition init: in_planes:", in_planes, "out_planes:", out_planes, "k:", self.k
     else:
-      print "Sparse Transition init: Skipping k-winners, sparsity too high"
       self.kwinners = None
 
 
@@ -100,13 +96,14 @@ class NotSoDenseNet(nn.Module):
                transition_sparsities=[0.1, 0.1, 0.1],
                linear_sparsity=0.1,
                linear_weight_sparsity=0.3,
+               linear_n=500,
                image_width=32):
     super(NotSoDenseNet, self).__init__()
     self.growth_rate = growth_rate
     self.iteration = 0
     self.linear_sparsity = linear_sparsity
 
-    print "Creating Sparse network with nblocks=",nblocks,"and growth_rate=",growth_rate
+    print "Creating NotSoDenseNets with nblocks=",nblocks,"and growth_rate=",growth_rate
     print "dense_sparsities=", dense_sparsities
     print "transition_sparsities=",transition_sparsities
     print "linear_sparsity=", linear_sparsity, "linear_weight_sparsity=", linear_weight_sparsity
@@ -170,16 +167,15 @@ class NotSoDenseNet(nn.Module):
     if self.linear_sparsity > 0:
       print "Number of inputs into linearSDR=", num_planes
       print "linearSDR weightSparsity = 0.3, k=50/500"
-      self.linear1 = SparseWeights(nn.Linear(num_planes, 500),
+      self.linear1 = SparseWeights(nn.Linear(num_planes, linear_n),
                                    weightSparsity=linear_weight_sparsity)
-      k = int(500*linear_sparsity)
+      k = int(linear_n*linear_sparsity)
       self.linear1KWinners = KWinners(
-        n=500, k=k, kInferenceFactor=1.5,
+        n=linear_n, k=k, kInferenceFactor=1.5,
         boostStrength=1.5,
         boostStrengthFactor=0.95)
-      self.linearOut = nn.Linear(500, num_classes)
+      self.linearOut = nn.Linear(linear_n, num_classes)
     else:
-      print "Skipping linear sparse layer"
       self.linear1KWinners = None
       self.linearOut = nn.Linear(num_planes, num_classes)
 
@@ -204,39 +200,39 @@ class NotSoDenseNet(nn.Module):
                         0, x[0].nonzero().size(0)])
 
     out = self.conv1(x)
-    paramsTable.append(["Conv1", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
+    paramsTable.append(["Conv1", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
     out = self.dense1(out)
-    paramsTable.append(["Dense1", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
+    paramsTable.append(["Dense1", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
     out = self.trans1(out)
-    paramsTable.append(["Trans1", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
-                        0, out[0].nonzero().size(0)])
+    paramsTable.append(["Trans1", out.shape[1], np.prod(out.shape[1:]),
+                        self.trans1.k, out[0].nonzero().size(0)])
 
     out = self.dense2(out)
-    paramsTable.append(["Dense2", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
+    paramsTable.append(["Dense2", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
     out = self.trans2(out)
-    paramsTable.append(["Trans2", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
-                        0, out[0].nonzero().size(0)])
+    paramsTable.append(["Trans2", out.shape[1], np.prod(out.shape[1:]),
+                        self.trans2.k, out[0].nonzero().size(0)])
 
     out = self.dense3(out)
-    paramsTable.append(["Dense3", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
+    paramsTable.append(["Dense3", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
     out = self.trans3(out)
-    paramsTable.append(["Trans3", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
-                        0, out[0].nonzero().size(0)])
+    paramsTable.append(["Trans3", out.shape[1], np.prod(out.shape[1:]),
+                        self.trans3.k, out[0].nonzero().size(0)])
 
     out = self.dense4(out)
-    paramsTable.append(["Dense4", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
+    paramsTable.append(["Dense4", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
     out = F.avg_pool2d(F.relu(self.bn(out)), 4)
-    paramsTable.append(["AvgPool", out.shape[1], out.shape[1]*out.shape[2]*out.shape[3],
+    paramsTable.append(["AvgPool", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
     out = out.view(out.size(0), -1)

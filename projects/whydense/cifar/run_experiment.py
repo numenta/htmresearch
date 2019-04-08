@@ -25,8 +25,7 @@ import matplotlib
 
 matplotlib.use('Agg')
 
-from htmresearch.frameworks.pytorch.cifar_experiment import \
-  CIFARExperiment
+from htmresearch.frameworks.pytorch.cifar_experiment import CIFARExperiment
 
 if __name__ == '__main__':
   suite = CIFARExperiment()
