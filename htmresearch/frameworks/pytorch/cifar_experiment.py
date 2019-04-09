@@ -29,10 +29,11 @@ import numpy as np
 import torch
 import torch.nn as nn
 import tqdm
-from torch.utils.data import ConcatDataset
+from torch.utils.data import ConcatDataset, DataLoader
 from torchvision import transforms, datasets
 
 from htmresearch.frameworks.pytorch.model_utils import trainModel, evaluateModel
+from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.modules.not_so_densenet import (
   densenet_cifar, NotSoDenseNet, SparseBottleneck
 )
@@ -102,6 +103,8 @@ class CIFARExperiment(PyExperimentSuite):
         transition_sparsities=self.transition_sparsities,
         linear_sparsity=self.linear_sparsity,
         linear_weight_sparsity=self.linear_weight_sparsity,
+        linear_n=self.linear_n,
+        avg_pool_size=self.avg_pool_size,
       )
 
     print("Torch reports", torch.cuda.device_count(), "GPUs available")
@@ -133,8 +136,9 @@ class CIFARExperiment(PyExperimentSuite):
     self.epochs = params.get("epochs", 1)
     self.batch_size = params.get("batch_size", 128)
     self.batches_in_epoch = params.get("batches_in_epoch", 100000)
-    self.first_epoch_batch_size = params.get("first_epoch_batch_size", self.batch_size)
-    self.batches_in_first_epoch = params.get("batches_in_first_epoch", self.batches_in_epoch)
+    self.first_epoch_batch_size = params.get("first_epoch_batch_size",
+                                             self.batch_size)
+    self.batches_in_first_epoch = params.get("batches_in_first_epoch", 100000)
 
     # Testing
     self.test_batch_size = params.get("test_batch_size", 1000)
@@ -146,8 +150,9 @@ class CIFARExperiment(PyExperimentSuite):
     self.momentum = params.get("momentum", 0.9)
     self.weight_decay = params.get("weight_decay", 0.0)
     self.optimizer_params = eval(params.get("optimizer_params", "{}"))
-    self.lr_scheduler_gamma = params.get("lr_scheduler_gamma", 0.95)
-    self.loss_function = eval(params.get("loss_function", "torch.nn.functional.cross_entropy"))
+    self.lr_scheduler_gamma = params.get("lr_scheduler_gamma", 0.9)
+    self.loss_function = eval(params.get("loss_function",
+                                         "torch.nn.functional.cross_entropy"))
 
     # Network parameters
     self.dense = params.get("dense", False)
@@ -163,6 +168,7 @@ class CIFARExperiment(PyExperimentSuite):
     self.linear_sparsity = params.get("linear_sparsity", 0.0)
     self.linear_weight_sparsity = params.get("linear_weight_sparsity", 0.3)
     self.linear_n = params.get("linear_n", 500)
+    self.avg_pool_size = params.get("avg_pool_size", 4)
 
 
   def createLearningRateScheduler(self, optimizer):
@@ -224,7 +230,59 @@ class CIFARExperiment(PyExperimentSuite):
     print("Test loss = {:5.4f}, Accuracy = {:5.3f}%".format(ret["loss"], 100.0*ret["accuracy"]))
     print("Full epoch time =", time.time() - t1)
 
+    if iteration==params["iterations"]-1:
+      self.runNoiseTests()
+
     return ret
+
+
+  def runNoiseTests(self):
+    """
+    Test the model with different noise values and return test metrics.
+    """
+
+    print("\nRunning noise tests")
+    ret = {}
+
+    # Test with noise
+    total_correct = 0
+    for noise in [0.0, 0.1]:
+
+      transform_noise_test = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465),
+                             (0.2023, 0.1994, 0.2010)),
+        RandomNoise(noise,
+                    whiteValue=0.5 + 2 * 0.20,
+                    blackValue=0.5 - 2 * 0.2),
+      ])
+
+      testset = datasets.CIFAR10(root=self.dataDir,
+                                 train=False,
+                                 download=True,
+                                 transform=transform_noise_test)
+      test_loader = DataLoader(testset,
+                               batch_size=self.test_batch_size,
+                               shuffle=False)
+
+      testResult = evaluateModel(
+        model=self.model,
+        loader=test_loader,
+        device=self.device,
+        batches_in_epoch=self.test_batches_in_epoch,
+        criterion=self.loss_function
+      )
+      total_correct += testResult["total_correct"]
+      ret[noise] = testResult
+
+
+    ret["total_correct"] = total_correct
+
+    print("Noise results:")
+    pprint.pprint(ret)
+
+    return ret
+
 
   def preEpoch(self):
     if self.lr_scheduler is not None:

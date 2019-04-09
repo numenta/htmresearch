@@ -97,11 +97,13 @@ class NotSoDenseNet(nn.Module):
                linear_sparsity=0.1,
                linear_weight_sparsity=0.3,
                linear_n=500,
+               avg_pool_size=4,
                image_width=32):
     super(NotSoDenseNet, self).__init__()
     self.growth_rate = growth_rate
     self.iteration = 0
     self.linear_sparsity = linear_sparsity
+    self.avg_pool_size = avg_pool_size
 
     print "Creating NotSoDenseNets with nblocks=",nblocks,"and growth_rate=",growth_rate
     print "dense_sparsities=", dense_sparsities
@@ -164,10 +166,12 @@ class NotSoDenseNet(nn.Module):
 
     self.bn = nn.BatchNorm2d(num_planes)
 
+    bn_outputs = int(num_planes * 16 / (self.avg_pool_size*self.avg_pool_size))
+
     if self.linear_sparsity > 0:
-      print "Number of inputs into linearSDR=", num_planes
+      print "Number of inputs into linearSDR=", bn_outputs
       print "linearSDR weightSparsity = 0.3, k=50/500"
-      self.linear1 = SparseWeights(nn.Linear(num_planes, linear_n),
+      self.linear1 = SparseWeights(nn.Linear(bn_outputs, linear_n),
                                    weightSparsity=linear_weight_sparsity)
       k = int(linear_n*linear_sparsity)
       self.linear1KWinners = KWinners(
@@ -177,7 +181,7 @@ class NotSoDenseNet(nn.Module):
       self.linearOut = nn.Linear(linear_n, num_classes)
     else:
       self.linear1KWinners = None
-      self.linearOut = nn.Linear(num_planes, num_classes)
+      self.linearOut = nn.Linear(bn_outputs, num_classes)
 
 
   def _make_dense_layers(self, block, in_planes, nblock, input_width, sparsity):
@@ -231,7 +235,7 @@ class NotSoDenseNet(nn.Module):
     paramsTable.append(["Dense4", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
-    out = F.avg_pool2d(F.relu(self.bn(out)), 4)
+    out = F.avg_pool2d(F.relu(self.bn(out)), self.avg_pool_size)
     paramsTable.append(["AvgPool", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
@@ -260,7 +264,7 @@ class NotSoDenseNet(nn.Module):
     out = self.trans2(self.dense2(out))
     out = self.trans3(self.dense3(out))
     out = self.dense4(out)
-    out = F.avg_pool2d(F.relu(self.bn(out)), 4)
+    out = F.avg_pool2d(F.relu(self.bn(out)), self.avg_pool_size)
     out = out.view(out.size(0), -1)
     if self.linear_sparsity > 0:
       out = self.linear1KWinners(self.linear1(out))

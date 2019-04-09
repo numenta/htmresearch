@@ -671,7 +671,7 @@ class PyExperimentSuite(object):
         return ret
 
     def finalize(self, params, rep):
-        """ can be implemented by sublcass. """
+        """ can be implemented by subclass. """
         pass
     
     def save_state(self, params, rep, n):
