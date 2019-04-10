@@ -35,7 +35,7 @@ from torchvision import transforms, datasets
 from htmresearch.frameworks.pytorch.model_utils import trainModel, evaluateModel
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
 from htmresearch.frameworks.pytorch.modules.not_so_densenet import (
-  densenet_cifar, NotSoDenseNet, SparseBottleneck
+  NotSoDenseNet
 )
 from htmresearch.support.expsuite import PyExperimentSuite
 
@@ -93,12 +93,20 @@ class CIFARExperiment(PyExperimentSuite):
                                transform=self.transform_test)
 
     if self.dense:
-      self.model = densenet_cifar(growth_rate=self.growth_rate)
-    else:
       self.model = NotSoDenseNet(
-        block=SparseBottleneck,
         nblocks=self.nblocks,
         growth_rate=self.growth_rate,
+        dense_c1_out_planes=self.dense_c1_out_planes,
+        avg_pool_size=self.avg_pool_size,
+        dense_sparsities=[1.0] * 4,
+        transition_sparsities=[1.0] * 3,
+        linear_sparsity=0.0,
+      )
+    else:
+      self.model = NotSoDenseNet(
+        nblocks=self.nblocks,
+        growth_rate=self.growth_rate,
+        dense_c1_out_planes=self.dense_c1_out_planes,
         dense_sparsities=self.dense_sparsities,
         transition_sparsities=self.transition_sparsities,
         linear_sparsity=self.linear_sparsity,
@@ -106,6 +114,7 @@ class CIFARExperiment(PyExperimentSuite):
         linear_n=self.linear_n,
         avg_pool_size=self.avg_pool_size,
       )
+
 
     print("Torch reports", torch.cuda.device_count(), "GPUs available")
     if torch.cuda.device_count() > 1:
@@ -168,7 +177,8 @@ class CIFARExperiment(PyExperimentSuite):
     self.linear_sparsity = params.get("linear_sparsity", 0.0)
     self.linear_weight_sparsity = params.get("linear_weight_sparsity", 0.3)
     self.linear_n = params.get("linear_n", 500)
-    self.avg_pool_size = params.get("avg_pool_size", 4)
+    self.avg_pool_size = params.get("avg_pool_size", 2)
+    self.dense_c1_out_planes = params.get("dense_c1_out_planes", 4*self.growth_rate)
 
 
   def createLearningRateScheduler(self, optimizer):
@@ -232,6 +242,9 @@ class CIFARExperiment(PyExperimentSuite):
 
     if iteration==params["iterations"]-1:
       self.runNoiseTests()
+
+    # Include learning rate stats
+    ret.update({"learning_rate": self.lr_scheduler.get_lr()[0]})
 
     return ret
 
