@@ -27,8 +27,6 @@ import time
 import pprint
 import numpy as np
 import torch
-import torch.nn as nn
-import tqdm
 from torch.utils.data import ConcatDataset, DataLoader
 from torchvision import transforms, datasets
 
@@ -43,14 +41,7 @@ from htmresearch.support.expsuite import PyExperimentSuite
 
 class CIFARExperiment(PyExperimentSuite):
   """
-  Baseline continual learning experiment based on incremental class learning
-  scenario using mnist dataset where we train on two MNIST categories at the
-  time while testing of all previous categories:
-
-      - train on [0, 1], test on [0, 1]
-      - train on [2, 3], test on [0, 1, 2, 3]
-      - ...
-      - train on [8, 9], test on [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+  Experiment for training on CIFAR-10
   """
 
 
