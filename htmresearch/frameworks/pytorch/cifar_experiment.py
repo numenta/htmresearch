@@ -48,19 +48,6 @@ class CIFARExperiment(PyExperimentSuite):
   def __init__(self):
     super(CIFARExperiment, self).__init__()
 
-    self.transform_train = transforms.Compose([
-      transforms.RandomCrop(32, padding=4),
-      transforms.RandomHorizontalFlip(),
-      transforms.ToTensor(),
-      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
-
-    self.transform_test = transforms.Compose([
-      transforms.ToTensor(),
-      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-    ])
-
-
     self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
@@ -78,10 +65,14 @@ class CIFARExperiment(PyExperimentSuite):
 
     # Load CIFAR dataset
     dataDir = params.get('dataDir', 'data')
+    self.transform_train = transforms.Compose([
+      transforms.RandomCrop(32, padding=4),
+      transforms.RandomHorizontalFlip(),
+      transforms.ToTensor(),
+      transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+    ])
     self.trainset = datasets.CIFAR10(root=dataDir, train=True, download=True,
                                 transform=self.transform_train)
-    self.testset = datasets.CIFAR10(root=dataDir, train=False, download=True,
-                               transform=self.transform_test)
 
     if self.dense:
       self.model = NotSoDenseNet(
@@ -89,6 +80,7 @@ class CIFARExperiment(PyExperimentSuite):
         growth_rate=self.growth_rate,
         dense_c1_out_planes=self.dense_c1_out_planes,
         avg_pool_size=self.avg_pool_size,
+        conv1_sparsity=1.0,
         dense_sparsities=[1.0] * 4,
         transition_sparsities=[1.0] * 3,
         linear_sparsity=0.0,
@@ -97,6 +89,7 @@ class CIFARExperiment(PyExperimentSuite):
       self.model = NotSoDenseNet(
         nblocks=self.nblocks,
         growth_rate=self.growth_rate,
+        conv1_sparsity=self.conv1_sparsity,
         dense_c1_out_planes=self.dense_c1_out_planes,
         dense_sparsities=self.dense_sparsities,
         transition_sparsities=self.transition_sparsities,
@@ -117,6 +110,7 @@ class CIFARExperiment(PyExperimentSuite):
 
     self.optimizer = self.createOptimizer(self.model)
     self.lr_scheduler = self.createLearningRateScheduler(self.optimizer)
+    self.test_loaders = self.createTestLoaders(self.noise_values)
 
 
   def initialize(self, params, repetition):
@@ -138,11 +132,14 @@ class CIFARExperiment(PyExperimentSuite):
     self.batches_in_epoch = params.get("batches_in_epoch", 100000)
     self.first_epoch_batch_size = params.get("first_epoch_batch_size",
                                              self.batch_size)
-    self.batches_in_first_epoch = params.get("batches_in_first_epoch", 100000)
+    self.batches_in_first_epoch = params.get("batches_in_first_epoch",
+                                             self.batches_in_epoch)
 
     # Testing
     self.test_batch_size = params.get("test_batch_size", 1000)
     self.test_batches_in_epoch = params.get("test_batches_in_epoch", 100000)
+    self.noise_values = map(float,
+                            params.get("noise_values", "0.0, 0.1").split(", "))
 
     # Optimizer
     self.optimizer_class = eval(params.get("optimizer", "torch.optim.SGD"))
@@ -155,6 +152,7 @@ class CIFARExperiment(PyExperimentSuite):
                                          "torch.nn.functional.cross_entropy"))
 
     # Network parameters
+    self.conv1_sparsity = params.get("conv1_sparsity", 1.0)
     self.dense = params.get("dense", False)
     self.growth_rate = params.get("growth_rate", 12)
     self.nblocks = map(int,
@@ -220,19 +218,12 @@ class CIFARExperiment(PyExperimentSuite):
     print("Training time for epoch=", time.time() - t1)
 
     # Test on all trained tasks combined
-    test_loader = torch.utils.data.DataLoader(dataset=self.testset,
-                                              batch_size=self.test_batch_size,
-                                              shuffle=True)
-    ret = evaluateModel(model=self.model, device=self.device,
-                         loader=test_loader,
-                         batches_in_epoch=self.test_batches_in_epoch,
-                         criterion=self.loss_function)
-
-    print("Test loss = {:5.4f}, Accuracy = {:5.3f}%".format(ret["loss"], 100.0*ret["accuracy"]))
+    noiseValues = [0.0, 0.1]
+    ret = self.runNoiseTests(noiseValues=noiseValues, loaders=self.test_loaders)
+    for noise in noiseValues:
+      print("Noise= {:3.2f}, loss = {:5.4f}, Accuracy = {:5.3f}%".format(
+        noise, ret[noise]["loss"], 100.0*ret[noise]["accuracy"]))
     print("Full epoch time =", time.time() - t1)
-
-    if iteration==params["iterations"]-1:
-      self.runNoiseTests()
 
     # Include learning rate stats
     ret.update({"learning_rate": self.lr_scheduler.get_lr()[0]})
@@ -240,22 +231,17 @@ class CIFARExperiment(PyExperimentSuite):
     return ret
 
 
-  def runNoiseTests(self):
+  def createTestLoaders(self, noise_values):
     """
-    Test the model with different noise values and return test metrics.
+    Create a list of data loaders, one for each noise value
     """
-
-    print("\nRunning noise tests")
-    ret = {}
-
-    # Test with noise
-    total_correct = 0
-    for noise in [0.0, 0.1]:
+    print("Creating test loaders for noise values:", noise_values)
+    loaders = []
+    for noise in noise_values:
 
       transform_noise_test = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465),
-                             (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
         RandomNoise(noise,
                     whiteValue=0.5 + 2 * 0.20,
                     blackValue=0.5 - 2 * 0.2),
@@ -265,25 +251,27 @@ class CIFARExperiment(PyExperimentSuite):
                                  train=False,
                                  download=True,
                                  transform=transform_noise_test)
-      test_loader = DataLoader(testset,
-                               batch_size=self.test_batch_size,
-                               shuffle=False)
+      loaders.append(
+        DataLoader(testset, batch_size=self.test_batch_size, shuffle=False)
+      )
 
+    return loaders
+
+
+  def runNoiseTests(self, noiseValues, loaders):
+    """
+    Test the model with different noise values and return test metrics.
+    """
+    ret = {}
+    for noise, loader in zip(noiseValues, loaders):
       testResult = evaluateModel(
         model=self.model,
-        loader=test_loader,
+        loader=loader,
         device=self.device,
         batches_in_epoch=self.test_batches_in_epoch,
         criterion=self.loss_function
       )
-      total_correct += testResult["total_correct"]
       ret[noise] = testResult
-
-
-    ret["total_correct"] = total_correct
-
-    print("Noise results:")
-    pprint.pprint(ret)
 
     return ret
 

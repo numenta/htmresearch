@@ -29,8 +29,8 @@ import numpy as np
 from tabulate import tabulate
 
 from htmresearch.frameworks.pytorch.modules import (
-  SparseWeights, KWinners2d, KWinners, updateBoostStrength, rezeroWeights)
-
+  SparseWeights, KWinners2d, KWinners, updateBoostStrength, rezeroWeights
+)
 
 
 
@@ -123,6 +123,7 @@ class NotSoDenseNet(nn.Module):
                reduction=0.5,
                num_classes=10,
                block=SparseBottleneck,
+               conv1_sparsity = 1.0,
                dense_c1_out_planes=4*12,
                dense_sparsities=[0.1, 0.1, 0.2, 0.5],
                transition_sparsities=[0.1, 0.1, 0.1],
@@ -146,6 +147,13 @@ class NotSoDenseNet(nn.Module):
 
     num_planes = 2*growth_rate
     self.conv1 = nn.Conv2d(3, num_planes, kernel_size=3, padding=1, bias=False)
+    conv1OutputSize = image_width*image_width*num_planes
+    self.conv1k = int(conv1_sparsity * conv1OutputSize)
+    self.conv1Sparsity = conv1_sparsity
+    if self.conv1Sparsity < 0.5:
+      self.conv1kwinners = KWinners2d(
+        n=conv1OutputSize, k=self.conv1k, channels=num_planes,
+        kInferenceFactor=1.0, boostStrength=1.5, boostStrengthFactor=0.95)
 
     self.dense1 = self._make_dense_layers(block, num_planes,
                                           dense_c1_out_planes,
@@ -226,6 +234,8 @@ class NotSoDenseNet(nn.Module):
                         0, x[0].nonzero().size(0)])
 
     out = self.conv1(x)
+    if self.conv1Sparsity < 0.5:
+      out = self.conv1kwinners(out)
     paramsTable.append(["Conv1", out.shape[1], np.prod(out.shape[1:]),
                         0, out[0].nonzero().size(0)])
 
@@ -282,6 +292,9 @@ class NotSoDenseNet(nn.Module):
       return self.forwardWithTable(x)
 
     out = self.conv1(x)
+    if self.conv1Sparsity < 0.5:
+      out = self.conv1kwinners(out)
+
     out = self.trans1(self.dense1(out))
     out = self.trans2(self.dense2(out))
     out = self.trans3(self.dense3(out))
