@@ -64,6 +64,7 @@ class CIFARExperiment(PyExperimentSuite):
 
 
   def reset(self, params, repetition):
+    """Called at the beginning of each experiment and each repetition"""
 
     pprint.pprint(params)
 
@@ -96,7 +97,7 @@ class CIFARExperiment(PyExperimentSuite):
   def initialize(self, params, repetition):
     """
     Initialize experiment parameters and default values from configuration file.
-    Called at the beginning of each experiment and each repetition.
+    Called by reset() at the beginning of each experiment and each repetition.
     """
     self.name = params["name"]
     self.dataDir = params.get("datadir", "data")
