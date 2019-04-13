@@ -34,13 +34,14 @@ from htmresearch.frameworks.pytorch.modules import (
 
 
 
-class SparseBottleneck(nn.Module):
+class SparseBlock(nn.Module):
   def __init__(self, in_planes,
                input_width,
                c1_out_planes,
                c2_out_planes,
-               sparsity=0.1):
-    super(SparseBottleneck, self).__init__()
+               sparsity=0.1,
+               k_inference_factor=1.5):
+    super(SparseBlock, self).__init__()
     self.bn1 = nn.BatchNorm2d(in_planes)
     self.conv1 = nn.Conv2d(in_planes, c1_out_planes, kernel_size=1, bias=False)
     self.bn2 = nn.BatchNorm2d(c1_out_planes)
@@ -52,7 +53,8 @@ class SparseBottleneck(nn.Module):
     if sparsity < 0.5:
       self.kwinners2 = KWinners2d(
         n=conv2OutputSize, k=self.k, channels=c2_out_planes,
-        kInferenceFactor=1.0, boostStrength=1.5, boostStrengthFactor=0.95)
+        kInferenceFactor=k_inference_factor,
+        boostStrength=1.5, boostStrengthFactor=0.95)
     else:
       self.kwinners2 = None
 
@@ -78,7 +80,9 @@ class SparseBottleneck(nn.Module):
 
 
 class SparseTransition(nn.Module):
-  def __init__(self, in_planes, out_planes, imSize=32*32, sparsity=0.1):
+  def __init__(self, in_planes, out_planes, imSize=32*32,
+               sparsity=0.1,
+               k_inference_factor=1.5):
     super(SparseTransition, self).__init__()
     self.bn = nn.BatchNorm2d(in_planes)
     self.conv = nn.Conv2d(in_planes, out_planes, kernel_size=1, bias=False)
@@ -89,7 +93,7 @@ class SparseTransition(nn.Module):
     if sparsity < 0.5:
       self.kwinners = KWinners2d(
         n=transitionOutputSize, k=self.k, channels=out_planes,
-        kInferenceFactor=1.0,
+        kInferenceFactor=k_inference_factor,
         boostStrength=1.5,
         boostStrengthFactor=0.95)
     else:
@@ -122,7 +126,7 @@ class NotSoDenseNet(nn.Module):
                growth_rate=12,
                reduction=0.5,
                num_classes=10,
-               block=SparseBottleneck,
+               block=SparseBlock,
                conv1_sparsity = 1.0,
                dense_c1_out_planes=4*12,
                dense_sparsities=[0.1, 0.1, 0.2, 0.5],
@@ -131,18 +135,22 @@ class NotSoDenseNet(nn.Module):
                linear_weight_sparsity=0.3,
                linear_n=500,
                avg_pool_size=4,
+               k_inference_factor=1.5,
                image_width=32):
     super(NotSoDenseNet, self).__init__()
     self.growth_rate = growth_rate
     self.iteration = 0
     self.linear_sparsity = linear_sparsity
     self.avg_pool_size = avg_pool_size
+    self.dense_sparsities = dense_sparsities
+    self.k_inference_factor = k_inference_factor
 
     print "Creating NotSoDenseNets with nblocks=", nblocks
     print "growth_rate=",growth_rate
-    print "dense_c1_out_planes=",dense_c1_out_planes
+    print "dense_c1_out_planes=", dense_c1_out_planes
     print "dense_sparsities=", dense_sparsities
     print "transition_sparsities=", transition_sparsities
+    print "k_inference_factor=", k_inference_factor
     print "linear_sparsity=", linear_sparsity, "linear_weight_sparsity=", linear_weight_sparsity
 
     num_planes = 2*growth_rate
@@ -153,45 +161,53 @@ class NotSoDenseNet(nn.Module):
     if self.conv1Sparsity < 0.5:
       self.conv1kwinners = KWinners2d(
         n=conv1OutputSize, k=self.conv1k, channels=num_planes,
-        kInferenceFactor=1.0, boostStrength=1.5, boostStrengthFactor=0.95)
+        kInferenceFactor=k_inference_factor,
+        boostStrength=1.5, boostStrengthFactor=0.95)
 
-    self.dense1 = self._make_dense_layers(block, num_planes,
-                                          dense_c1_out_planes,
-                                          nblocks[0], image_width,
-                                          sparsity=dense_sparsities[0])
+    self.dense1 = self._make_sparse_blocks(block, num_planes,
+                                           dense_c1_out_planes,
+                                           nblocks[0], image_width,
+                                           sparsity=dense_sparsities[0])
     num_planes += nblocks[0]*growth_rate
     out_planes = int(math.floor(num_planes*reduction))
     self.trans1 = SparseTransition(num_planes, out_planes,
                                    imSize=image_width*image_width,
-                                   sparsity=transition_sparsities[0])
+                                   sparsity=transition_sparsities[0],
+                                   k_inference_factor=self.k_inference_factor,
+                                   )
     num_planes = out_planes
 
-    self.dense2 = self._make_dense_layers(block, num_planes,
-                                          dense_c1_out_planes,
-                                          nblocks[1], image_width / 2,
-                                          sparsity=dense_sparsities[1])
+    self.dense2 = self._make_sparse_blocks(block, num_planes,
+                                           dense_c1_out_planes,
+                                           nblocks[1], image_width / 2,
+                                           sparsity=dense_sparsities[1])
     num_planes += nblocks[1]*growth_rate
     out_planes = int(math.floor(num_planes*reduction))
     self.trans2 = SparseTransition(num_planes, out_planes,
                                    imSize=16 * 16,
-                                   sparsity=transition_sparsities[1])
+                                   sparsity=transition_sparsities[1],
+                                   k_inference_factor=self.k_inference_factor,
+                                   )
     num_planes = out_planes
 
-    self.dense3 = self._make_dense_layers(block, num_planes,
-                                          dense_c1_out_planes,
-                                          nblocks[2], image_width / 4,
-                                          sparsity=dense_sparsities[2])
+    self.dense3 = self._make_sparse_blocks(block, num_planes,
+                                           dense_c1_out_planes,
+                                           nblocks[2], image_width / 4,
+                                           sparsity=dense_sparsities[2],
+                                           )
     num_planes += nblocks[2]*growth_rate
     out_planes = int(math.floor(num_planes*reduction))
     self.trans3 = SparseTransition(num_planes, out_planes,
                                    imSize=8 * 8,
-                                   sparsity=transition_sparsities[2])
+                                   sparsity=transition_sparsities[2],
+                                   k_inference_factor=self.k_inference_factor,
+                                   )
     num_planes = out_planes
 
-    self.dense4 = self._make_dense_layers(block, num_planes,
-                                          dense_c1_out_planes,
-                                          nblocks[3], image_width / 8,
-                                          sparsity=dense_sparsities[3])
+    self.dense4 = self._make_sparse_blocks(block, num_planes,
+                                           dense_c1_out_planes,
+                                           nblocks[3], image_width / 8,
+                                           sparsity=dense_sparsities[3])
     num_planes += nblocks[3]*growth_rate
 
     self.bn = nn.BatchNorm2d(num_planes)
@@ -203,7 +219,7 @@ class NotSoDenseNet(nn.Module):
                                    weightSparsity=linear_weight_sparsity)
       k = int(linear_n*linear_sparsity)
       self.linear1KWinners = KWinners(
-        n=linear_n, k=k, kInferenceFactor=1.0,
+        n=linear_n, k=k, kInferenceFactor=k_inference_factor,
         boostStrength=1.5,
         boostStrengthFactor=0.95)
       self.linearOut = nn.Linear(linear_n, num_classes)
@@ -212,16 +228,18 @@ class NotSoDenseNet(nn.Module):
       self.linearOut = nn.Linear(bn_outputs, num_classes)
 
 
-  def _make_dense_layers(self, block, in_planes,
-                         c1_out_planes,
-                         nblock, input_width, sparsity):
+  def _make_sparse_blocks(self, block, in_planes,
+                          c1_out_planes,
+                          nblock, input_width, sparsity):
     layers = []
     for i in range(nblock):
       layers.append(block(in_planes,
                           c1_out_planes=c1_out_planes,
                           c2_out_planes=self.growth_rate,
                           input_width=input_width,
-                          sparsity=sparsity))
+                          sparsity=sparsity,
+                          k_inference_factor=self.k_inference_factor
+                          ))
       in_planes += self.growth_rate
 
     return nn.Sequential(*layers)
@@ -237,11 +255,11 @@ class NotSoDenseNet(nn.Module):
     if self.conv1Sparsity < 0.5:
       out = self.conv1kwinners(out)
     paramsTable.append(["Conv1", out.shape[1], np.prod(out.shape[1:]),
-                        0, out[0].nonzero().size(0)])
+                        self.conv1k, out[0].nonzero().size(0)])
 
     out = self.dense1(out)
     paramsTable.append(["Dense1", out.shape[1], np.prod(out.shape[1:]),
-                        0, out[0].nonzero().size(0)])
+                        self.dense1[-1].k, out[0].nonzero().size(0)])
 
     out = self.trans1(out)
     paramsTable.append(["Trans1", out.shape[1], np.prod(out.shape[1:]),
@@ -249,7 +267,7 @@ class NotSoDenseNet(nn.Module):
 
     out = self.dense2(out)
     paramsTable.append(["Dense2", out.shape[1], np.prod(out.shape[1:]),
-                        0, out[0].nonzero().size(0)])
+                        self.dense2[-1].k, out[0].nonzero().size(0)])
 
     out = self.trans2(out)
     paramsTable.append(["Trans2", out.shape[1], np.prod(out.shape[1:]),
@@ -257,7 +275,7 @@ class NotSoDenseNet(nn.Module):
 
     out = self.dense3(out)
     paramsTable.append(["Dense3", out.shape[1], np.prod(out.shape[1:]),
-                        0, out[0].nonzero().size(0)])
+                        self.dense3[-1].k, out[0].nonzero().size(0)])
 
     out = self.trans3(out)
     paramsTable.append(["Trans3", out.shape[1], np.prod(out.shape[1:]),
@@ -265,7 +283,7 @@ class NotSoDenseNet(nn.Module):
 
     out = self.dense4(out)
     paramsTable.append(["Dense4", out.shape[1], np.prod(out.shape[1:]),
-                        0, out[0].nonzero().size(0)])
+                        self.dense4[-1].k, out[0].nonzero().size(0)])
 
     out = F.avg_pool2d(F.relu(self.bn(out)), self.avg_pool_size)
     paramsTable.append(["AvgPool", out.shape[1], np.prod(out.shape[1:]),
@@ -276,7 +294,7 @@ class NotSoDenseNet(nn.Module):
     if self.linear_sparsity > 0:
       out = self.linear1KWinners(self.linear1(out))
       paramsTable.append(["LinearSDR", 1, out.shape[1],
-                          0, out[0].nonzero().size(0)])
+                          self.linear1KWinners.k, out[0].nonzero().size(0)])
 
     out = self.linearOut(out)
 
@@ -308,11 +326,13 @@ class NotSoDenseNet(nn.Module):
 
     return out
 
+
   def postEpoch(self):
     self.apply(updateBoostStrength)
     self.apply(rezeroWeights)
     if self.linear1KWinners is not None:
       print "boostStrength is now:", self.linear1KWinners.boostStrength
+
 
 
 # def DenseNet121():
