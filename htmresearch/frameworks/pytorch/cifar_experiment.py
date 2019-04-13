@@ -27,11 +27,17 @@ import time
 import pprint
 import numpy as np
 import torch
+import torch.nn as nn
 from torch.utils.data import ConcatDataset, DataLoader
 from torchvision import transforms, datasets
 
 from htmresearch.frameworks.pytorch.model_utils import trainModel, evaluateModel
 from htmresearch.frameworks.pytorch.image_transforms import RandomNoise
+from htmresearch.frameworks.pytorch.modules.k_winners import getEntropies
+from htmresearch.frameworks.pytorch.modules import (
+  SparseWeights2d, KWinners2d, updateBoostStrength, rezeroWeights,
+  Flatten
+)
 from htmresearch.frameworks.pytorch.modules.not_so_densenet import (
   NotSoDenseNet
 )
@@ -74,38 +80,12 @@ class CIFARExperiment(PyExperimentSuite):
     self.trainset = datasets.CIFAR10(root=dataDir, train=True, download=True,
                                 transform=self.transform_train)
 
-    if self.dense:
-      self.model = NotSoDenseNet(
-        nblocks=self.nblocks,
-        growth_rate=self.growth_rate,
-        dense_c1_out_planes=self.dense_c1_out_planes,
-        avg_pool_size=self.avg_pool_size,
-        conv1_sparsity=1.0,
-        dense_sparsities=[1.0] * 4,
-        transition_sparsities=[1.0] * 3,
-        linear_sparsity=0.0,
-      )
-    else:
-      self.model = NotSoDenseNet(
-        nblocks=self.nblocks,
-        growth_rate=self.growth_rate,
-        conv1_sparsity=self.conv1_sparsity,
-        dense_c1_out_planes=self.dense_c1_out_planes,
-        dense_sparsities=self.dense_sparsities,
-        transition_sparsities=self.transition_sparsities,
-        linear_sparsity=self.linear_sparsity,
-        linear_weight_sparsity=self.linear_weight_sparsity,
-        linear_n=self.linear_n,
-        avg_pool_size=self.avg_pool_size,
-      )
-
+    self.createModel(params, repetition)
 
     print("Torch reports", torch.cuda.device_count(), "GPUs available")
     if torch.cuda.device_count() > 1:
-      print("Using", torch.cuda.device_count(), "GPUs")
       self.model = torch.nn.DataParallel(self.model)
 
-    print("Setting device to", self.device)
     self.model.to(self.device)
 
     self.optimizer = self.createOptimizer(self.model)
@@ -140,6 +120,8 @@ class CIFARExperiment(PyExperimentSuite):
     self.test_batches_in_epoch = params.get("test_batches_in_epoch", 100000)
     self.noise_values = map(float,
                             params.get("noise_values", "0.0, 0.1").split(", "))
+    self.best_noise_score = 0.0
+    self.best_epoch = -1
 
     # Optimizer
     self.optimizer_class = eval(params.get("optimizer", "torch.optim.SGD"))
@@ -153,10 +135,12 @@ class CIFARExperiment(PyExperimentSuite):
 
     # Network parameters
     self.conv1_sparsity = params.get("conv1_sparsity", 1.0)
-    self.dense = params.get("dense", False)
+    self.network_type = params.get("network_type", "sparse")
     self.growth_rate = params.get("growth_rate", 12)
     self.nblocks = map(int,
                        params.get("nblocks", "6, 12, 24, 16").split(", "))
+    self.k_inference_factor = params.get("k_inference_factor", 1.5)
+
     self.dense_sparsities = map(float,
                                 params.get("dense_sparsities",
                                            "1.0, 1.0, 1.0, 1.0").split(", "))
@@ -192,7 +176,7 @@ class CIFARExperiment(PyExperimentSuite):
   def iterate(self, params, repetition, iteration):
 
     print("\nEpoch: {:d}".format(iteration))
-    t1 = time.time()
+    self.epoch_start_time = time.time()
 
     if iteration == 0:
       batch_size = self.first_epoch_batch_size
@@ -206,29 +190,40 @@ class CIFARExperiment(PyExperimentSuite):
                                                batch_size=batch_size,
                                                shuffle=True)
     self.preEpoch()
-    print("Learning rate: {:f}".format(self.lr_scheduler.get_lr()[0]))
-
-
     trainModel(model=self.model, loader=train_loader,
                optimizer=self.optimizer, device=self.device,
                batches_in_epoch=batches_in_epoch,
                criterion=self.loss_function)
     self.postEpoch()
 
-    print("Training time for epoch=", time.time() - t1)
+    self.epoch_train_time = time.time() - self.epoch_start_time
 
     # Test on all trained tasks combined
-    noiseValues = [0.0, 0.1]
-    ret = self.runNoiseTests(noiseValues=noiseValues, loaders=self.test_loaders)
-    for noise in noiseValues:
-      print("Noise= {:3.2f}, loss = {:5.4f}, Accuracy = {:5.3f}%".format(
-        noise, ret[noise]["loss"], 100.0*ret[noise]["accuracy"]))
-    print("Full epoch time =", time.time() - t1)
+    ret = self.runNoiseTests(noiseValues=self.noise_values,
+                             loaders=self.test_loaders)
+    self.epoch_time = time.time() - self.epoch_start_time
 
     # Include learning rate stats
     ret.update({"learning_rate": self.lr_scheduler.get_lr()[0]})
 
+    self.logger(iteration, ret)
+
     return ret
+
+
+  def logger(self, iteration, ret):
+    """Print out relevant information"""
+    print("Learning rate: {:f}".format(self.lr_scheduler.get_lr()[0]))
+    entropies = getEntropies(self.model)
+    print("Entropy and max entropy: ", float(entropies[0]), entropies[1])
+    print("Training time for epoch=", self.epoch_train_time)
+    for noise in self.noise_values:
+      print("Noise= {:3.2f}, loss = {:5.4f}, Accuracy = {:5.3f}%".format(
+        noise, ret[noise]["loss"], 100.0*ret[noise]["accuracy"]))
+    print("Full epoch time =", self.epoch_time)
+    if ret[0.0]["accuracy"] > 0.91:
+      self.best_noise_score = max(ret[0.1]["accuracy"], self.best_noise_score)
+      self.best_epoch = iteration
 
 
   def createTestLoaders(self, noise_values):
@@ -276,16 +271,50 @@ class CIFARExperiment(PyExperimentSuite):
     return ret
 
 
+  def createModel(self, params, repetition):
+
+    if self.network_type == "dense":
+      self.model = NotSoDenseNet(
+        nblocks=self.nblocks,
+        growth_rate=self.growth_rate,
+        dense_c1_out_planes=self.dense_c1_out_planes,
+        avg_pool_size=self.avg_pool_size,
+        conv1_sparsity=1.0,
+        dense_sparsities=[1.0] * 4,
+        transition_sparsities=[1.0] * 3,
+        linear_sparsity=0.0,
+      )
+
+    else:
+      self.model = NotSoDenseNet(
+        nblocks=self.nblocks,
+        growth_rate=self.growth_rate,
+        conv1_sparsity=self.conv1_sparsity,
+        dense_c1_out_planes=self.dense_c1_out_planes,
+        dense_sparsities=self.dense_sparsities,
+        transition_sparsities=self.transition_sparsities,
+        linear_sparsity=self.linear_sparsity,
+        linear_weight_sparsity=self.linear_weight_sparsity,
+        linear_n=self.linear_n,
+        avg_pool_size=self.avg_pool_size,
+        k_inference_factor=self.k_inference_factor,
+      )
+
+
   def preEpoch(self):
     if self.lr_scheduler is not None:
       self.lr_scheduler.step()
 
 
   def postEpoch(self):
-    self.model.postEpoch()
-
+    if hasattr(self.model, "postEpoch"):
+      self.model.postEpoch()
+    else:
+      self.model.apply(updateBoostStrength)
+      self.model.apply(rezeroWeights)
 
   def save_state(self, params, rep, n):
+    print("Saving state")
     saveDir = os.path.join(params["path"], params["name"], "model.{}.{}.pt".format(rep, n))
     torch.save(self.model, saveDir)
 
@@ -296,7 +325,10 @@ class CIFARExperiment(PyExperimentSuite):
 
 
   def finalize(self, params, rep):
+    print("\nBest noise score = {:5.2f}%".format(100.0*self.best_noise_score),
+          "at epoch {:d}".format(self.best_epoch))
     if params.get("restore_supported", False):
+      print("Saving state")
       saveDir = os.path.join(params["path"], params["name"], "model.final.pt")
       torch.save(self.model, saveDir)
 
