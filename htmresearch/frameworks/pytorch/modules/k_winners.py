@@ -32,6 +32,42 @@ from htmresearch.frameworks.pytorch.functions import k_winners, k_winners2d
 
 
 
+def getEntropy(m):
+  """
+  Function used to get the current and max entropies of KWinners modules.
+
+  :param m: any module
+
+  :return: (currentEntropy, maxEntropy)
+  """
+  if isinstance(m, KWinnersBase):
+    return m.entropy(), m.maxEntropy()
+  else:
+    return 0.0, 0.0
+
+
+def getEntropies(m):
+  """
+  Recursively get the current and max entropies from every child module
+
+  :param m: any module
+
+  :return: (currentEntropy, maxEntropy)
+  """
+  entropy = 0.0
+  max_entropy = 0.0
+  for module in m.children():
+    e, m = getEntropies(module)
+    entropy += e
+    max_entropy += m
+
+  e, m = getEntropy(m)
+  entropy += e
+  max_entropy += m
+
+  return entropy, max_entropy
+
+
 def updateBoostStrength(m):
   """
   Function used to update KWinner modules boost strength after each epoch.

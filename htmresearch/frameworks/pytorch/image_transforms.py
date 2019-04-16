@@ -32,6 +32,7 @@ class RandomNoise(object):
   def __init__(self,
                noiselevel=0.0,
                whiteValue=0.1307 + 2*0.3081,
+               blackValue=0.1307 + 2*0.3081,
                logDir=None, logProbability=0.01):
     """
     :param noiselevel:
@@ -48,6 +49,7 @@ class RandomNoise(object):
     """
     self.noiseLevel = noiselevel
     self.whiteValue = whiteValue
+    self.blackValue = blackValue
     self.iteration = 0
     self.logDir = logDir
     self.logProbability = logProbability
@@ -57,8 +59,9 @@ class RandomNoise(object):
     self.iteration += 1
     a = image.view(-1)
     numNoiseBits = int(a.shape[0] * self.noiseLevel)
-    noise = np.random.permutation(a.shape[0])[0:numNoiseBits]
-    a[noise] = self.whiteValue
+    permutedIndices = np.random.permutation(a.shape[0])
+    a[permutedIndices[0:numNoiseBits/2]] = self.whiteValue
+    a[permutedIndices[numNoiseBits/2:numNoiseBits]] = self.blackValue
 
     # Save a subset of the images for debugging
     if self.logDir is not None:
@@ -66,6 +69,6 @@ class RandomNoise(object):
         outfile = os.path.join(self.logDir,
                                "im_noise_" + str(int(self.noiseLevel*100)) + "_"
                                + str(self.iteration).rjust(6,'0') + ".png")
-        skimage.io.imsave(outfile,image.view(28,28))
+        skimage.io.imsave(outfile, image.view(28,28))
 
     return image
