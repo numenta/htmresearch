@@ -52,7 +52,7 @@ class TinyCIFARExperiment(CIFARExperiment):
 
 
   def logger(self, iteration, ret):
-    """Print out relevant information"""
+    """Print out relevant information at each epoch"""
     print("Learning rate: {:f}".format(self.lr_scheduler.get_lr()[0]))
     entropies = getEntropies(self.model)
     print("Entropy and max entropy: ", float(entropies[0]), entropies[1])
@@ -83,13 +83,13 @@ class TinyCIFARExperiment(CIFARExperiment):
       nn.Conv2d(in_channels=3, out_channels=out_planes,
                 kernel_size=3, padding=1, bias=False),
       nn.BatchNorm2d(out_planes),
-      nn.MaxPool2d(kernel_size=2),
+      nn.AvgPool2d(kernel_size=2),
       nn.ReLU(),
 
       nn.Conv2d(in_channels=out_planes, out_channels=out_planes,
                 kernel_size=3, padding=1, bias=False),
       nn.BatchNorm2d(out_planes),
-      nn.MaxPool2d(kernel_size=2),
+      nn.AvgPool2d(kernel_size=2),
       nn.ReLU(),
 
       Flatten(),
@@ -103,7 +103,7 @@ class TinyCIFARExperiment(CIFARExperiment):
       nn.Conv2d(in_channels=3, out_channels=out_planes,
                 kernel_size=3, padding=1, bias=False),
       nn.BatchNorm2d(out_planes),
-      nn.MaxPool2d(kernel_size=2),
+      nn.AvgPool2d(kernel_size=2),
       KWinners2d(n=out_planes*32*8, channels=out_planes,
                  k=int(0.1*out_planes*32*8), kInferenceFactor=1.5,
                  boostStrength=1.5, boostStrengthFactor=0.9),
@@ -115,7 +115,7 @@ class TinyCIFARExperiment(CIFARExperiment):
         weightSparsity=0.5
       ),
       nn.BatchNorm2d(out_planes),
-      nn.MaxPool2d(kernel_size=2),
+      nn.AvgPool2d(kernel_size=2),
       KWinners2d(n=out_planes * 32 * 2, channels=out_planes,
                  k=int(0.1 * out_planes * 32 * 2), kInferenceFactor=1.5,
                  boostStrength=1.5, boostStrengthFactor=0.9),
