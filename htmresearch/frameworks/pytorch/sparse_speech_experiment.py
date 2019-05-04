@@ -52,13 +52,6 @@ class SparseSpeechExperiment(PyExperimentSuite):
   """
 
 
-  def parse_cfg(self):
-    super(SparseSpeechExperiment, self).parse_cfg()
-    # Change the current working directory to be relative to 'experiments.cfg'
-    projectDir = os.path.dirname(self.options.config)
-    projectDir = os.path.abspath(projectDir)
-    os.chdir(projectDir)
-
 
   def reset(self, params, repetition):
     """
@@ -113,17 +106,19 @@ class SparseSpeechExperiment(PyExperimentSuite):
         outputSize=len(self.train_loader.dataset.classes),
         outChannels=c1_out_channels,
         c_k=c1_k,
+        kernelSize=5,
+        stride=1,
         dropout=params["dropout"],
         n=n,
         k=k,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
+        weightSparsityCNN=params["weight_sparsity_cnn"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         useBatchNorm=params["use_batch_norm"],
         normalizeWeights=params.get("normalize_weights", False)
       )
-      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     elif params["model_type"] == "resnet9":
       sp_model = resnet9(num_classes=len(self.train_loader.dataset.classes),
                          in_channels=1)

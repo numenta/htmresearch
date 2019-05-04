@@ -32,8 +32,8 @@ logging.basicConfig(level=logging.ERROR)
 
 
 
-def trainModel(model, loader, optimizer, device,
-               batches_in_epoch=sys.maxint, batch_callback=None,
+def trainModel(model, loader, optimizer, device, criterion=F.nll_loss,
+               batches_in_epoch=sys.maxsize, batch_callback=None,
                progress_bar=None):
   """
   Train the given model by iterating through mini batches. An epoch
@@ -50,6 +50,8 @@ def trainModel(model, loader, optimizer, device,
   :param batches_in_epoch: Max number of mini batches to train.
   :param device: device to use ('cpu' or 'cuda')
   :type device: :class:`torch.device
+  :param criterion: loss function to use
+  :type criterion: function
   :param batch_callback: Callback function to be called on every batch with the
                          following parameters: model, batch_idx
   :type batch_callback: function
@@ -68,7 +70,7 @@ def trainModel(model, loader, optimizer, device,
     data, target = data.to(device), target.to(device)
     optimizer.zero_grad()
     output = model(data)
-    loss = F.nll_loss(output, target)
+    loss = criterion(output, target)
     loss.backward()
     optimizer.step()
 
@@ -83,7 +85,9 @@ def trainModel(model, loader, optimizer, device,
 
 
 
-def evaluateModel(model, loader, device, progress=None):
+def evaluateModel(model, loader, device,
+                  batches_in_epoch=sys.maxsize,
+                  criterion=F.nll_loss, progress=None):
   """
   Evaluate pre-trained model using given test dataset loader.
 
@@ -93,6 +97,9 @@ def evaluateModel(model, loader, device, progress=None):
   :type loader: :class:`torch.utils.data.DataLoader`
   :param device: device to use ('cpu' or 'cuda')
   :type device: :class:`torch.device
+  :param batches_in_epoch: Max number of mini batches to test on.
+  :param criterion: loss function to use
+  :type criterion: function
   :param progress: Optional :class:`tqdm` progress bar args. None for no progress bar
   :type progress: dict or None
 
@@ -109,12 +116,15 @@ def evaluateModel(model, loader, device, progress=None):
     loader = tqdm(loader, **progress)
 
   with torch.no_grad():
-    for data, target in loader:
+    for batch_idx, (data, target) in enumerate(loader):
       data, target = data.to(device), target.to(device)
       output = model(data)
-      loss += F.nll_loss(output, target, reduction='sum').item()
+      loss += criterion(output, target, reduction='sum').item()
       pred = output.max(1, keepdim=True)[1]
       correct += pred.eq(target.view_as(pred)).sum().item()
+
+      if batch_idx >= batches_in_epoch:
+        break
 
   if progress is not None:
     loader.close()

@@ -47,13 +47,6 @@ class MNISTSparseExperiment(PyExperimentSuite):
   """
 
 
-  def parse_cfg(self):
-    super(MNISTSparseExperiment, self).parse_cfg()
-    # Change the current working directory to be relative to 'experiments.cfg'
-    projectDir = os.path.dirname(self.options.config)
-    projectDir = os.path.abspath(projectDir)
-    os.chdir(projectDir)
-
 
   def reset(self, params, repetition):
     """
@@ -68,10 +61,11 @@ class MNISTSparseExperiment(PyExperimentSuite):
 
     # Get our directories correct
     self.dataDir = params["datadir"]
-    self.resultsDir = os.path.join(params["path"], params["name"], "plots")
+    if params.get("create_plots", False):
+      self.resultsDir = os.path.join(params["path"], params["name"], "plots")
 
-    if not os.path.exists(self.resultsDir):
-      os.makedirs(self.resultsDir)
+      if not os.path.exists(self.resultsDir):
+        os.makedirs(self.resultsDir)
 
     self.use_cuda = not params["no_cuda"] and torch.cuda.is_available()
     self.device = torch.device("cuda" if self.use_cuda else "cpu")
@@ -137,23 +131,28 @@ class MNISTSparseExperiment(PyExperimentSuite):
         inputSize=c1_input_shape,
         outChannels=c1_out_channels,
         c_k=c1_k,
+        kernelSize=5,
+        stride=1,
         dropout=params["dropout"],
         n=n,
         k=k,
+        outputSize=10,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
+        weightSparsityCNN=params["weight_sparsity_cnn"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         useBatchNorm=params["use_batch_norm"],
         normalizeWeights=params.get("normalize_weights", False)
       )
-      print("c1OutputLength=", sp_model.cnnSdr[0].outputLength)
     else:
       sp_model = SparseNet(
         n=n,
         k=k,
+        outputSize=10,
         boostStrength=params["boost_strength"],
         weightSparsity=params["weight_sparsity"],
+        weightSparsityCNN=params["weight_sparsity_cnn"],
         boostStrengthFactor=params["boost_strength_factor"],
         kInferenceFactor=params["k_inference_factor"],
         dropout=params["dropout"],
@@ -222,7 +221,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
       # Tracebacks are not printed if using multiprocessing so we do it here
       tb = sys.exc_info()[2]
       traceback.print_tb(tb)
-      raise RuntimeError("Something went wrong in iterate")
+      raise RuntimeError("Something went wrong in iterate", e)
 
     return ret
 
@@ -231,7 +230,7 @@ class MNISTSparseExperiment(PyExperimentSuite):
     """
     Called once we are done.
     """
-    if params.get("saveNet", True):
+    if params.get("savenet", True):
       # Save the full model once we are done.
       saveDir = os.path.join(params["path"], params["name"], "model.pt")
       torch.save(self.model, saveDir)
@@ -296,9 +295,21 @@ class MNISTSparseExperiment(PyExperimentSuite):
                          self.resultsDir + "/figure_" + str(epoch) + "_" +
                          str(model.getLearningIterations()))
 
-    trainModel(model=self.model, loader=self.train_loader,
+
+    # Adjust first epoch batch size to stabilize the dutycycles at the
+    # beginning of the training
+    loader = self.train_loader
+    batches_in_epoch = params["batches_in_epoch"]
+    if "first_epoch_batch_size" in params:
+      if epoch == 0:
+        batches_in_epoch = params.get("batches_in_first_epoch", batches_in_epoch)
+        loader = torch.utils.data.DataLoader(self.train_loader.dataset,
+                                             batch_size=params["first_epoch_batch_size"],
+                                             sampler=self.train_loader.sampler)
+
+    trainModel(model=self.model, loader=loader,
                optimizer=self.optimizer, device=self.device,
-               batches_in_epoch=params["batches_in_epoch"],
+               batches_in_epoch=batches_in_epoch,
                batch_callback=log)
 
     self.model.postEpoch()

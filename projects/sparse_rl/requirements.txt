@@ -1,0 +1,5 @@
+gym[atari]
+torch
+torchvision
+matplotlib
+tqdm

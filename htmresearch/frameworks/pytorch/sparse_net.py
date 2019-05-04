@@ -19,33 +19,14 @@
 # http://numenta.org/licenses/
 # ----------------------------------------------------------------------
 
-from __future__ import print_function
+from __future__ import print_function, division
 
 import collections
 import torch
 
 import torch.nn as nn
 
-from htmresearch.frameworks.pytorch.cnn_sdr import CNNSDR2d
-from htmresearch.frameworks.pytorch.linear_sdr import LinearSDR
-
-
-
-class Flatten(nn.Module):
-  """
-  Simple module used to flatten the tensors before passing data from CNN layer
-  to the linear layer
-  """
-
-
-  def __init__(self, size):
-    super(Flatten, self).__init__()
-    self.size = size
-
-
-  def forward(self, x):
-    x = x.view(-1, self.size)
-    return x
+import htmresearch.frameworks.pytorch.modules as htm
 
 
 
@@ -56,15 +37,21 @@ class SparseNet(nn.Module):
                k=200,
                outChannels=0,
                c_k=0,
+               kernelSize=5,
+               stride=1,
                inputSize=28*28,
                outputSize=10,
                kInferenceFactor=1.0,
                weightSparsity=0.5,
+               weightSparsityCNN=0.5,
                boostStrength=1.0,
                boostStrengthFactor=1.0,
                dropout=0.0,
                useBatchNorm=True,
-               normalizeWeights=False):
+               normalizeWeights=False,
+               useSoftmax=True,
+               padding=0,
+               maxPoolKernel=2):
     """
     A network with one or more hidden layers, which can be a sequence of
     k-sparse CNN followed by a sequence of k-sparse linear layer with optional
@@ -100,6 +87,14 @@ class SparseNet(nn.Module):
       layer acts as a traditional convolutional layer.
     :type c_k: int or list[int]
 
+    :param kernelSize:
+      Kernel size to use in each k-sparse convolutional layer.
+    :type kernelSize: int or list[int]
+
+    :param stride:
+      Stride value to use in each k-sparse convolutional layer.
+    :type stride: int or list[int]
+
     :param inputSize:
       If the CNN layer is enable this parameter holds a tuple representing
       (in_channels,height,width). Otherwise it will hold the total
@@ -116,8 +111,12 @@ class SparseNet(nn.Module):
     :type kInferenceFactor: float
 
     :param weightSparsity:
-      Pct of weights that are allowed to be non-zero.
-    :type weightSparsity: float
+      Pct of weights that are allowed to be non-zero in each linear layer.
+    :type weightSparsity: float or list[float]
+
+    :param weightSparsityCNN:
+      Pct of weights that are allowed to be non-zero in each convolutional layer.
+    :type weightSparsityCNN: float or list[float]
 
     :param boostStrength:
       boost strength (0.0 implies no boosting).
@@ -142,30 +141,58 @@ class SparseNet(nn.Module):
       number of non-zeros instead of the whole input size
     :type normalizeWeights: bool
 
+    :param useSoftmax:
+      If True, use soft max to compute probabilities
+    :type useSoftmax: bool
+
+    :param padding:
+        cnn layer Zero-padding added to both sides of the input
+    :type padding: int
+
+    :param maxPoolKernel:
+      The size of the window to take a max over
+    :type maxPoolKernel: int
     """
     super(SparseNet, self).__init__()
 
-    assert(weightSparsity >= 0)
 
     # Validate CNN sdr params
     if isinstance(inputSize, collections.Sequence):
-      assert(inputSize[1] == inputSize[2],
-             "sparseCNN only supports square images")
+      assert inputSize[1] == inputSize[2], "sparseCNN only supports square images"
 
     if type(outChannels) is not list:
       outChannels = [outChannels]
     if type(c_k) is not list:
-      c_k = [c_k]
+      c_k = [c_k] * len(outChannels)
     assert(len(outChannels) == len(c_k))
+    if type(kernelSize) is not list:
+      kernelSize = [kernelSize] * len(outChannels)
+    assert(len(outChannels) == len(kernelSize))
+    if type(stride) is not list:
+      stride = [stride] * len(outChannels)
+    assert(len(outChannels) == len(stride))
+    if type(padding) is not list:
+      padding = [padding] * len(outChannels)
+    assert(len(outChannels) == len(padding))
+    if type(weightSparsityCNN) is not list:
+      weightSparsityCNN = [weightSparsityCNN] * len(outChannels)
+    assert(len(outChannels) == len(weightSparsityCNN))
+    for i in range(len(outChannels)):
+      assert (weightSparsityCNN[i] >= 0)
 
     # Validate linear sdr params
     if type(n) is not list:
       n = [n]
     if type(k) is not list:
-      k = [k]
+      k = [k] * len(n)
     assert(len(n) == len(k))
     for i in range(len(n)):
       assert(k[i] <= n[i])
+    if type(weightSparsity) is not list:
+      weightSparsity = [weightSparsity] * len(n)
+    assert(len(n) == len(weightSparsity))
+    for i in range(len(n)):
+      assert (weightSparsity[i] >= 0)
 
     self.k = k
     self.kInferenceFactor = kInferenceFactor
@@ -176,82 +203,110 @@ class SparseNet(nn.Module):
     self.weightSparsity = weightSparsity   # Pct of weights that are non-zero
     self.boostStrengthFactor = boostStrengthFactor
     self.boostStrength = boostStrength
-    self.kernelSize = 5
+    self.kernelSize = kernelSize
+    self.stride = stride
+    self.padding = padding
     self.learningIterations = 0
 
+
     inputFeatures = inputSize
+    outputLength = inputFeatures
     cnnSdr = nn.Sequential()
     # CNN Layers
     for i in range(len(outChannels)):
       if outChannels[i] != 0:
-        module = CNNSDR2d(imageShape=inputFeatures,
-                          outChannels=outChannels[i],
-                          k=c_k[i],
-                          kernelSize=self.kernelSize,
-                          kInferenceFactor=kInferenceFactor,
-                          boostStrength=boostStrength,
-                          useBatchNorm=useBatchNorm,
-                          )
-        cnnSdr.add_module("cnnSdr{}".format(i), module)
+        inChannels, h, w = inputFeatures
+        cnn = nn.Conv2d(in_channels=inChannels,
+                        out_channels=outChannels[i],
+                        kernel_size=kernelSize[i],
+                        padding=padding[i],
+                        stride=stride[i])
+
+        if 0 < weightSparsityCNN[i] < 1:
+          sparseCNN = htm.SparseWeights2d(cnn, weightSparsityCNN[i])
+          cnnSdr.add_module("cnnSdr{}_cnn".format(i + 1), sparseCNN)
+        else:
+          cnnSdr.add_module("cnnSdr{}_cnn".format(i + 1), cnn)
+
+        # Batch Norm
+        if useBatchNorm:
+          bn = nn.BatchNorm2d(outChannels[i], affine=False)
+          cnnSdr.add_module("cnnSdr{}_bn".format(i + 1), bn)
+
+        # Max pool
+        maxpool = nn.MaxPool2d(kernel_size=maxPoolKernel)
+        cnnSdr.add_module("cnnSdr{}_maxpool".format(i + 1), maxpool)
+
+        wout = (w + 2 * padding[i] - kernelSize[i]) // stride[i] + 1
+        maxpoolWidth = wout // 2
+        outputLength = maxpoolWidth * maxpoolWidth * outChannels[i]
+        if 0 < c_k[i] < outputLength:
+          kwinner = htm.KWinners2d(n=outputLength, k=c_k[i],
+                                   channels=outChannels[i],
+                                   kInferenceFactor=kInferenceFactor,
+                                   boostStrength=boostStrength,
+                                   boostStrengthFactor=boostStrengthFactor)
+          cnnSdr.add_module("cnnSdr{}_kwinner".format(i + 1), kwinner)
+        else:
+          cnnSdr.add_module("cnnSdr{}_relu".format(i + 1), nn.ReLU())
+
         # Feed this layer output into next layer input
-        inputFeatures = (outChannels[i], module.maxpoolWidth, module.maxpoolWidth)
+        inputFeatures = (outChannels[i], maxpoolWidth, maxpoolWidth)
 
     if len(cnnSdr) > 0:
-      inputFeatures = cnnSdr[-1].outputLength
+      inputFeatures = outputLength
       self.cnnSdr = cnnSdr
     else:
       self.cnnSdr = None
 
     # Flatten input before passing to linear layers
-    self.flatten = Flatten(inputFeatures)
+    self.flatten = htm.Flatten()
 
     # Linear layers
     self.linearSdr = nn.Sequential()
 
     for i in range(len(n)):
       if n[i] != 0:
-        self.linearSdr.add_module("linearSdr{}".format(i+1),
-                        LinearSDR(inputFeatures=inputFeatures,
-                                  n=n[i],
-                                  k=k[i],
-                                  kInferenceFactor=kInferenceFactor,
-                                  weightSparsity=weightSparsity,
-                                  boostStrength=boostStrength,
-                                  useBatchNorm=useBatchNorm,
-                                  normalizeWeights=normalizeWeights
-                                  ))
-        # Add dropout after each hidden layer
+        linear = nn.Linear(inputFeatures, n[i])
+        if 0 < weightSparsity[i] < 1:
+          linear = htm.SparseWeights(linear, weightSparsity=weightSparsity[i])
+          if normalizeWeights:
+            linear.apply(htm.normalizeSparseWeights)
+        self.linearSdr.add_module("linearSdr{}".format(i + 1), linear)
+
+        if useBatchNorm:
+          self.linearSdr.add_module("linearSdr{}_bn".format(i + 1),
+                                    nn.BatchNorm1d(n[i], affine=False))
+
         if dropout > 0.0:
-          self.linearSdr.add_module("dropout{}".format(i), nn.Dropout(dropout))
+          self.linearSdr.add_module("linearSdr{}_dropout".format(i + 1),
+                                    nn.Dropout(dropout))
+
+        if 0 < k[i] < n[i]:
+          kwinner = htm.KWinners(n=n[i], k=k[i],
+                                 kInferenceFactor=kInferenceFactor,
+                                 boostStrength=boostStrength,
+                                 boostStrengthFactor=boostStrengthFactor)
+          self.linearSdr.add_module("linearSdr{}_kwinner".format(i + 1), kwinner)
+        else:
+          self.linearSdr.add_module("linearSdr{}_relu".format(i + 1), nn.ReLU())
 
         # Feed this layer output into next layer input
         inputFeatures = n[i]
 
     # Add one fully connected layer after all hidden layers
-    self.fc = nn.Linear(self.n[-1], outputSize)
-    self.softmax = nn.LogSoftmax(dim=1)
+    self.fc = nn.Linear(inputFeatures, outputSize)
+
+    # Use softmax to compute probabilities
+    if useSoftmax:
+      self.softmax = nn.LogSoftmax(dim=1)
+    else:
+      self.softmax = None
 
 
   def postEpoch(self):
-    """
-    Call this once after each training epoch.
-    """
-    if self.training:
-      self.boostStrength = self.boostStrength * self.boostStrengthFactor
-      if self.cnnSdr is not None:
-        for module in self.cnnSdr.children():
-          if hasattr(module, "setBoostStrength"):
-            module.setBoostStrength(self.boostStrength)
-
-      for module in self.linearSdr.children():
-        if hasattr(module, "setBoostStrength"):
-          module.setBoostStrength(self.boostStrength)
-        if hasattr(module, "rezeroWeights"):
-          # The optimizer is updating the weights during training after the forward
-          # step. Therefore we need to re-zero the weights after every epoch
-          module.rezeroWeights()
-
-      print("boostStrength is now:", self.boostStrength)
+    self.apply(htm.updateBoostStrength)
+    self.apply(htm.rezeroWeights)
 
 
   def forward(self, x):
@@ -260,7 +315,9 @@ class SparseNet(nn.Module):
     x = self.flatten(x)
     x = self.linearSdr(x)
     x = self.fc(x)
-    x = self.softmax(x)
+
+    if self.softmax is not None:
+      x = self.softmax(x)
 
     if self.training:
       batchSize = x.shape[0]
@@ -273,32 +330,23 @@ class SparseNet(nn.Module):
     return self.learningIterations
 
   def maxEntropy(self):
-    """
-    Returns the maximum entropy we can expect
-    """
-    maxEntropy = 0
-    if self.cnnSdr is not None:
-      for module in self.cnnSdr.children():
-        if hasattr(module, "maxEntropy"):
-          maxEntropy += module.maxEntropy()
-    for module in self.linearSdr.children():
+    entropy = 0
+    for module in self.modules():
+      if module == self:
+        continue
       if hasattr(module, "maxEntropy"):
-        maxEntropy += module.maxEntropy()
+        entropy += module.maxEntropy()
 
-    return maxEntropy
-
+    return entropy
 
   def entropy(self):
     """
     Returns the current entropy
     """
     entropy = 0
-    if self.cnnSdr is not None:
-      for module in self.cnnSdr.children():
-        if hasattr(module, "entropy"):
-          entropy += module.entropy()
-
-    for module in self.linearSdr.children():
+    for module in self.modules():
+      if module == self:
+        continue
       if hasattr(module, "entropy"):
         entropy += module.entropy()
 
@@ -334,5 +382,7 @@ class SparseNet(nn.Module):
 
     # Collect all layers with 'dutyCycle'
     for m in self.modules():
-      if m != self and hasattr(m, 'pruneDutycycles'):
+      if m == self:
+        continue
+      if hasattr(m, 'pruneDutycycles'):
         m.pruneDutycycles(threshold)

@@ -107,19 +107,25 @@ class Thalamus(object):
         Seed for the random number generator.
     """
 
+    # Shapes of TRN cell layer, relay cell layer, and feed forward input layer
     self.trnCellShape = trnCellShape
     self.trnWidth = trnCellShape[0]
     self.trnHeight = trnCellShape[1]
+
     self.relayCellShape = relayCellShape
     self.relayWidth = relayCellShape[0]
     self.relayHeight = relayCellShape[1]
-    self.l6CellCount = l6CellCount
-    self.trnThreshold = trnThreshold
-    self.relayThreshold = relayThreshold
+
     self.inputShape = inputShape
+    self.inputWidth = inputShape[0]
+    self.inputHeight = inputShape[1]
+
+
+    self.l6CellCount = l6CellCount
+    self.relayThreshold = relayThreshold
     self.seed = seed
     self.rng = Random(seed)
-    self.trnActivationThreshold = 5
+    self.trnActivationThreshold = trnThreshold
 
     self.trnConnections = SparseMatrixConnections(
       trnCellShape[0]*trnCellShape[1], l6CellCount)
@@ -178,11 +184,8 @@ class Thalamus(object):
     self.activeTRNCellIndices = self.trnConnections.mapSegmentsToCells(
       self.activeTRNSegments)
 
-    # print("trnOverlaps:", self.trnOverlaps,
-    #       "active segments:", self.activeTRNSegments)
-    for s, idx in zip(self.activeTRNSegments, self.activeTRNCellIndices):
-      print(self.trnOverlaps[s], idx, self.trnIndextoCoord(idx))
-
+    # for s, idx in zip(self.activeTRNSegments, self.activeTRNCellIndices):
+    #   print(self.trnOverlaps[s], idx, self.trnIndextoCoord(idx))
 
     # Figure out which relay cells have dendrites in de-inactivated state
     self.relayOverlaps = self.relayConnections.computeActivity(
@@ -210,7 +213,22 @@ class Thalamus(object):
       feedForwardInput is modified to contain 0, 1, or 2. A "2" indicates
       bursting cells.
     """
-    feedForwardInput += self.burstReadyCells * feedForwardInput
+    ff = feedForwardInput.copy()
+    # For each relay cell, see if any of its FF inputs are active.
+    for x in range(self.relayWidth):
+      for y in range(self.relayHeight):
+        inputCells = self._preSynapticFFCells(x, y)
+        for idx in inputCells:
+          if feedForwardInput[idx] != 0:
+            ff[x, y] = 1.0
+            continue
+
+    # If yes, and it is in burst mode, this cell bursts
+    # If yes, and it is not in burst mode, then we just get tonic input.
+
+    # ff += self.burstReadyCells * ff
+    ff2 = ff * 0.4 + self.burstReadyCells * ff
+    return ff2
 
 
   def reset(self):
@@ -293,12 +311,24 @@ class Thalamus(object):
                                              [self.trnCellIndex(trnCell)], 1.0)
 
 
+  def _initializeRelayCellDendrites(self):
+    """
+    Initialize relay cell dendrites. If we assume that tau TRN cells connect to
+    a given relay cell, and gamma feed-forward (FF) axons (e.g. ganglion cell
+    axons) connect to each relay cell, we create tau * gamma dendritic segments
+    on the relay cell. Each dendrite will have one of the TRN connections, and
+    one of the FF connections.
+
+    """
+    pass
+
+
   def _preSynapticTRNCells(self, i, j):
     """
     Given a relay cell at the given coordinate, return a list of the (x,y)
-    coordinates of all TRN cells that project to it.
+    coordinates of all TRN cells that project to it. This assumes a 3X3 fan-in.
 
-    :param relayCellCoordinate:
+    :param i, j: relay cell Coordinates
 
     :return:
     """
@@ -311,4 +341,25 @@ class Thalamus(object):
     ]
 
     return trnCells
+
+
+  def _preSynapticFFCells(self, i, j):
+    """
+    Given a relay cell at the given coordinate, return a list of the (x,y)
+    coordinates of all feed forward cells that project to it. This assumes a 3X3
+    fan-in.
+
+    :param i, j: relay cell Coordinates
+
+    :return:
+    """
+    xmin = max(i - 1, 0)
+    xmax = min(i + 2, self.inputWidth)
+    ymin = max(j - 1, 0)
+    ymax = min(j + 2, self.inputHeight)
+    inputCells = [
+      (x, y) for x in range(xmin, xmax) for y in range(ymin, ymax)
+    ]
+
+    return inputCells
 
