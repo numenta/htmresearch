@@ -19,7 +19,7 @@ What you should understand about this repository
 ================================================
 
 - the code can change quickly and without warning as experiments are discarded and recreated
-- code will not be production-quality, buggy, or well documented
+- code will not be production-quality or well documented, and may be buggy
 - if we do work with external partners, that work will probably NOT be here
 - we might decide at some point to not do our research in the open anymore and instead delete the whole repository
 
