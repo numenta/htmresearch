@@ -42,13 +42,16 @@ def get_interpolated_params(m_frac, ph, params):
 
 def predict_log_capacity(m,n,p, logX, params, raw=False):
 
-    x      = np.linspace(np.amin(logX),np.amax(logX), num=100)
     m_frac = float(m)/float(n)        
+        
+    a, loc, scale = get_interpolated_params(m_frac, p, params)
+    x_min = loc - 5.*scale
+    x_max = loc + 5.*scale
+    x = np.linspace(x_min, x_max, num=100)
     
-    f = skewnorm.pdf(x,*get_interpolated_params(m_frac, p, params))
+    f = skewnorm.pdf(x, a, loc, scale)
     f = f/np.sum(f)
-    
-    C    = np.random.choice(x, p=f, size=(n,100000))
+    C = np.random.choice(x, p=f, size=(n,100000))
 
     pred_raw  = np.amin(C, axis=0)
     pred_mean = np.mean(pred_raw) 
@@ -62,6 +65,16 @@ def construct_predictions(logX, ms, ks, ps, raw=False):
         prediction = np.zeros((max(ms), max(ks), len(ps), 100000))
     else:
         prediction = np.zeros((max(ms), max(ks), len(ps)))
+    
+    # 
+    #   UNDERFLOW WARNING:
+    #   
+    #   The function `skewnorm` within `predict_log_capacity` can cause an 
+    #   underflow warning/error, but it doesn't seem to be an issue for our computations. 
+    #   The function f in `predict_log_capacity` looks fine even 
+    #   after normalization. So I just ignore the error :|
+    #
+    old_err_setting = np.seterr(under="warn")
 
     for m,k,p in [ (m,k,p) for m in ms for k in ks for p in ps]:
         m_ = m-1
@@ -70,6 +83,8 @@ def construct_predictions(logX, ms, ks, ps, raw=False):
             pred = predict_log_capacity(m,k,p, logX, params, raw)
             prediction[m_,k_,p] = np.exp(pred)
 
+    np.seterr(**old_err_setting)
+    
     return prediction
 
 
