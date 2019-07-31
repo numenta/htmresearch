@@ -20,6 +20,9 @@
 # ----------------------------------------------------------------------
 
 from __future__ import print_function
+
+import copy
+import json
 import os
 import time
 
@@ -148,6 +151,9 @@ class SparseSpeechExperiment(PyExperimentSuite):
     self.optimizer = self.createOptimizer(params, self.model)
     self.lr_scheduler = self.createLearningRateScheduler(params, self.optimizer)
 
+    self.best_score = 0.0
+    self.best_model = None
+    self.best_epoch = -1
 
   def iterate(self, params, repetition, iteration):
     """
@@ -200,6 +206,13 @@ class SparseSpeechExperiment(PyExperimentSuite):
             "loss=", testResults["test_loss"])
       ret.update({"testerror": testResults["testerror"]})
 
+      score = testResults["testerror"]
+      if score > self.best_score:
+        self.best_epoch = iteration
+        self.best_score = score
+        self.best_model = copy.deepcopy(self.model)
+
+
     # Run bg noise set
     if self.bg_noise_loader is not None:
       bgResults = self.test(params, self.bg_noise_loader)
@@ -230,12 +243,34 @@ class SparseSpeechExperiment(PyExperimentSuite):
 
   def finalize(self, params, rep):
     """
-    Save the full model once we are done.
+    Save best model once we are done.
     """
     if params.get("saveNet", True):
       saveDir = os.path.join(params["path"], params["name"],
-                             "model_{}.pt".format(rep))
-      torch.save(self.model, saveDir)
+                             "best_model_{}.pt".format(rep))
+      torch.save(self.best_model, saveDir)
+
+    # Run noise test on best model at the end
+    if params.get("run_noise_tests_best_model", False):
+      self.model = self.best_model
+      results = self.runNoiseTests(params)
+
+      # Update bets epoch log with noise results
+      fullpath = os.path.join(params['path'], params['name'])
+      logfile = os.path.join(fullpath, '%i.log' % rep)
+      log = []
+
+      with open(logfile, 'r') as f:
+        for line in f:
+          log.append(json.loads(line))
+
+      with open(logfile, 'w') as f:
+        log[self.best_epoch].update(results)
+        for entry in log:
+          json.dump(entry, f)
+          f.write('\n')
+          f.flush()
+
 
 
   def createLearningRateScheduler(self, params, optimizer):

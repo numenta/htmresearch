@@ -24,6 +24,7 @@ from __future__ import (absolute_import, division,
 import logging
 import sys
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -58,6 +59,8 @@ def trainModel(model, loader, optimizer, device, criterion=F.nll_loss,
   :param progress_bar: Optional :class:`tqdm` progress bar args.
                        None for no progress bar
   :type progress_bar: dict or None
+
+  :returns  mean loss value
   """
   model.train()
   if progress_bar is not None:
@@ -66,11 +69,13 @@ def trainModel(model, loader, optimizer, device, criterion=F.nll_loss,
     if batches_in_epoch < len(loader):
       loader.total = batches_in_epoch
 
+  losses = []
   for batch_idx, (data, target) in enumerate(loader):
     data, target = data.to(device), target.to(device)
     optimizer.zero_grad()
     output = model(data)
     loss = criterion(output, target)
+    losses.append(loss.item())
     loss.backward()
     optimizer.step()
 
@@ -82,6 +87,8 @@ def trainModel(model, loader, optimizer, device, criterion=F.nll_loss,
   if progress_bar is not None:
     loader.n = loader.total
     loader.close()
+
+  return np.mean(losses)
 
 
 
