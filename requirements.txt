@@ -1,6 +1,6 @@
 gensim==3.0.0
 matplotlib==2.1.0
-numpy==1.12.1
+numpy==1.22.0
 pandas==0.18.1
 plotly==2.0.13
 plyfile==0.5
